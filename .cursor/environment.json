@@ -1,0 +1,11 @@
+{
+  "name": "AJAS (AI Job Application System)",
+  "user": "ubuntu",
+  "install": "bash .cursor/install.sh",
+  "terminals": [
+    {
+      "name": "azurite",
+      "command": "export PATH=\"$HOME/.npm-global/bin:$PATH\" && mkdir -p \"$HOME/.azurite\" && azurite --silent --location \"$HOME/.azurite\" --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0"
+    }
+  ]
+}
