@@ -1,0 +1,13 @@
+# Azure Functions local settings hold secrets/connection strings — never commit.
+local.settings.json
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Azure Functions build/runtime artifacts
+.python_packages/
+bin/
+obj/
