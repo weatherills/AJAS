@@ -1,0 +1,18 @@
+# Azure Functions Python worker
+azure-functions
+
+# Azure data services (Cosmos DB, Blob, Queue) and auth
+azure-cosmos
+azure-storage-blob
+azure-storage-queue
+azure-identity
+
+# Azure OpenAI (embeddings + chat) via the OpenAI SDK
+openai
+
+# Config, schema modeling, and validation
+pydantic
+pydantic-settings
+
+# JWT verification for Azure AD / B2C bearer tokens
+PyJWT
