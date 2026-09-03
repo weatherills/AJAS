@@ -51,6 +51,14 @@ if ! command -v azurite >/dev/null 2>&1; then
   npm install -g azurite
 fi
 
+# --- CodeSpring CLI ----------------------------------------------------------
+# Project-planning CLI used by the committed CodeSpring agent skills
+# (.cursor/skills/). Authenticate per-VM with `codespring auth login` (browser
+# OAuth) or, headless, `codespring auth login --api-key "$CODESPRING_API_KEY"`.
+if ! command -v codespring >/dev/null 2>&1; then
+  npm install -g @codespring-app/cli
+fi
+
 # --- Python backend ----------------------------------------------------------
 # Azure Functions Python worker runs from a project virtual environment.
 if [ ! -d .venv ]; then
@@ -81,3 +89,4 @@ echo "  python : $(python --version 2>&1)  (venv: $REPO_ROOT/.venv)"
 echo "  node   : $(node --version)"
 echo "  func   : $(func --version)"
 echo "  azurite: $(azurite --version 2>/dev/null || echo installed)"
+echo "  codespring: $(codespring --version 2>/dev/null || echo installed)"
