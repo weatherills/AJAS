@@ -1,8 +1,7 @@
 """Cosmos DB client factory.
 
 Thin, lazily-constructed accessor so feature code shares a single configured
-client. Containers and query logic are added per feature (resumes, job_postings,
-matches, run selections, ...).
+client. Resume Management containers and query logic live in ``app.resumes``.
 """
 from functools import lru_cache
 from typing import TYPE_CHECKING
