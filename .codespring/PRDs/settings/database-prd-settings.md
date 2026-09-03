@@ -2,62 +2,39 @@
 **Feature:** Settings  
 **Type:** database
 
-## Scope
-Persist user-specific Settings for AJAS:
-- Match threshold for AI Matching Service
-- Microsoft 365 email connection (OAuth via Microsoft Graph)
-- Source toggles for Greenhouse and Lever
+### Feature: Settings (Match Threshold, Email Connection, Source Toggles)
 
-## Entities & Relationships
-- user_settings: 1:1 per user. Stores threshold and source toggles. Partitioned by user_id.
-- email_connections: N:1 per user. Stores Microsoft 365 OAuth connection(s) and sync/webhook metadata. Partitioned by user_id. For MVP, provider must equal "microsoft_365".
+- Scope: Persist per-user configuration for AI match threshold, Microsoft 365 OAuth connection state, and enabling/disabling job source integrations (Greenhouse, Lever).
+- Tenancy: All records are scoped to a single user (user_id). One row in user_settings per user. Email connections are per user with at most one active Microsoft 365 connection.
+- Security: OAuth tokens must be stored encrypted; never logged in cleartext. Audit all settings changes.
 
-## Constraints & Validation
-- match_threshold INT in [0, 100]; null means use system default (70) at read-time.
-- greenhouse_enabled, lever_enabled default false.
-- email_connections.connection_status ENUM (TEXT): ["connected", "pending_consent", "revoked", "error"].
-- Unique constraints (logical):
-  - user_settings.user_id unique (single settings row per user).
-  - email_connections unique per (user_id, provider, account_email) active connection.
-- Tokens:
-  - Store only encrypted refresh token (refresh_token_ciphertext). Access tokens should be ephemeral; if persisted, only expiry metadata is stored.
-  - refresh_token_expires_at required when refresh_token_ciphertext is present.
-- Webhook subscription (optional): if webhook_subscription_id is set, webhook_expiration must be set.
+### Entities & Relationships
+- user_settings (1:1 with user): Stores the numeric threshold and source toggles. Optimistic concurrency via version.
+- email_connections (N:1 to user): Stores Microsoft 365 OAuth credentials and sync/webhook cursors. Only one active per (user, provider).
+- settings_audit_log (N:1 to user and to a changed entity): Immutable append-only log of changes for both user_settings and email_connections.
 
-## Behavioral Notes
-- Threshold Slider:
-  - Writes update user_settings.match_threshold, updated_at. Reject updates outside [0, 100].
-  - Reads: if null, return default 70.
-- Connect Email (Microsoft 365):
-  - On initial OAuth success, create email_connections row with status "connected", set consented_scopes, token_obtained_at, refresh_token_ciphertext, refresh_token_expires_at, account_email, graph_tenant_id, account_id.
-  - On token refresh failure, set connection_status="error" and last_error_code/message.
-  - On user disconnect, set connection_status="revoked", revoked_at; do not delete row.
-  - Webhook renewal updates webhook_subscription_id and webhook_expiration; failures capture last_error_*.
-- Source Toggles:
-  - Enable/disable ingestion per source by flags in user_settings. Ingestion services must read these flags before processing.
-  - Disabling a source has no side effects on historical data; it only prevents new fetches.
+### Constraints & Validation
+- match_threshold: INT in [0, 100]. If NULL, system defaults to 70 (business default; not stored as a separate row).
+- greenhouse_enabled, lever_enabled: BOOLEAN. If both false, system should still allow saving; downstream services must no-op sourcing.
+- email_connections.provider: enum logical value 'microsoft_365'. Future providers can be added without schema change (free-form TEXT + validation at application).
+- email_connections.status: one of ['pending', 'active', 'revoked', 'expired', 'error'].
+- Only one active connection per (user_id, provider). Enforce via unique partial index or application-level guard.
+- OAuth token fields (access_token_enc, refresh_token_enc) required when status = 'active' or 'pending'; must be NULL when 'revoked'.
+- subscription_expires_at must be >= now when webhook_subscription_id is present.
+- Audit entries required for any mutation to user_settings or email_connections with a non-empty field_mask.
 
-## Edge Cases
-- Multiple email accounts: allowed; ensure uniqueness per (user_id, provider, account_email). Only rows with connection_status="connected" are considered active.
-- Expired tokens: if current time > refresh_token_expires_at, treat as "error" until re-auth.
-- Webhook expiration passed: continue polling fallback if applicable, but mark last_error_* if renewal fails.
+### Indexing
+- user_settings: unique index on (user_id); index on (updated_at desc) for admin queries.
+- email_connections: composite index (user_id, provider); partial unique index on (user_id, provider) where status = 'active'; index on (account_email) for lookup; index on (subscription_expires_at) to renew webhooks.
+- settings_audit_log: index on (user_id, created_at desc), and (entity_id, created_at desc) for entity histories.
 
-## Partitioning & Indexing (Cosmos DB oriented)
-- Partition key: pk = user_id for both tables (high cardinality, co-locates user data, minimizes cross-partition queries).
-- Recommended logical indexes/queries:
-  - user_settings by user_id (point read)
-  - email_connections by user_id and filter on connection_status="connected" and provider="microsoft_365".
+### Data Lifecycle & Auditing
+- Soft lifecycle via status in email_connections; do not hard-delete to preserve auditability.
+- Rotate/refresh tokens before expires_at; write last_sync_status/last_sync_error on sync attempts.
+- All changes to threshold, source toggles, and email connection status/credentials produce an audit row linking actor_id and field_mask.
 
-## Security & PII
-- Store refresh_token_ciphertext only (application-layer encryption/KMS). Never store plaintext tokens.
-- account_email and account_id are PII; restrict access via RBAC and minimize query projections.
-
-## Audit & Timestamps
-- created_at, updated_at on all rows (UTC TIMESTAMPTZ). Update updated_at on any write.
-- last_sync_at updated by ingestion workers only; user writes must not modify it.
-
-## Acceptance (DB-Level)
-- Exactly one user_settings row per user can exist.
-- Writes outside threshold range rejected.
-- Revoked connections remain queryable but excluded from "active" results.
-- Toggling sources updates only user_settings and is immediately observable by ingestion services.
+### Edge Cases & Behaviors
+- If token is expired (now > expires_at), set status = 'expired' and queue a refresh; do not delete tokens.
+- Revocation clears tokens (set to NULL), sets status = 'revoked', and records revoked_at.
+- Threshold updates use version for optimistic locking: reject if version mismatches.
+- Deleting a user should cascade-delete user_settings and email_connections or be blocked until archival, but audit log remains immutable (retain for compliance).

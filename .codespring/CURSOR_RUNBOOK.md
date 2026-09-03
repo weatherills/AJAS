@@ -9,7 +9,7 @@
 4. Only move to the next phase when verification passes
 
 ## Project Overview
-The AI Job Application System (AJAS) is designed to streamline the job application process for users by leveraging AI to match resumes with job postings. It allows users to manage their resumes, apply for jobs automatically, and track their application statuses, all in one place.
+The AI Job Application System (AJAS) is designed to streamline the job application process for job seekers by leveraging AI to match resumes with job postings. It allows users to manage resumes, apply for jobs automatically, and track application statuses, all while providing a user-friendly interface.
 
 ## Tech Stack
 - Azure Functions (Consumption)
@@ -44,161 +44,161 @@ The setup failed with this error: [paste error here]. Fix it without changing th
 ---
 
 ## Phase 1: Review & Decision UI
-**What this phase does:** Build a user interface for reviewing AI-generated job matches, allowing users to approve or reject them with comments.
+**What this phase does:** Build a user interface for reviewing AI-generated job matches, allowing users to approve or reject applications with comments.
 
 **Say this to Cursor:**
 ```
-Implement the Review & Decision UI as described in the PRD. Create a simple interface for users to view job matches, see summaries and suggestions, and make approve/reject decisions with comments. Use Azure Functions for backend APIs.
+Create a Review & Decision UI that enables users to view AI-generated job matches, see summaries and suggestions, and make approve/reject decisions with comments. Use Azure Functions for the backend APIs.
 ```
 
 **How to verify it worked:**
-- [ ] Users can see a list of job matches with summaries.
+- [ ] Users can view a list of job matches.
 - [ ] Users can approve or reject matches and leave comments.
-- [ ] Decisions are saved and retrievable.
+- [ ] The decisions are saved and retrievable.
 
 **If something breaks, say this to Cursor:**
 ```
-The Review & Decision UI feature failed with this error: [paste error here]. Fix it without changing other features.
+The Review & Decision UI failed with this error: [paste error here]. Fix it without changing other phases.
 ```
 
 ---
 
 ## Phase 2: Auto-Apply
-**What this phase does:** Enable users to automatically apply for jobs that they approve directly from the app.
+**What this phase does:** Implement functionality for users to automatically apply to jobs when approved.
 
 **Say this to Cursor:**
 ```
-Implement the Auto-Apply feature as described in the PRD. Allow users to auto-fill and submit applications for approved jobs via supported APIs (Greenhouse, Lever). Use Azure Functions for backend processing.
+Build the Auto-Apply feature that allows users to submit job applications programmatically via supported APIs (Greenhouse, Lever) or generate a manual application package. Use Azure Functions for backend logic.
 ```
 
 **How to verify it worked:**
-- [ ] Users can auto-apply for jobs with a single click.
-- [ ] Application status is tracked and displayed.
-- [ ] Users receive feedback on application submissions.
+- [ ] Users can submit applications directly from the job match interface.
+- [ ] The application status is tracked and retrievable.
+- [ ] Manual application packages are generated correctly when needed.
 
 **If something breaks, say this to Cursor:**
 ```
-The Auto-Apply feature failed with this error: [paste error here]. Fix it without changing other features.
+The Auto-Apply feature failed with this error: [paste error here]. Fix it without changing other phases.
 ```
 
 ---
 
 ## Phase 3: Settings
-**What this phase does:** Create a settings page for users to adjust their match threshold, email connections, and job source toggles.
+**What this phase does:** Create a settings interface for users to customize their matching preferences and email connections.
 
 **Say this to Cursor:**
 ```
-Build the Settings feature as outlined in the PRD. Allow users to configure their AI match threshold, connect their Microsoft 365 email, and toggle job sources (Greenhouse, Lever). Use Azure Cosmos DB for storing user settings.
+Develop a Settings interface that allows users to adjust their AI match threshold, connect their Microsoft 365 email, and toggle job source integrations. Use Azure Cosmos DB to persist settings.
 ```
 
 **How to verify it worked:**
 - [ ] Users can adjust their match threshold.
-- [ ] Users can connect their Microsoft 365 email.
-- [ ] Users can toggle job sources on and off.
+- [ ] Users can connect their Microsoft 365 email account.
+- [ ] Settings persist across sessions.
 
 **If something breaks, say this to Cursor:**
 ```
-The Settings feature failed with this error: [paste error here]. Fix it without changing other features.
+The Settings feature failed with this error: [paste error here]. Fix it without changing other phases.
 ```
 
 ---
 
 ## Phase 4: Resume Management
-**What this phase does:** Allow users to upload resumes, parse them into a structured format, and manage their resume library.
+**What this phase does:** Enable users to upload, parse, and manage their resumes.
 
 **Say this to Cursor:**
 ```
-Implement the Resume Management feature as described in the PRD. Users should be able to upload resumes, correct parsing errors, and manage a library of resumes. Use Azure Blob Storage for storing resumes and Azure Functions for parsing.
+Implement the Resume Management feature that allows users to upload resumes, parse them into a structured schema, and manage a library of resumes. Use Azure Blob Storage for file storage and Azure Functions for parsing.
 ```
 
 **How to verify it worked:**
-- [ ] Users can upload resumes and see them in their library.
-- [ ] Users can edit parsed resume fields.
-- [ ] Users can select an active resume for applications.
+- [ ] Users can upload resumes in PDF/DOCX format.
+- [ ] Resumes are parsed correctly into a structured format.
+- [ ] Users can edit and manage their resume library.
 
 **If something breaks, say this to Cursor:**
 ```
-The Resume Management feature failed with this error: [paste error here]. Fix it without changing other features.
+The Resume Management feature failed with this error: [paste error here]. Fix it without changing other phases.
 ```
 
 ---
 
 ## Phase 5: Job Source Integration
-**What this phase does:** Integrate with job posting sources (Greenhouse, Lever) to fetch and display job postings.
+**What this phase does:** Integrate with job posting sources to fetch and manage job postings.
 
 **Say this to Cursor:**
 ```
-Build the Job Source Integration feature as outlined in the PRD. Fetch job postings from Greenhouse and Lever, normalize and deduplicate them, and display them in the app. Use Azure Functions for the fetching logic.
+Build the Job Source Integration feature to fetch job postings from Greenhouse and Lever, ensuring deduplication and compliance with rate limits. Use Azure Functions for the backend logic.
 ```
 
 **How to verify it worked:**
-- [ ] Users can see a unified list of job postings from both sources.
-- [ ] Duplicate postings are removed.
-- [ ] Users can refresh the job feed without errors.
+- [ ] Job postings are fetched and displayed without duplicates.
+- [ ] The system respects rate limits and handles errors gracefully.
+- [ ] Users can refresh the job postings list on demand.
 
 **If something breaks, say this to Cursor:**
 ```
-The Job Source Integration feature failed with this error: [paste error here]. Fix it without changing other features.
+The Job Source Integration feature failed with this error: [paste error here]. Fix it without changing other phases.
 ```
 
 ---
 
 ## Phase 6: Matching & Ranking
-**What this phase does:** Implement AI-driven matching between resumes and job postings, providing a match percentage and rationale.
+**What this phase does:** Implement AI-driven matching between resumes and job postings.
 
 **Say this to Cursor:**
 ```
-Implement the Matching & Ranking feature as described in the PRD. Calculate an AI match percentage between resumes and job postings, providing a summary and rationale for the score. Use the AI Matching Service for computations.
+Create the Matching & Ranking feature that computes match percentages between resumes and job postings using AI. Store the results in Azure Cosmos DB and provide a summary for users.
 ```
 
 **How to verify it worked:**
-- [ ] Users can see a match percentage for each job posting.
-- [ ] Users can view a summary and rationale for the match score.
-- [ ] Users can configure a minimum match threshold.
+- [ ] Users can see match percentages and summaries for job postings.
+- [ ] The matching logic works as expected based on user-configurable thresholds.
+- [ ] Results are stored and retrievable for future reference.
 
 **If something breaks, say this to Cursor:**
 ```
-The Matching & Ranking feature failed with this error: [paste error here]. Fix it without changing other features.
+The Matching & Ranking feature failed with this error: [paste error here]. Fix it without changing other phases.
 ```
 
 ---
 
 ## Phase 7: Email Ingestion & Reply
-**What this phase does:** Enable users to pull relevant emails from Microsoft Graph and reply to them within the app.
+**What this phase does:** Enable users to ingest emails related to job applications and reply within the app.
 
 **Say this to Cursor:**
 ```
-Build the Email Ingestion & Reply feature as outlined in the PRD. Users should be able to pull related emails and reply to them directly in the app. Use Microsoft Graph API for email interactions.
+Implement the Email Ingestion & Reply feature that pulls relevant emails from Microsoft Graph and allows users to reply directly from AJAS. Ensure proper linking to job postings and applications.
 ```
 
 **How to verify it worked:**
-- [ ] Users can see a list of relevant emails linked to job postings.
-- [ ] Users can reply to emails from within the app.
-- [ ] Email threads are properly linked to job/application records.
+- [ ] Users can view and reply to emails related to job applications.
+- [ ] Emails are correctly linked to job postings and applications.
+- [ ] The reply functionality works with templates and AI suggestions.
 
 **If something breaks, say this to Cursor:**
 ```
-The Email Ingestion & Reply feature failed with this error: [paste error here]. Fix it without changing other features.
+The Email Ingestion & Reply feature failed with this error: [paste error here]. Fix it without changing other phases.
 ```
 
 ---
 
 ## Phase 8: Learning Loop
-**What this phase does:** Implement a feedback loop to learn from user decisions and adjust matching algorithms accordingly.
+**What this phase does:** Implement a learning mechanism to adapt the matching algorithm based on user feedback.
 
 **Say this to Cursor:**
 ```
-Implement the Learning Loop feature as described in the PRD. Capture user feedback on job matches and adjust matching weights and thresholds based on their decisions. Ensure this is done without disrupting the user experience.
+Create the Learning Loop feature that captures user decisions on job matches and adjusts the matching algorithm accordingly. Store user feedback in Azure Cosmos DB for future tuning.
 ```
 
 **How to verify it worked:**
-- [ ] User decisions are logged and used to adjust future matches.
-- [ ] Users can see how their feedback influences the system over time.
-- [ ] The system remains responsive and user-friendly.
+- [ ] User feedback is captured and stored correctly.
+- [ ] The matching algorithm adapts based on user decisions over time.
+- [ ] Users can see how their feedback influences future matches.
 
 **If something breaks, say this to Cursor:**
 ```
-The Learning Loop feature failed with this error: [paste error here]. Fix it without changing other features.
+The Learning Loop feature failed with this error: [paste error here]. Fix it without changing other phases.
 ```
 
 ---
@@ -210,8 +210,8 @@ Review the entire codebase. Fix any TypeScript errors, broken imports, or missin
 ```
 
 **How to verify the full app works:**
-- [ ] All features are accessible and function as intended.
-- [ ] No TypeScript errors or warnings are present.
-- [ ] Users can seamlessly navigate through the app without issues.
-- [ ] All integrations (email, job sources) work correctly.
-- [ ] The application performs well under load.
+- [ ] All features are accessible and functional without errors.
+- [ ] The application can handle user interactions smoothly.
+- [ ] Data flows correctly between features (e.g., resumes, job matches, email replies).
+- [ ] No TypeScript errors are present in the terminal.
+- [ ] The application meets the requirements outlined in the PRDs.
