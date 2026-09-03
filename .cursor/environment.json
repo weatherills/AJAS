@@ -1,6 +1,6 @@
 {
   "name": "AJAS (AI Job Application System)",
   "user": "ubuntu",
-  "install": "bash .cursor/install.sh",
-  "start": "bash .cursor/start.sh"
+  "install": "if [ -f .cursor/install.sh ]; then bash .cursor/install.sh; else echo 'skip install: .cursor/install.sh not on this ref'; fi",
+  "start": "if [ -f .cursor/start.sh ]; then bash .cursor/start.sh; else echo 'skip start: .cursor/start.sh not on this ref'; fi"
 }
