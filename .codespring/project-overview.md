@@ -3,13 +3,8 @@
 A new project
 
 ## Features
-- **Resume Management**: Upload machine-readable resume, parse to structured profile, set active
-- **Source Ingestion**: Scan Greenhouse and Lever for postings using keywords and company lists
-- **AI Matching**: Hybrid keyword + semantic scoring with explainable reasons and threshold
 - **Review & Decision UI**: Simple approve/reject with comments; show summary + suggestion
 - **Auto-Apply**: If approved, auto-fill/submit via source APIs; track status
-- **Email Ingestion & Reply**: Pull related emails via Microsoft Graph and reply from a simple UI
-- **Learning Loop**: Use user decisions to adjust weights for future matches
 - **Settings**: Match threshold, email connection, and source toggles
 - **Resume Management**: Upload, parse to schema, edit, set active resume per run
 - **Job Source Integration**: Fetch postings from Greenhouse/Lever; rate limit, dedupe
