@@ -29,6 +29,17 @@ class Settings(BaseSettings):
     azure_openai_embeddings_deployment: str = "text-embedding-3-small"
     azure_openai_chat_deployment: str = "gpt-4o-mini"
 
+    # Auth: "dev" accepts Bearer <user_id>; "aad" validates a JWT.
+    auth_mode: str = "dev"
+    auth_jwt_secret: str = ""
+    auth_jwt_audience: str = ""
+    auth_jwt_jwks_url: str = ""
+
+    crawl_runs_queue: str = "crawl-runs"
+    job_fetch_queue: str = "job-fetch"
+    job_raw_blob_container: str = "job-raw"
+    crawl_poison_dequeue: int = 10
+
 
 @lru_cache
 def get_settings() -> Settings:

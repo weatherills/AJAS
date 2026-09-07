@@ -51,6 +51,8 @@ class SourceFetchRun(BaseModel):
     noop_count: int = 0
     error_count: int = 0
     error_summary: str | None = None
+    expected_count: int = 0
+    completed_count: int = 0
     created_at: str
     updated_at: str
 
