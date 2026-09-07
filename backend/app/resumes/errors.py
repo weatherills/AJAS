@@ -18,4 +18,17 @@ class ResumeNotFoundError(ResumeStoreError):
 
 
 class ResumeSelectionRejectedError(ResumeStoreError):
-    """A run cannot select this resume (deleted, not parsed, or cross-user)."""
+    """A run cannot select this resume (deleted or cross-user)."""
+
+
+class FileRejectedError(ResumeStoreError):
+    """Upload rejected for type, size, encryption, or corruption."""
+
+    def __init__(self, message: str, *, status_code: int, code: str):
+        super().__init__(message)
+        self.status_code = status_code
+        self.code = code
+
+
+class ResumeRateLimitedError(ResumeStoreError):
+    """Upload or parse concurrency limit exceeded."""

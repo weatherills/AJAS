@@ -73,11 +73,19 @@ class FakeContainer:
         self.items[key] = dict(body)
         return dict(body)
 
+    def delete_item(self, item: str, partition_key: str) -> None:
+        key = (partition_key, item if isinstance(item, str) else item["id"])
+        self.items.pop(key, None)
+
     def query_items(self, query: str, parameters=None, partition_key=None, **_kwargs):
         params = {p["name"]: p["value"] for p in (parameters or [])}
         rows = [dict(v) for v in self.items.values()]
         if partition_key is not None:
             rows = [r for r in rows if r.get(self.pk_field) == partition_key]
+        if "@user_id" in params and "c.user_id" in query:
+            rows = [r for r in rows if r.get("user_id") == params["@user_id"]]
+        if "@resume_id" in params and "c.resume_id" in query:
+            rows = [r for r in rows if r.get("resume_id") == params["@resume_id"]]
         if params.get("@include_deleted") is False:
             rows = [r for r in rows if not r.get("is_deleted")]
         if "ORDER BY c.updated_at DESC" in query:
@@ -369,12 +377,13 @@ def test_run_selection_is_one_per_run_and_rejects_invalid(store):
     assert replaced.resume_id == other.id
     assert store.get_run_selection("run-1").resume_id == other.id
 
+    # Backend PRD: uploaded/parsing/failed are selectable; deleted is not.
+    uploaded_ok = store.set_run_selection(run_id="run-2", user_id=USER, resume_id=not_ready.id)
+    assert uploaded_ok.resume_id == not_ready.id
     with pytest.raises(ResumeSelectionRejectedError):
-        store.set_run_selection(run_id="run-2", user_id=USER, resume_id=not_ready.id)
-    with pytest.raises(ResumeSelectionRejectedError):
-        store.set_run_selection(run_id="run-2", user_id=USER, resume_id=deleted.id)
+        store.set_run_selection(run_id="run-3", user_id=USER, resume_id=deleted.id)
     with pytest.raises(ResumeNotFoundError):
-        store.set_run_selection(run_id="run-2", user_id=OTHER, resume_id=ready.id)
+        store.set_run_selection(run_id="run-4", user_id=OTHER, resume_id=ready.id)
 
 
 def test_deleting_active_resume_keeps_historical_selection(store):
@@ -436,6 +445,16 @@ def test_education_order_index_is_stable(store):
     parsed = store.record_parse_success(USER, resume.id, snapshot)
     assert [e.institution for e in parsed.educations] == ["A", "B"]
     assert [e.order_index for e in parsed.educations] == [0, 1]
+
+
+def test_clear_selections_for_resume(store):
+    resume = _upload(store)
+    store.record_parse_success(USER, resume.id, _snapshot(skills=[_skill("Python")]))
+    store.set_run_selection(run_id="run-x", user_id=USER, resume_id=resume.id)
+    assert store.get_run_selection("run-x") is not None
+    removed = store.clear_selections_for_resume(USER, resume.id)
+    assert removed == 1
+    assert store.get_run_selection("run-x") is None
 
 
 def test_new_id_is_unique():

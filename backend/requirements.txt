@@ -14,5 +14,9 @@ openai
 pydantic
 pydantic-settings
 
+# Resume parse (PDF / DOCX text extraction)
+pypdf
+python-docx
+
 # JWT verification for Azure AD / B2C bearer tokens
 PyJWT

@@ -1,4 +1,6 @@
 -r requirements.txt
 
-# Test tooling
+# + test tooling
 pytest
+pypdf
+python-docx

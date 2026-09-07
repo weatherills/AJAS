@@ -27,6 +27,7 @@ class ResumeStore(Protocol):
         checksum_sha256: str,
         preview_blob_uri: str | None = None,
         text_preview: str | None = None,
+        resume_id: str | None = None,
     ) -> Resume: ...
 
     def get_resume(self, user_id: str, resume_id: str) -> Resume: ...
@@ -80,9 +81,17 @@ class ResumeStore(Protocol):
 
     def list_parse_events(self, resume_id: str) -> list[ResumeParseEvent]: ...
 
+    def clear_selections_for_resume(self, user_id: str, resume_id: str) -> int: ...
+
 
 def get_resume_store() -> ResumeStore:
-    """Return the Cosmos-backed store. Tests construct ``InMemoryResumeStore``."""
+    """Return Cosmos when configured, otherwise the in-memory store."""
+    from app.config import get_settings
+    from app.resumes.memory import InMemoryResumeStore
+
+    settings = get_settings()
+    if not settings.cosmos_connection_string:
+        return InMemoryResumeStore()
     from app.resumes.cosmos_store import CosmosResumeStore
     from app.storage.cosmos import get_database
 

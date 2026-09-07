@@ -29,6 +29,19 @@ class Settings(BaseSettings):
     azure_openai_embeddings_deployment: str = "text-embedding-3-small"
     azure_openai_chat_deployment: str = "gpt-4o-mini"
 
+    # Auth: "dev" accepts Bearer <user_id>; "aad" validates a JWT.
+    auth_mode: str = "dev"
+    auth_jwt_secret: str = ""
+    auth_jwt_audience: str = ""
+    auth_jwt_jwks_url: str = ""
+
+    resume_blob_container: str = "resumes"
+    resume_parse_queue: str = "resume-parse"
+    resume_max_upload_bytes: int = 10 * 1024 * 1024
+    resume_max_pdf_pages: int = 20
+    resume_upload_rate_per_hour: int = 30
+    resume_max_concurrent_parses: int = 5
+
 
 @lru_cache
 def get_settings() -> Settings:

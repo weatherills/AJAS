@@ -45,12 +45,14 @@ class InMemoryResumeStore:
         checksum_sha256: str,
         preview_blob_uri: str | None = None,
         text_preview: str | None = None,
+        resume_id: str | None = None,
     ) -> Resume:
         if not user_id:
             raise ResumeValidationError("user_id is required", path="user_id")
         validate_file_metadata(mime_type=mime_type, file_size=file_size)
         now = utc_now()
         resume = Resume(
+            id=resume_id or new_id(),
             user_id=user_id,
             original_filename=original_filename,
             mime_type=mime_type,
@@ -197,10 +199,6 @@ class InMemoryResumeStore:
             raise ResumeSelectionRejectedError("run user_id must match resume user_id")
         if resume.is_deleted:
             raise ResumeSelectionRejectedError("cannot select a deleted resume")
-        if resume.processing_status != "parsed":
-            raise ResumeSelectionRejectedError(
-                "cannot select a resume that is not parsed"
-            )
         selection = RunResumeSelection(
             id=run_id,
             run_id=run_id,
@@ -214,6 +212,17 @@ class InMemoryResumeStore:
     def get_run_selection(self, run_id: str) -> RunResumeSelection | None:
         selection = self._selections.get(run_id)
         return deepcopy(selection) if selection else None
+
+    def clear_selections_for_resume(self, user_id: str, resume_id: str) -> int:
+        """Remove per-run selections pointing at this resume (Backend PRD revoke)."""
+        to_drop = [
+            run_id
+            for run_id, sel in self._selections.items()
+            if sel.user_id == user_id and sel.resume_id == resume_id
+        ]
+        for run_id in to_drop:
+            del self._selections[run_id]
+        return len(to_drop)
 
     def list_parse_events(self, resume_id: str) -> list[ResumeParseEvent]:
         events = list(self._events.get(resume_id, []))

@@ -153,6 +153,24 @@ class CosmosResumeStore:
             return None
         return RunResumeSelection.model_validate(item)
 
+    def clear_selections_for_resume(self, user_id: str, resume_id: str) -> int:
+        items = list(
+            self._selections.query_items(
+                query=(
+                    "SELECT * FROM c WHERE c.user_id = @user_id "
+                    "AND c.resume_id = @resume_id"
+                ),
+                parameters=[
+                    {"name": "@user_id", "value": user_id},
+                    {"name": "@resume_id", "value": resume_id},
+                ],
+                enable_cross_partition_query=True,
+            )
+        )
+        for item in items:
+            self._selections.delete_item(item=item["id"], partition_key=item["run_id"])
+        return len(items)
+
     def list_parse_events(self, resume_id: str) -> list[ResumeParseEvent]:
         query = "SELECT * FROM c WHERE c.resume_id = @resume_id ORDER BY c.created_at DESC"
         items = self._events.query_items(

@@ -2,14 +2,8 @@
 import json
 
 
-def test_function_app_imports_and_registers_health():
-    # Importing the app builds the FunctionApp and registers blueprints; this
-    # fails loudly if the skeleton wiring or any imported module breaks.
-    import function_app
-
-    functions = function_app.app.get_functions()
-    names = {f.get_function_name() for f in functions}
-    assert "health" in names
+def test_function_app_imports_and_registers_health(function_names):
+    assert "health" in function_names
 
 
 def test_json_response_shape():
