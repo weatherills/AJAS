@@ -35,6 +35,8 @@ def resume_list_item(resume: Resume) -> dict[str, Any]:
         "createdAt": resume.created_at,
         "updatedAt": resume.updated_at,
         "lastParseAt": resume.parsed_at,
+        "fileHash": resume.checksum_sha256,
+        "validated": resume.validated,
     }
 
 
@@ -54,6 +56,7 @@ def resume_detail(resume: Resume) -> dict[str, Any]:
                     "email": resume.contact.email,
                     "phone": resume.contact.phone,
                     "location": resume.contact.location,
+                    "linkedinUrl": resume.contact.linkedin_url,
                 }
                 if resume.contact
                 else None
@@ -89,9 +92,12 @@ def _education_api(item: ResumeEducation) -> dict[str, Any]:
 
 def snapshot_from_patch(resume: Resume, body: dict[str, Any]) -> StructuredResume:
     """Merge a partial PATCH body onto the current resume children."""
+    from app.resumes.models import ResumeContact
+
     skills = resume.skills
     experiences = resume.experiences
     educations = resume.educations
+    contact = resume.contact
     if "skills" in body:
         skills = [_skill_from_api(resume.id, value, i) for i, value in enumerate(body["skills"] or [])]
     if "experience" in body:
@@ -102,8 +108,20 @@ def snapshot_from_patch(resume: Resume, body: dict[str, Any]) -> StructuredResum
         educations = [
             _education_from_api(resume.id, value, i) for i, value in enumerate(body["education"] or [])
         ]
+    if "contact" in body:
+        raw = body.get("contact") or {}
+        contact = ResumeContact(
+            resume_id=resume.id,
+            full_name=raw.get("fullName") or raw.get("full_name"),
+            email=raw.get("email"),
+            phone=raw.get("phone"),
+            location=raw.get("location"),
+            linkedin_url=raw.get("linkedinUrl") or raw.get("linkedin_url"),
+            source="manual",
+            updated_at=utc_now(),
+        )
     return StructuredResume(
-        contact=resume.contact,
+        contact=contact,
         skills=skills,
         experiences=experiences,
         educations=educations,
@@ -131,6 +149,7 @@ def snapshot_from_parser(resume_id: str, payload: dict[str, Any]) -> StructuredR
             email=raw_contact.get("email"),
             phone=raw_contact.get("phone"),
             location=raw_contact.get("location"),
+            linkedin_url=raw_contact.get("linkedinUrl") or raw_contact.get("linkedin_url"),
             updated_at=utc_now(),
         )
     return StructuredResume(

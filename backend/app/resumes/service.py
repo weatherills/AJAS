@@ -106,6 +106,18 @@ class ResumeService:
             updated = self.store.get_resume(user_id, resume_id)
         return updated
 
+    def retry_parse(self, user_id: str, resume_id: str) -> Resume:
+        resume = self.get(user_id, resume_id)
+        self.store.record_status(user_id, resume_id, "queued", parsing_error=None)
+        self.queue.enqueue(
+            {
+                "resumeId": resume.id,
+                "ownerUserId": user_id,
+                "blobPath": resume.blob_uri,
+            }
+        )
+        return self.store.get_resume(user_id, resume_id)
+
     def delete(self, user_id: str, resume_id: str) -> None:
         try:
             self.store.soft_delete(user_id, resume_id)

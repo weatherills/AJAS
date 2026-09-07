@@ -104,9 +104,10 @@ class InMemoryResumeStore:
         resume.updated_at = now
         if status == "failed":
             resume.parsing_error = parsing_error
-        elif status == "parsed":
-            resume.parsed_at = now
+        else:
             resume.parsing_error = None
+        if status == "parsed":
+            resume.parsed_at = now
         event = {
             "queued": "queued",
             "parsing": "started",

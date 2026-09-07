@@ -372,3 +372,50 @@ def test_active_resume_one_per_run_and_revoke_on_delete(svc):
         )
     )
     assert rejected.status_code == 400
+
+
+def test_list_includes_hash_and_retry_parse(svc):
+    created = _body(
+        routes.upload_resume(
+            _req("POST", "http://localhost/api/resumes", file=("cv.pdf", "application/pdf", _pdf()))
+        )
+    )
+    listed = _body(routes.list_resumes(_req("GET", "http://localhost/api/resumes")))
+    assert listed["items"][0]["fileHash"]
+    assert "validated" in listed["items"][0]
+    svc.store.record_status(USER, created["id"], "failed", parsing_error="empty")
+    retried = routes.retry_parse(
+        _req("POST", "http://localhost/api/resumes/x/retry-parse", route={"id": created["id"]})
+    )
+    assert retried.status_code == 200
+    assert _body(retried)["status"] == "uploaded"
+    assert svc.queue.messages[-1]["resumeId"] == created["id"]
+
+
+def test_patch_contact(svc):
+    created = _body(
+        routes.upload_resume(
+            _req("POST", "http://localhost/api/resumes", file=("cv.pdf", "application/pdf", _pdf()))
+        )
+    )
+    patched = _body(
+        routes.patch_resume(
+            _req(
+                "PATCH",
+                "http://localhost/api/resumes/x",
+                route={"id": created["id"]},
+                json_body={
+                    "contact": {
+                        "fullName": "Jane Doe",
+                        "email": "jane@example.com",
+                        "phone": "+15555550100",
+                        "linkedinUrl": "https://linkedin.com/in/jane",
+                    },
+                    "education": [{"institution": "MIT", "startDate": "2015-09", "endDate": "2019-06"}],
+                },
+            )
+        )
+    )
+    assert patched["contact"]["fullName"] == "Jane Doe"
+    assert patched["contact"]["email"] == "jane@example.com"
+    assert patched["contact"]["linkedinUrl"] == "https://linkedin.com/in/jane"

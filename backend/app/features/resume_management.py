@@ -80,6 +80,16 @@ def list_resumes(req: func.HttpRequest) -> func.HttpResponse:
         return _handle_errors(exc)
 
 
+@bp.route(route="resumes/{id}/retry-parse", methods=["POST"])
+def retry_parse(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = _auth(req)
+        resume = get_service().retry_parse(principal.user_id, req.route_params["id"])
+        return json_response({"id": resume.id, "status": "uploaded"})
+    except Exception as exc:
+        return _handle_errors(exc)
+
+
 @bp.route(route="resumes/{id}/preview-url", methods=["GET"])
 def preview_url(req: func.HttpRequest) -> func.HttpResponse:
     try:
