@@ -1027,7 +1027,9 @@ select:focus-visible {
   display: grid;
   place-items: center;
   background: #0f172a;
+  color: #f8fafc;
   font-weight: 700;
+  font-size: 1.05rem;
 }
 
 .match-info {
