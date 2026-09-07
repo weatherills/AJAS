@@ -203,13 +203,14 @@ export function JobFeedPage() {
 
   async function refresh(source: JobSourceName | 'all', silent = false) {
     if (offline) return
-    const before = new Set(items.map((item) => item.id))
     try {
+      const snapshot = await jobsApi.list({ ...query, cursor: null, limit: 500 })
+      const before = new Set(snapshot.items.map((item) => item.id))
       setLiveMessage('Syncing started')
       const rows = await jobsApi.refresh(source)
       setStatuses(rows)
       await loadPage(filters.pagination === 'infinite' ? null : String((page - 1) * PAGE_SIZE), false)
-      const after = await jobsApi.list({ ...query, cursor: null, limit: 200 })
+      const after = await jobsApi.list({ ...query, cursor: null, limit: 500 })
       const added = after.items.filter((item) => !before.has(item.id)).length
       const label = source === 'all' ? 'Sources' : sourceTitle(source)
       if (!silent) toast(added > 0 ? `${label} updated: ${added} new job${added === 1 ? '' : 's'}` : `${label}: no new jobs.`)
@@ -428,9 +429,14 @@ export function JobFeedPage() {
                         {job.employmentType ? ` · ${job.employmentType}` : ''}
                       </p>
                       {also && (
-                        <p className="also-chip" title={job.sources.map((item) => `${sourceTitle(item.source)} · ${item.domain}`).join('\n')}>
+                        <p
+                          className="also-chip"
+                          title={job.sources.map((item) => `${sourceTitle(item.source)} · ${item.domain}`).join('\n')}
+                        >
                           {also}
-                          {job.sources.length > 1 ? ` (${job.sources.length})` : ''}
+                          {job.sources.filter((item) => item.source !== job.primarySource).length
+                            ? ` (${job.sources.filter((item) => item.source !== job.primarySource).length})`
+                            : ''}
                         </p>
                       )}
                     </button>
