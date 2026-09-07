@@ -13,14 +13,14 @@ export function setUserId(id: string) {
   localStorage.setItem(USER_KEY, id.trim() || 'local-user')
 }
 
-async function request(path: string, init: RequestInit = {}): Promise<Response> {
+export async function request(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers)
   headers.set('Authorization', `Bearer ${getUserId()}`)
   const resp = await fetch(path, { ...init, headers })
   return resp
 }
 
-async function json<T>(resp: Response): Promise<T> {
+export async function json<T>(resp: Response): Promise<T> {
   if (resp.status === 204) return undefined as T
   const body = await resp.json().catch(() => ({}))
   if (!resp.ok) {

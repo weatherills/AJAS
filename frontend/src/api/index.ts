@@ -1,10 +1,15 @@
 import { liveApi } from './live'
 import { mockApi, seedMockResume } from './mock'
+import { liveSettingsApi } from './settingsLive'
+import { mockSettingsApi } from './settingsMock'
+import type { SettingsApi } from './settingsTypes'
 import type { ResumeApi } from './types'
 
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 export const api: ResumeApi = USE_MOCK ? mockApi : liveApi
+
+export const settingsApi: SettingsApi = USE_MOCK ? mockSettingsApi : liveSettingsApi
 
 if (USE_MOCK) {
   seedMockResume()
@@ -24,3 +29,4 @@ if (USE_MOCK) {
 
 export { getUserId, setUserId } from './live'
 export type { ResumeApi, ResumeDetail, ResumeListItem } from './types'
+export type { SettingsApi, SettingsDoc } from './settingsTypes'

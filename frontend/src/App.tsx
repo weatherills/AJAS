@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { ResumeEditor } from './pages/ResumeEditor'
 import { ResumeLibrary } from './pages/ResumeLibrary'
+import { SettingsPage } from './pages/Settings'
 
 const phases = [
   { name: 'Resume Management', desc: 'Upload, parse to schema, edit, set active per run', href: '#/resumes', pill: 'Live' },
@@ -11,15 +12,16 @@ const phases = [
   { name: 'Auto-Apply', desc: 'Auto-fill and submit approved applications', pill: 'Planned' },
   { name: 'Email Ingestion & Reply', desc: 'Pull related emails via Microsoft Graph', pill: 'Planned' },
   { name: 'Learning Loop', desc: 'Adjust matching weights from user decisions', pill: 'Planned' },
-  { name: 'Settings', desc: 'Threshold, email connection, source toggles', pill: 'Planned' },
+  { name: 'Settings', desc: 'Threshold, email connection, source toggles', href: '#/settings', pill: 'Live' },
 ]
 
-type Route = { name: 'home' } | { name: 'library' } | { name: 'edit'; id: string }
+type Route = { name: 'home' } | { name: 'library' } | { name: 'edit'; id: string } | { name: 'settings' }
 
 function parseRoute(hash: string): Route {
   const raw = (hash.replace(/^#/, '') || '/').split('?')[0]
   const path = raw.startsWith('/') ? raw : `/${raw}`
   if (path === '/resumes') return { name: 'library' }
+  if (path === '/settings') return { name: 'settings' }
   const match = path.match(/^\/resumes\/([^/]+)\/edit$/)
   if (match) return { name: 'edit', id: decodeURIComponent(match[1]) }
   return { name: 'home' }
@@ -46,7 +48,7 @@ function Home() {
 
       <main>
         <p className="intro">
-          Resume Management is live. Upload a PDF or DOCX, review the parsed fields, and pick a resume for an apply run.
+          Resume Management and Settings are live. Upload a resume, then tune matching, email, and job sources.
         </p>
 
         <ul className="phases">
@@ -81,6 +83,7 @@ function Home() {
 function App() {
   const route = useHashRoute()
   if (route.name === 'library') return <ResumeLibrary />
+  if (route.name === 'settings') return <SettingsPage />
   if (route.name === 'edit') {
     return (
       <ResumeEditor
