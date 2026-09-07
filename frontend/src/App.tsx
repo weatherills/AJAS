@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import { JobFeedPage } from './pages/JobFeed'
 import { ResumeEditor } from './pages/ResumeEditor'
 import { ResumeLibrary } from './pages/ResumeLibrary'
 import { SettingsPage } from './pages/Settings'
 
 const phases = [
   { name: 'Resume Management', desc: 'Upload, parse to schema, edit, set active per run', href: '#/resumes', pill: 'Live' },
-  { name: 'Source Ingestion', desc: 'Scan Greenhouse & Lever for postings', pill: 'Planned' },
+  { name: 'Source Ingestion', desc: 'Scan Greenhouse & Lever for postings', href: '#/jobs', pill: 'Live' },
   { name: 'AI Matching', desc: 'Hybrid keyword + semantic scoring with reasons', pill: 'Planned' },
   { name: 'Review & Decision', desc: 'Approve / reject with comments and summary', pill: 'Planned' },
   { name: 'Auto-Apply', desc: 'Auto-fill and submit approved applications', pill: 'Planned' },
@@ -15,13 +16,14 @@ const phases = [
   { name: 'Settings', desc: 'Threshold, email connection, source toggles', href: '#/settings', pill: 'Live' },
 ]
 
-type Route = { name: 'home' } | { name: 'library' } | { name: 'edit'; id: string } | { name: 'settings' }
+type Route = { name: 'home' } | { name: 'library' } | { name: 'edit'; id: string } | { name: 'settings' } | { name: 'jobs' }
 
 function parseRoute(hash: string): Route {
   const raw = (hash.replace(/^#/, '') || '/').split('?')[0]
   const path = raw.startsWith('/') ? raw : `/${raw}`
   if (path === '/resumes') return { name: 'library' }
   if (path === '/settings') return { name: 'settings' }
+  if (path === '/jobs') return { name: 'jobs' }
   const match = path.match(/^\/resumes\/([^/]+)\/edit$/)
   if (match) return { name: 'edit', id: decodeURIComponent(match[1]) }
   return { name: 'home' }
@@ -48,7 +50,7 @@ function Home() {
 
       <main>
         <p className="intro">
-          Resume Management and Settings are live. Upload a resume, then tune matching, email, and job sources.
+          Resume Management, the job feed, and Settings are live. Scan Greenhouse and Lever, then tune matching and email.
         </p>
 
         <ul className="phases">
@@ -84,6 +86,7 @@ function App() {
   const route = useHashRoute()
   if (route.name === 'library') return <ResumeLibrary />
   if (route.name === 'settings') return <SettingsPage />
+  if (route.name === 'jobs') return <JobFeedPage />
   if (route.name === 'edit') {
     return (
       <ResumeEditor
