@@ -109,7 +109,11 @@ export function ResumeEditor({ resumeId, onBack, onSaved }: { resumeId: string; 
     setSaving(true)
     setError(null)
     try {
-      const updated = await api.patch(detail.id, state)
+      const contact = {
+        ...state.contact,
+        linkedinUrl: (state.contact.linkedinUrl?.trim() || '').replace(/^https:\/\/$/i, '') || undefined,
+      }
+      const updated = await api.patch(detail.id, { ...state, contact })
       const nextState = editorState(updated)
       setDetail(updated)
       setState(nextState)
@@ -199,7 +203,7 @@ export function ResumeEditor({ resumeId, onBack, onSaved }: { resumeId: string; 
             onChange={(event) => setContact({ linkedinUrl: event.target.value })}
             onBlur={() => setBlurred((prev) => ({ ...prev, 'contact.linkedinUrl': true }))}
             aria-invalid={Boolean(showError('contact.linkedinUrl'))}
-            placeholder="https://"
+            placeholder="https://linkedin.com/in/you"
           />
         </label>
         {showError('contact.linkedinUrl') && <p className="field-error">{errors['contact.linkedinUrl']}</p>}

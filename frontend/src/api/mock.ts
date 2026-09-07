@@ -169,6 +169,13 @@ export function seedMockResume(overrides: Partial<ResumeDetail> = {}) {
     lastParseError: null,
     ...overrides,
   })
+  files.set(
+    id,
+    new Blob(
+      ['%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n'],
+      { type: 'application/pdf' },
+    ),
+  )
 }
 
 export function resetMock() {

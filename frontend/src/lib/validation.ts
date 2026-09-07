@@ -45,7 +45,7 @@ export function validateEditor(state: EditorState): FieldErrors {
   if (!email && !phone) errors['contact.email'] = 'Add an email or phone number.'
   if (email && !EMAIL.test(email)) errors['contact.email'] = 'Enter a valid email.'
   if (phone && !PHONE.test(phone)) errors['contact.phone'] = 'Enter a valid phone number.'
-  const url = state.contact.linkedinUrl?.trim() || ''
+  const url = (state.contact.linkedinUrl?.trim() || '').replace(/^https:\/\/$/i, '')
   if (url && !HTTPS.test(url)) errors['contact.linkedinUrl'] = 'Links must start with https://'
 
   if (state.skills.length > 100) errors.skills = 'At most 100 skills.'
