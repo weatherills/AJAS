@@ -8,7 +8,7 @@ import { SettingsPage } from './pages/Settings'
 const phases = [
   { name: 'Resume Management', desc: 'Upload, parse to schema, edit, set active per run', href: '#/resumes', pill: 'Live' },
   { name: 'Source Ingestion', desc: 'Scan Greenhouse & Lever for postings', href: '#/jobs', pill: 'Live' },
-  { name: 'AI Matching', desc: 'Hybrid keyword + semantic scoring with reasons', pill: 'Planned' },
+  { name: 'AI Matching', desc: 'Hybrid keyword + semantic scoring with reasons', href: '#/jobs', pill: 'Live' },
   { name: 'Review & Decision', desc: 'Approve / reject with comments and summary', pill: 'Planned' },
   { name: 'Auto-Apply', desc: 'Auto-fill and submit approved applications', pill: 'Planned' },
   { name: 'Email Ingestion & Reply', desc: 'Pull related emails via Microsoft Graph', pill: 'Planned' },
@@ -50,7 +50,7 @@ function Home() {
 
       <main>
         <p className="intro">
-          Resume Management, the job feed, and Settings are live. Scan Greenhouse and Lever, then tune matching and email.
+          Resume Management, the job feed, Matching, and Settings are live. Scan Greenhouse and Lever, then tune the match threshold.
         </p>
 
         <ul className="phases">

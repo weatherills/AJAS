@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { jobsApi, USE_MOCK } from '../api'
+import { api, jobsApi, matchingApi, settingsApi, USE_MOCK } from '../api'
 import type { JobCard, JobDetail, JobFilters, JobSourceName, SourceStatus } from '../api/jobsTypes'
+import type { MatchView } from '../api/matchingTypes'
+import { MatchBadge } from '../components/MatchBadge'
+import { MatchMeter } from '../components/MatchMeter'
+import { WhyThisScore, WhyThisScoreInline } from '../components/MatchWhy'
 import { ToastStack } from '../components/Toast'
+import { apiToPercent } from '../lib/settings'
+import { jobHaystack, resumeHaystack } from '../lib/matching'
+import { preselectReady } from '../lib/status'
 import {
   ALL_SOURCES,
   alsoFromLabel,
@@ -39,6 +46,14 @@ export function JobFeedPage() {
   const [now, setNow] = useState(Date.now())
   const [liveMessage, setLiveMessage] = useState('')
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [threshold, setThreshold] = useState(70)
+  const [resumeId, setResumeId] = useState<string | null>(null)
+  const [resumeText, setResumeText] = useState('')
+  const [matches, setMatches] = useState<Record<string, MatchView>>({})
+  const [onlyThreshold, setOnlyThreshold] = useState(false)
+  const [whyMatch, setWhyMatch] = useState<MatchView | null>(null)
+  const [saveOverride, setSaveOverride] = useState<Record<string, boolean>>({})
+  const [listMinHeight, setListMinHeight] = useState(0)
   const toastId = useRef(1)
   const sentinel = useRef<HTMLDivElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -106,6 +121,107 @@ export function JobFeedPage() {
   useEffect(() => {
     void loadStatus()
   }, [loadStatus])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const doc = await settingsApi.get()
+        if (!cancelled) setThreshold(apiToPercent(doc.matchThreshold))
+      } catch {
+        /* keep default 70 */
+      }
+      try {
+        const list = await api.list()
+        const ready = preselectReady(list)
+        if (!ready) {
+          if (!cancelled) {
+            setResumeId(null)
+            setResumeText('')
+          }
+          return
+        }
+        const detail = await api.get(ready)
+        if (!cancelled) {
+          setResumeId(ready)
+          setResumeText(resumeHaystack(detail))
+        }
+      } catch {
+        if (!cancelled) setResumeId(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const scoreJobs = useCallback(
+    async (jobs: JobCard[]) => {
+      if (!jobs.length) {
+        setMatches({})
+        return
+      }
+      setMatches((prev) => {
+        const next = { ...prev }
+        for (const job of jobs) {
+          if (!next[job.id]) {
+            next[job.id] = {
+              jobId: job.id,
+              resumeId,
+              score: null,
+              state: 'loading',
+              breakdown: null,
+              terms: [],
+              explanation: '',
+              versions: null,
+              computedAt: null,
+              persisted: false,
+            }
+          }
+        }
+        return next
+      })
+      try {
+        const rows = await matchingApi.scoreMany({
+          resumeId,
+          resumeText,
+          threshold,
+          jobs: jobs.map((job) => ({ id: job.id, text: jobHaystack(job) })),
+          explanation: true,
+        })
+        setMatches((prev) => {
+          const next = { ...prev }
+          for (const row of rows) next[row.jobId] = row
+          return next
+        })
+      } catch (err) {
+        setMatches((prev) => {
+          const next = { ...prev }
+          for (const job of jobs) {
+            next[job.id] = {
+              jobId: job.id,
+              resumeId,
+              score: null,
+              state: 'error',
+              breakdown: null,
+              terms: [],
+              explanation: '',
+              versions: null,
+              computedAt: null,
+              persisted: false,
+              error: err instanceof Error ? err.message : 'Could not compute match',
+            }
+          }
+          return next
+        })
+      }
+    },
+    [resumeId, resumeText, threshold],
+  )
+
+  useEffect(() => {
+    void scoreJobs(items)
+  }, [items, scoreJobs])
 
   useEffect(() => {
     const onOnline = () => {
@@ -363,11 +479,26 @@ export function JobFeedPage() {
               <option value="pages">Numbered pages</option>
             </select>
           </label>
+          <label className="chip-toggle">
+            <input
+              type="checkbox"
+              checked={onlyThreshold}
+              onChange={(event) => {
+                if (listRef.current) setListMinHeight(listRef.current.scrollHeight)
+                setOnlyThreshold(event.target.checked)
+              }}
+            />
+            Only show ≥ threshold ({threshold}%)
+          </label>
+          <p className="muted">
+            Threshold is set in <a href="#/settings">Settings</a>.
+          </p>
           <button
             type="button"
             className="secondary"
             onClick={() => {
               setFilters(defaultFilters())
+              setOnlyThreshold(false)
               setFiltersOpen(false)
             }}
           >
@@ -403,43 +534,47 @@ export function JobFeedPage() {
             </div>
           )}
           {items.length > 0 && (
-            <ul className="job-list" role="list" aria-label="Job postings">
+            <ul className="job-list" role="list" aria-label="Job postings" style={listMinHeight ? { minHeight: listMinHeight } : undefined}>
               {items.map((job) => {
                 const also = alsoFromLabel(job.sources, job.primarySource)
+                const match = matches[job.id]
+                const hidden = Boolean(
+                  onlyThreshold && match?.state === 'computed' && match.score != null && match.score < threshold,
+                )
                 return (
-                  <li key={job.id}>
-                    <button
-                      type="button"
-                      className="job-card"
-                      onClick={() => setSelected(job)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault()
-                          setSelected(job)
-                        }
-                      }}
-                    >
-                      <div className="job-card-top">
-                        <h2>{job.title}</h2>
-                        <span className={`source-chip source-${job.primarySource}`}>{sourceTitle(job.primarySource)}</span>
-                        {job.isNew && <span className="new-chip">New</span>}
-                      </div>
-                      <p className="muted">
-                        {job.company} · {job.location}
-                        {job.employmentType ? ` · ${job.employmentType}` : ''}
-                      </p>
-                      {also && (
-                        <p
-                          className="also-chip"
-                          title={job.sources.map((item) => `${sourceTitle(item.source)} · ${item.domain}`).join('\n')}
-                        >
-                          {also}
-                          {job.sources.filter((item) => item.source !== job.primarySource).length
-                            ? ` (${job.sources.filter((item) => item.source !== job.primarySource).length})`
-                            : ''}
+                  <li key={job.id} className={hidden ? 'job-slot is-filtered' : 'job-slot'}>
+                    <div className="job-card">
+                      <button type="button" className="job-card-hit" onClick={() => setSelected(job)}>
+                        <div className="job-card-top">
+                          <h2>{job.title}</h2>
+                          <span className={`source-chip source-${job.primarySource}`}>{sourceTitle(job.primarySource)}</span>
+                          {job.isNew && <span className="new-chip">New</span>}
+                        </div>
+                        <p className="muted">
+                          {job.company} · {job.location}
+                          {job.employmentType ? ` · ${job.employmentType}` : ''}
                         </p>
-                      )}
-                    </button>
+                        {also && (
+                          <p
+                            className="also-chip"
+                            title={job.sources.map((item) => `${sourceTitle(item.source)} · ${item.domain}`).join('\n')}
+                          >
+                            {also}
+                            {job.sources.filter((item) => item.source !== job.primarySource).length
+                              ? ` (${job.sources.filter((item) => item.source !== job.primarySource).length})`
+                              : ''}
+                          </p>
+                        )}
+                      </button>
+                      <div className="job-card-match">
+                        <MatchBadge
+                          match={match}
+                          threshold={threshold}
+                          onWhy={() => match && setWhyMatch(match)}
+                          onRetry={() => void scoreJobs([job])}
+                        />
+                      </div>
+                    </div>
                   </li>
                 )
               })}
@@ -492,6 +627,28 @@ export function JobFeedPage() {
                 <p className="muted">
                   {detail.company} · {detail.location}
                 </p>
+                <MatchMeter match={matches[selected.id]} threshold={threshold} />
+                {matches[selected.id]?.state === 'error' && (
+                  <button type="button" className="link-btn" onClick={() => void scoreJobs([selected])}>
+                    Retry match
+                  </button>
+                )}
+                {matches[selected.id]?.state === 'computed' && matches[selected.id].score != null && (
+                  <label className="chip-toggle">
+                    <input
+                      type="checkbox"
+                      checked={
+                        saveOverride[selected.id] ??
+                        Boolean(matches[selected.id].persisted || (matches[selected.id].score ?? 0) >= threshold)
+                      }
+                      onChange={(event) =>
+                        setSaveOverride((prev) => ({ ...prev, [selected.id]: event.target.checked }))
+                      }
+                    />
+                    Save match
+                  </label>
+                )}
+                <WhyThisScoreInline match={matches[selected.id]} />
                 {detail.descriptionError && <p className="warn-text">{detail.descriptionError}</p>}
                 <p>{detail.description}</p>
                 <h3>Sources</h3>
@@ -521,6 +678,7 @@ export function JobFeedPage() {
         </button>
       </div>
       <ToastStack toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))} />
+      {whyMatch && <WhyThisScore match={whyMatch} onClose={() => setWhyMatch(null)} />}
     </div>
   )
 }

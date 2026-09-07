@@ -697,6 +697,7 @@ button:disabled {
 
 .job-card {
   width: 100%;
+  color: inherit;
   text-align: left;
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
@@ -705,6 +706,9 @@ button:disabled {
 }
 
 .job-card:focus-visible,
+.job-card-hit:focus-visible,
+.match-badge:focus-visible,
+.match-info:focus-visible,
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
@@ -883,5 +887,172 @@ select:focus-visible {
     z-index: 16;
     overflow: auto;
   }
+}
+
+.job-card-hit {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.job-card-match {
+  margin-top: 0.7rem;
+}
+
+.job-slot.is-filtered {
+  display: none;
+}
+
+.match-badge-wrap {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.match-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.8rem;
+  background: transparent;
+  color: inherit;
+}
+
+.match-badge.match-red,
+.match-label.match-red {
+  color: #fca5a5;
+}
+
+.match-badge.match-amber,
+.match-label.match-amber {
+  color: #fbbf24;
+}
+
+.match-badge.match-green,
+.match-label.match-green {
+  color: #6ee7b7;
+}
+
+.match-meets,
+.match-outdated,
+.match-chip {
+  display: inline-block;
+  font-size: 0.72rem;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid currentColor;
+}
+
+.match-meets {
+  color: #6ee7b7;
+}
+
+.match-outdated {
+  color: #fbbf24;
+}
+
+.match-cta,
+.match-muted,
+.match-error {
+  font-size: 0.85rem;
+}
+
+.match-cta {
+  color: #c7d2fe;
+}
+
+.match-tooltip {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: calc(100% + 0.35rem);
+  z-index: 8;
+  min-width: 220px;
+  max-width: 280px;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #e2e8f0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.match-badge-wrap:hover .match-tooltip,
+.match-badge-wrap:focus-within .match-tooltip {
+  display: block;
+}
+
+.match-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.match-chip {
+  color: #cbd5e1;
+}
+
+.match-meter-block {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+  margin: 0.75rem 0;
+}
+
+.match-meter {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  background: conic-gradient(currentColor calc(var(--pct, 0) * 1%), rgba(148, 163, 184, 0.18) 0);
+}
+
+.match-meter span {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #0f172a;
+  font-weight: 700;
+}
+
+.match-info {
+  width: 1.4rem;
+  height: 1.4rem;
+  margin-left: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid #94a3b8;
+  background: transparent;
+  color: #e2e8f0;
+  font-style: italic;
+  font-size: 0.8rem;
+}
+
+.why-body {
+  white-space: pre-wrap;
+}
+
+.threshold-number {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.threshold-number input {
+  width: 4.5rem;
 }
 

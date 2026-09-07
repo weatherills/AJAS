@@ -2,9 +2,12 @@ import { liveApi } from './live'
 import { mockApi, seedMockResume } from './mock'
 import { liveJobsApi } from './jobsLive'
 import { mockJobsApi } from './jobsMock'
+import { liveMatchingApi } from './matchingLive'
+import { mockMatchingApi } from './matchingMock'
 import { liveSettingsApi } from './settingsLive'
 import { mockSettingsApi } from './settingsMock'
 import type { JobsApi } from './jobsTypes'
+import type { MatchingApi } from './matchingTypes'
 import type { SettingsApi } from './settingsTypes'
 import type { ResumeApi } from './types'
 
@@ -15,6 +18,8 @@ export const api: ResumeApi = USE_MOCK ? mockApi : liveApi
 export const settingsApi: SettingsApi = USE_MOCK ? mockSettingsApi : liveSettingsApi
 
 export const jobsApi: JobsApi = USE_MOCK ? mockJobsApi : liveJobsApi
+
+export const matchingApi: MatchingApi = USE_MOCK ? mockMatchingApi : liveMatchingApi
 
 if (USE_MOCK) {
   seedMockResume()
@@ -36,3 +41,4 @@ export { getUserId, setUserId } from './live'
 export type { ResumeApi, ResumeDetail, ResumeListItem } from './types'
 export type { SettingsApi, SettingsDoc } from './settingsTypes'
 export type { JobCard, JobsApi } from './jobsTypes'
+export type { MatchView, MatchingApi } from './matchingTypes'
