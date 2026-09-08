@@ -5,8 +5,9 @@ keyword + semantic scoring, and streamlines review, auto-apply, and email
 follow-up. See `.codespring/project-overview.md` for the product overview and
 `.codespring/CURSOR_RUNBOOK.md` for the phased implementation plan.
 
-> Status: **Phase 0 — project skeleton.** Shared infrastructure and a runnable
-> backend/frontend shell are in place; feature phases are not yet implemented.
+> Status: **Phase 1 — Review & Decision UI.** Users can list AI/saved matches,
+> read summaries, and approve or reject with comments. Remaining features are
+> still planned.
 
 ## Repository layout
 

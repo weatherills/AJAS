@@ -3,6 +3,7 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AUTH_MODE": "dev",
 
     "COSMOS_CONNECTION_STRING": "",
     "COSMOS_DATABASE": "ajas",
