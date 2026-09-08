@@ -67,6 +67,8 @@ Queue names and message schemas are defined within each feature as it is built.
 ## Frontend
 
 `frontend/` is a Vite + React + TypeScript app. Phase 0 ships a placeholder
-landing page enumerating the planned phases. Feature screens (resume
+landing page enumerating the planned phases. The Vite dev server listens on
+port 3000 (per `.codespring/CURSOR_RUNBOOK.md`) and proxies `/api` to the
+Azure Functions host at `http://127.0.0.1:7071`. Feature screens (resume
 library/editor, review & decision, settings, email reply) are added per phase
 and call the Functions HTTP API.
