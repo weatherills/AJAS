@@ -10,6 +10,9 @@ import type { JobsApi } from './jobsTypes'
 import type { MatchingApi } from './matchingTypes'
 import type { SettingsApi } from './settingsTypes'
 import type { ResumeApi } from './types'
+import { liveReviewApi } from './reviewLive'
+import { mockReviewApi } from './reviewMock'
+import type { ReviewApi } from './reviewTypes'
 
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
@@ -20,6 +23,8 @@ export const settingsApi: SettingsApi = USE_MOCK ? mockSettingsApi : liveSetting
 export const jobsApi: JobsApi = USE_MOCK ? mockJobsApi : liveJobsApi
 
 export const matchingApi: MatchingApi = USE_MOCK ? mockMatchingApi : liveMatchingApi
+
+export const reviewApi: ReviewApi = USE_MOCK ? mockReviewApi : liveReviewApi
 
 if (USE_MOCK) {
   seedMockResume()
@@ -42,3 +47,4 @@ export type { ResumeApi, ResumeDetail, ResumeListItem } from './types'
 export type { SettingsApi, SettingsDoc } from './settingsTypes'
 export type { JobCard, JobsApi } from './jobsTypes'
 export type { MatchView, MatchingApi } from './matchingTypes'
+export type { ReviewApi, ReviewMatch } from './reviewTypes'
