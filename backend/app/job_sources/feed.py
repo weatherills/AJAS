@@ -38,13 +38,31 @@ def seed_demo_feed(store: JobSourceStore) -> None:
         (greenhouse, "3", "Frontend Engineer", "London", "Initech", "greenhouse"),
         (lever, "lev-3", "Backend Engineer", "Remote", "Hooli", "lever"),
     ]
+    skills = {
+        "Staff Engineer": "python azure cosmos kubernetes terraform matching crawlers ingestion",
+        "Platform Engineer": "python azure functions kubernetes terraform matching",
+        "Backend Engineer": "python azure cosmos functions apis matching",
+        "Frontend Engineer": "react typescript css design systems",
+        "Data Analyst": "sql tableau spreadsheets forecasting",
+    }
     for tenant, posting_id, title, location, company, source in samples:
         apply_url = (
             f"https://boards.greenhouse.io/{company.lower()}/jobs/{posting_id}"
             if source == "greenhouse"
             else f"https://jobs.lever.co/{company.lower()}/{posting_id}"
         )
-        body = f"{title} at {company} in {location}."
+        skill_line = skills.get(title, "general")
+        closer = {
+            "Staff Engineer": "Build public job ingestion, matching, and review tools.",
+            "Platform Engineer": "Ship Azure services, crawlers, and matching pipelines.",
+            "Backend Engineer": "Design APIs, Cosmos persistence, and matching workers.",
+            "Frontend Engineer": "Ship React interfaces, design systems, and CSS.",
+            "Data Analyst": "Model spreadsheets, SQL, and forecasting dashboards.",
+        }.get(title, "")
+        body = (
+            f"Title: {title}\nCompany: {company}\nSkills: {skill_line}\n"
+            f"{title} at {company} in {location}. {closer}"
+        )
         store.ingest_raw(
             tenant.id,
             source_posting_id=posting_id,
