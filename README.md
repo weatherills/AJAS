@@ -21,7 +21,8 @@ follow-up. See `.codespring/project-overview.md` for the product overview and
 
 Each runbook phase adds a feature module under `backend/app/features/` and its
 corresponding UI under `frontend/`. See `docs/architecture.md` for how the PRD
-features map onto the skeleton and Azure services.
+features map onto the skeleton and Azure services. REST Client samples for
+Review and Settings live in `docs/api/`.
 
 ## Tech stack
 

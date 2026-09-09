@@ -92,9 +92,22 @@ def test_function_app_registers_settings_routes(function_names):
     assert "health" in function_names
 
 
-def test_unauthenticated_is_401(svc):
+def test_unauthenticated_is_401(svc, caplog):
+    import logging
+
+    caplog.set_level(logging.INFO, logger="ajas")
     resp = routes.get_settings(_req("GET", "http://localhost/api/v1/settings", user=None))
     assert resp.status_code == 401
+    assert any("ajas.request" in record.getMessage() for record in caplog.records)
+
+
+def test_get_logs_successful_request(svc, caplog):
+    import logging
+
+    caplog.set_level(logging.INFO, logger="ajas")
+    resp = routes.get_settings(_req("GET", "http://localhost/api/v1/settings"))
+    assert resp.status_code == 200
+    assert any("GET /v1/settings" in record.getMessage() for record in caplog.records)
 
 
 def test_get_defaults_without_secrets(svc):
