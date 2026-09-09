@@ -1,4 +1,4 @@
-import type { Contact, Education, Experience } from '../api/types'
+import type { Contact, Education, Experience } from '../api/resumeTypes'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE = /^\+?[0-9()\-\s]{7,20}$/

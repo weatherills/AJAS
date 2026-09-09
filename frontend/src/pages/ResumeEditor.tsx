@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { api } from '../api'
-import type { Contact, Education, Experience, ResumeDetail } from '../api/types'
+import { resumeApi } from '../api'
+import type { Contact, Education, Experience, ResumeDetail } from '../api/resumeTypes'
 import { Modal } from '../components/Modal'
 import { StatusBadge } from '../components/StatusBadge'
 import { ToastStack } from '../components/Toast'
@@ -60,7 +60,7 @@ export function ResumeEditor({ resumeId, onBack, onSaved }: { resumeId: string; 
     setLoading(true)
     setError(null)
     try {
-      const next = await api.get(resumeId)
+      const next = await resumeApi.get(resumeId)
       const nextState = editorState(next)
       setDetail(next)
       setState(nextState)
@@ -113,7 +113,7 @@ export function ResumeEditor({ resumeId, onBack, onSaved }: { resumeId: string; 
         ...state.contact,
         linkedinUrl: (state.contact.linkedinUrl?.trim() || '').replace(/^https:\/\/$/i, '') || undefined,
       }
-      const updated = await api.patch(detail.id, { ...state, contact })
+      const updated = await resumeApi.patch(detail.id, { ...state, contact })
       const nextState = editorState(updated)
       setDetail(updated)
       setState(nextState)

@@ -1,4 +1,4 @@
-import type { ApiStatus, ResumeListItem } from '../api/types'
+import type { ApiStatus, ResumeListItem } from '../api/resumeTypes'
 import { LAST_READY_KEY } from './runLock'
 import { editorIsReady } from './validation'
 

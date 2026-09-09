@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { api, getUserId, setUserId, USE_MOCK } from '../api'
-import type { ResumeDetail, ResumeListItem } from '../api/types'
+import { getUserId, resumeApi, setUserId, USE_MOCK } from '../api'
+import type { ResumeDetail, ResumeListItem } from '../api/resumeTypes'
 import { sha256Hex } from '../lib/hash'
 import { LAST_READY_KEY, RUN_LOCK_KEY } from '../lib/runLock'
 import { canSelectForRun, isParsing, preselectReady, uiStatus } from '../lib/status'
@@ -41,14 +41,14 @@ export function ResumeLibrary() {
 
   const load = useCallback(async () => {
     try {
-      const list = await api.list()
+      const list = await resumeApi.list()
       setItems(list)
       setError(null)
       const parsing = list.filter((item) => isParsing(item.status))
       if (parsing.length) {
         const extra: Record<string, ResumeDetail> = {}
         for (const item of parsing) {
-          extra[item.id] = await api.get(item.id)
+          extra[item.id] = await resumeApi.get(item.id)
         }
         setDetails((prev) => ({ ...prev, ...extra }))
       }
@@ -99,7 +99,7 @@ export function ResumeLibrary() {
     }
     setBusy(true)
     try {
-      await api.upload(file)
+      await resumeApi.upload(file)
       toast(`${file.name} uploaded`)
       await load()
     } catch (err) {
@@ -110,11 +110,11 @@ export function ResumeLibrary() {
   }
 
   async function openPreview(item: ResumeListItem) {
-    const detail = details[item.id] ?? (await api.get(item.id))
+    const detail = details[item.id] ?? (await resumeApi.get(item.id))
     setDetails((prev) => ({ ...prev, [item.id]: detail }))
     let url: string | undefined
     try {
-      url = await api.previewUrl(item.id)
+      url = await resumeApi.previewUrl(item.id)
     } catch {
       url = undefined
     }
@@ -270,7 +270,7 @@ export function ResumeLibrary() {
                       <button
                         type="button"
                         onClick={async () => {
-                          await api.retryParse(item.id)
+                          await resumeApi.retryParse(item.id)
                           toast('Parse re-queued')
                           await load()
                         }}
@@ -375,7 +375,7 @@ export function ResumeLibrary() {
               className="danger"
               disabled={lockedId === confirmDelete.id}
               onClick={async () => {
-                await api.remove(confirmDelete.id)
+                await resumeApi.remove(confirmDelete.id)
                 setConfirmDelete(null)
                 toast('Resume deleted')
                 await load()
@@ -429,7 +429,7 @@ export function ResumeLibrary() {
               className="primary"
               disabled={!applyResumeId}
               onClick={async () => {
-                await api.setActive(runId, applyResumeId)
+                await resumeApi.setActive(runId, applyResumeId)
                 localStorage.setItem(LAST_READY_KEY, applyResumeId)
                 localStorage.setItem(RUN_LOCK_KEY, applyResumeId)
                 toast(`Active resume set for ${runId}`)
