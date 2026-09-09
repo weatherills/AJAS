@@ -7,6 +7,10 @@ from app.settings.service import SettingsService
 _service: SettingsService | None = None
 
 
+def try_get_service() -> SettingsService | None:
+    return _service
+
+
 def get_service() -> SettingsService:
     global _service
     if _service is None:

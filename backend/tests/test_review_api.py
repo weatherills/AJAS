@@ -122,6 +122,7 @@ def test_function_app_registers_review_routes(function_names):
     assert "reopen_match" in function_names
     assert "list_saved_jobs" in function_names
     assert "decision_history" in function_names
+    assert "list_decisions" in function_names
     assert "decision_events_job" in function_names
     assert "review_enrich_job" in function_names
     assert "health" in function_names
@@ -480,3 +481,123 @@ def test_queue_worker_poison_after_five(svc):
     svc.process_decision_event(payload, dequeue_count=6)
     assert svc.poisoned == 1
     assert svc.processed_decisions == 1
+
+
+def test_saved_jobs_sort_by_title_and_created_at(svc, store):
+    zebra = _seed(store, job_id="saved-b", source="saved", job_title="Zebra Role", company="Beta")
+    alpha = _seed(store, job_id="saved-a", source="saved", job_title="Alpha Role", company="Acme", resume_id="resume-2")
+    by_title = routes.list_saved_jobs(
+        _req(
+            "GET",
+            "http://localhost/api/v1/queue/saved-jobs",
+            params={"status": "awaiting_decision", "sort": "jobTitle", "order": "asc"},
+        )
+    )
+    assert [_item["jobTitle"] for _item in _body(by_title)["items"]] == ["Alpha Role", "Zebra Role"]
+    by_created = routes.list_saved_jobs(
+        _req(
+            "GET",
+            "http://localhost/api/v1/queue/saved-jobs",
+            params={"status": "awaiting_decision", "sort": "createdAt", "order": "desc"},
+        )
+    )
+    newest_first = [
+        match.job_id
+        for match in sorted([zebra, alpha], key=lambda match: match.created_at, reverse=True)
+    ]
+    assert [_item["jobId"] for _item in _body(by_created)["items"]] == newest_first
+    bad = routes.list_saved_jobs(
+        _req("GET", "http://localhost/api/v1/queue/saved-jobs", params={"sort": "score"})
+    )
+    assert bad.status_code == 400
+
+
+def test_list_decisions_filters_and_pagination(svc, store):
+    first = _seed(store, job_id="job-a", job_title="A")
+    second = _seed(store, job_id="job-b", job_title="B", resume_id="resume-2")
+    routes.create_decision(
+        _req(
+            "POST",
+            f"http://localhost/api/v1/matches/{first.id}/decision",
+            json_body={"decision": "approve"},
+            route={"matchId": first.id},
+            headers={"Idempotency-Key": "d-a", "If-Match": first.etag},
+        )
+    )
+    routes.create_decision(
+        _req(
+            "POST",
+            f"http://localhost/api/v1/matches/{second.id}/decision",
+            json_body={"decision": "reject"},
+            route={"matchId": second.id},
+            headers={"Idempotency-Key": "d-b", "If-Match": second.etag},
+        )
+    )
+    listed = routes.list_decisions(_req("GET", "http://localhost/api/v1/decisions"))
+    assert listed.status_code == 200
+    decisions = [item["decision"] for item in _body(listed)["items"]]
+    assert decisions == ["reject", "approve"]
+    by_job = routes.list_decisions(
+        _req("GET", "http://localhost/api/v1/decisions", params={"jobId": "job-a"})
+    )
+    assert [item["matchId"] for item in _body(by_job)["items"]] == [first.id]
+    rejected = routes.list_decisions(
+        _req("GET", "http://localhost/api/v1/decisions", params={"decision": "reject"})
+    )
+    assert [item["decision"] for item in _body(rejected)["items"]] == ["reject"]
+    paged = routes.list_decisions(
+        _req("GET", "http://localhost/api/v1/decisions", params={"pageSize": "1"})
+    )
+    body = _body(paged)
+    assert len(body["items"]) == 1
+    assert body["items"][0]["decision"] == "reject"
+    assert "continuationToken" in body
+    page2 = routes.list_decisions(
+        _req(
+            "GET",
+            "http://localhost/api/v1/decisions",
+            params={"pageSize": "1", "continuation": body["continuationToken"]},
+        )
+    )
+    assert [item["decision"] for item in _body(page2)["items"]] == ["approve"]
+
+
+def test_decide_enqueues_learning_event_with_threshold(svc, store, queue):
+    from app.settings.memory import InMemorySettingsStore
+    from app.settings.queues import InMemoryJobQueue as SettingsQueue
+    from app.settings.runtime import set_service as set_settings_service
+    from app.settings.service import SettingsService
+
+    settings_store = InMemorySettingsStore()
+    settings_store.get_or_create_settings(USER)
+    settings_store.update_settings(USER, actor_id=USER, expected_version=1, match_threshold=80)
+    set_settings_service(SettingsService(store=settings_store, queue=SettingsQueue()))
+    try:
+        match = _seed(store)
+        resp = routes.create_decision(
+            _req(
+                "POST",
+                f"http://localhost/api/v1/matches/{match.id}/decision",
+                json_body={"decision": "approve"},
+                route={"matchId": match.id},
+                headers={"Idempotency-Key": "learn-1", "If-Match": match.etag},
+            )
+        )
+        assert resp.status_code == 201
+        events = queue.of("learning-decisions")
+        assert len(events) == 1
+        payload = events[0]
+        assert payload["eventType"] == "LearningDecisionLogged"
+        assert payload["userId"] == USER
+        assert payload["jobId"] == "job-1"
+        assert payload["resumeId"] == "resume-1"
+        assert payload["matchId"] == match.id
+        assert payload["decisionId"] == _body(resp)["decisionId"]
+        assert payload["score"] == 88.0
+        assert payload["threshold"] == 0.8
+        assert payload["outcome"] == "approve"
+        assert payload["occurredAt"]
+        assert svc.learning_events == events
+        assert len(queue.of("decision-events")) == 1
+    finally:
+        set_settings_service(None)

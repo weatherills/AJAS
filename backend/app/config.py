@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     settings_connect_rate_per_minute: int = 3
     match_recalc_queue: str = "match-recalc"
     source_discovery_queue: str = "source-discovery"
+    learning_decisions_queue: str = "learning-decisions"
 
 
 @lru_cache

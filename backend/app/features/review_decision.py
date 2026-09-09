@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 
 import azure.functions as func
 
 from app.auth import AuthError, ForbiddenError, get_principal, require_scopes
 from app.http import error_response, json_response
+from app.observability import log_exception, log_request
 from app.review.constants import READ_SCOPE, WRITE_SCOPE
 from app.review.errors import (
     ReviewConflictError,
@@ -18,6 +20,7 @@ from app.review.errors import (
 from app.review.runtime import get_service
 
 bp = func.Blueprint()
+FEATURE = "review"
 
 
 def _auth(req: func.HttpRequest, *scopes: str):
@@ -27,7 +30,7 @@ def _auth(req: func.HttpRequest, *scopes: str):
     return principal
 
 
-def _handle(exc: Exception) -> func.HttpResponse:
+def _map_error(exc: Exception) -> func.HttpResponse:
     if isinstance(exc, AuthError):
         return error_response("UNAUTHENTICATED", str(exc), 401)
     if isinstance(exc, ForbiddenError):
@@ -47,6 +50,39 @@ def _handle(exc: Exception) -> func.HttpResponse:
     if isinstance(exc, ReviewPreconditionError):
         return error_response("PRECONDITION_FAILED", str(exc), 412)
     raise exc
+
+
+def _run(
+    req: func.HttpRequest,
+    route: str,
+    *scopes: str,
+    handler: Callable,
+) -> func.HttpResponse:
+    user_id: str | None = None
+    try:
+        principal = _auth(req, *scopes)
+        user_id = principal.user_id
+        resp = handler(principal)
+        log_request(
+            feature=FEATURE,
+            route=route,
+            method=req.method,
+            status=resp.status_code,
+            user_id=user_id,
+        )
+        return resp
+    except Exception as exc:
+        log_exception(FEATURE, route, exc)
+        resp = _map_error(exc)
+        log_request(
+            feature=FEATURE,
+            route=route,
+            method=req.method,
+            status=resp.status_code,
+            user_id=user_id,
+            error=str(exc),
+        )
+        return resp
 
 
 def _json_body(req: func.HttpRequest) -> dict:
@@ -115,8 +151,7 @@ def _json_payload(msg: func.QueueMessage) -> dict:
 
 @bp.route(route="v1/matches", methods=["GET"])
 def list_matches(req: func.HttpRequest) -> func.HttpResponse:
-    try:
-        principal = _auth(req, READ_SCOPE)
+    def handle(principal):
         body = get_service().list_matches(
             principal.user_id,
             status=req.params.get("status") or None,
@@ -130,23 +165,21 @@ def list_matches(req: func.HttpRequest) -> func.HttpResponse:
             continuation=req.params.get("continuation") or None,
         )
         return json_response(body)
-    except Exception as exc:
-        return _handle(exc)
+
+    return _run(req, "GET /v1/matches", READ_SCOPE, handler=handle)
 
 
 @bp.route(route="v1/matches/{matchId}", methods=["GET"])
 def get_match(req: func.HttpRequest) -> func.HttpResponse:
-    try:
-        principal = _auth(req, READ_SCOPE)
+    def handle(principal):
         return json_response(get_service().get_match(principal.user_id, req.route_params["matchId"]))
-    except Exception as exc:
-        return _handle(exc)
+
+    return _run(req, "GET /v1/matches/{matchId}", READ_SCOPE, handler=handle)
 
 
 @bp.route(route="v1/matches/{matchId}/decision", methods=["POST"])
 def create_decision(req: func.HttpRequest) -> func.HttpResponse:
-    try:
-        principal = _auth(req, WRITE_SCOPE)
+    def handle(principal):
         status, body = get_service().decide(
             principal.user_id,
             req.route_params["matchId"],
@@ -156,38 +189,53 @@ def create_decision(req: func.HttpRequest) -> func.HttpResponse:
             ip=_forwarded_ip(req),
         )
         return json_response(body, status_code=status)
-    except Exception as exc:
-        return _handle(exc)
+
+    return _run(req, "POST /v1/matches/{matchId}/decision", WRITE_SCOPE, handler=handle)
 
 
 @bp.route(route="v1/matches/{matchId}/reopen", methods=["POST"])
 def reopen_match(req: func.HttpRequest) -> func.HttpResponse:
-    try:
-        principal = _auth(req, WRITE_SCOPE)
+    def handle(principal):
         return json_response(get_service().reopen(principal.user_id, req.route_params["matchId"]))
-    except Exception as exc:
-        return _handle(exc)
+
+    return _run(req, "POST /v1/matches/{matchId}/reopen", WRITE_SCOPE, handler=handle)
 
 
 @bp.route(route="v1/queue/saved-jobs", methods=["GET"])
 def list_saved_jobs(req: func.HttpRequest) -> func.HttpResponse:
-    try:
-        principal = _auth(req, READ_SCOPE)
+    def handle(principal):
         body = get_service().list_saved_jobs(
             principal.user_id,
             status=req.params.get("status") or "awaiting_decision",
             page_size=_query_int(req.params.get("pageSize"), "pageSize"),
             continuation=req.params.get("continuation") or None,
+            sort=req.params.get("sort") or None,
+            order=req.params.get("order") or None,
         )
         return json_response(body)
-    except Exception as exc:
-        return _handle(exc)
+
+    return _run(req, "GET /v1/queue/saved-jobs", READ_SCOPE, handler=handle)
+
+
+@bp.route(route="v1/decisions", methods=["GET"])
+def list_decisions(req: func.HttpRequest) -> func.HttpResponse:
+    def handle(principal):
+        body = get_service().list_decisions(
+            principal.user_id,
+            match_id=req.params.get("matchId") or None,
+            job_id=req.params.get("jobId") or None,
+            decision=req.params.get("decision") or None,
+            page_size=_query_int(req.params.get("pageSize"), "pageSize"),
+            continuation=req.params.get("continuation") or None,
+        )
+        return json_response(body)
+
+    return _run(req, "GET /v1/decisions", READ_SCOPE, handler=handle)
 
 
 @bp.route(route="v1/decisions/history", methods=["GET"])
 def decision_history(req: func.HttpRequest) -> func.HttpResponse:
-    try:
-        principal = _auth(req, READ_SCOPE)
+    def handle(principal):
         body = get_service().history(
             principal.user_id,
             match_id=req.params.get("matchId") or None,
@@ -195,8 +243,8 @@ def decision_history(req: func.HttpRequest) -> func.HttpResponse:
             resume_id=req.params.get("resumeId") or None,
         )
         return json_response(body)
-    except Exception as exc:
-        return _handle(exc)
+
+    return _run(req, "GET /v1/decisions/history", READ_SCOPE, handler=handle)
 
 
 @bp.queue_trigger(arg_name="msg", queue_name="decision-events", connection="AzureWebJobsStorage")
