@@ -1,0 +1,82 @@
+@base = http://localhost:7071
+@token = local-user
+@recId = rec-local-user-job-staff
+
+### Health includes learning
+GET {{base}}/api/health
+
+### Current matching params (seeds local demo decisions)
+GET {{base}}/api/v1/learning/params
+Authorization: Bearer {{token}}
+
+### Metrics for this user (7d)
+GET {{base}}/api/v1/metrics?scope=self&period=7d
+Authorization: Bearer {{token}}
+
+### Metrics for this user (30d)
+GET {{base}}/api/v1/metrics?scope=self&period=30d
+Authorization: Bearer {{token}}
+
+### Global metrics (admin)
+GET {{base}}/api/v1/metrics?scope=global&period=7d
+Authorization: Bearer {{token}}
+X-Admin: 1
+
+### Switch to manual Conservative (threshold 0.80)
+PATCH {{base}}/api/v1/learning/params
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tuningMode": "manual",
+  "strictness": 0
+}
+
+### Switch back to auto
+PATCH {{base}}/api/v1/learning/params
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tuningMode": "auto"
+}
+
+### Log a decision (404 unless recommendation_id already exists)
+POST {{base}}/api/v1/learning/decisions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "recommendation_id": "{{recId}}",
+  "job_id": "job-staff",
+  "decision": "approve",
+  "model_version": "learning-v1",
+  "score_at_decision": 0.88,
+  "idempotency_key": "demo-1",
+  "comment": "good fit"
+}
+
+### PRD alias (same body, different path)
+POST {{base}}/api/v1/decisions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "recommendation_id": "{{recId}}",
+  "job_id": "job-staff",
+  "decision": "approve",
+  "model_version": "learning-v1",
+  "score_at_decision": 88,
+  "idempotency_key": "demo-prd-1"
+}
+
+### Tune (admin / service only)
+POST {{base}}/api/v1/learning/tune
+Authorization: Bearer {{token}}
+X-Admin: 1
+Content-Type: application/json
+
+{
+  "user_id": "local-user",
+  "force_activate": true
+}

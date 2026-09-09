@@ -268,7 +268,7 @@ class MatchingService:
         job_text = pair["job_text"]
         if len(resume_text) < 30 or len(job_text) < 30:
             self.low_confidence_events += 1
-        model = self.store.get_model(DEFAULT_MODEL_ID)
+        model = self._model_for_user(user_id)
         keyword_norm = keyword_score(resume_text, job_text)
         try:
             vectors = self.embedder.embed([resume_text, job_text])
@@ -545,6 +545,9 @@ class MatchingService:
         raw_threshold = body.get("threshold")
         if raw_threshold is None:
             threshold_used = prefs.threshold_pct
+            overlay = self._learning_params(user_id)
+            if overlay is not None and overlay.source == "personalized":
+                threshold_used = int(round(overlay.score_threshold * 100))
         else:
             if isinstance(raw_threshold, bool) or not isinstance(raw_threshold, (int, float)):
                 raise MatchingValidationError("threshold must be 0–100", path="threshold")
@@ -568,6 +571,29 @@ class MatchingService:
             "top_n": top_n,
             "filter_below_threshold": filter_below,
         }
+
+    def _learning_params(self, user_id: str):
+        try:
+            from app.learning.runtime import try_get_service
+
+            service = try_get_service()
+            if service is None:
+                return None
+            return service.active_params(user_id)
+        except Exception:
+            return None
+
+    def _model_for_user(self, user_id: str):
+        model = self.store.get_model(DEFAULT_MODEL_ID)
+        params = self._learning_params(user_id)
+        if params is None or params.source != "personalized":
+            return model
+        return model.model_copy(
+            update={
+                "keyword_weight": params.weights.get("keyword", model.keyword_weight),
+                "semantic_weight": params.weights.get("semantic", model.semantic_weight),
+            }
+        )
 
     def _check_rate(self, user_id: str) -> None:
         cfg = get_app_settings()

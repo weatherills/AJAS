@@ -494,6 +494,12 @@ class ReviewService:
         }
         self.learning_events.append(payload)
         self.queue.enqueue(get_settings().learning_decisions_queue, payload)
+        try:
+            from app.learning.runtime import get_service as get_learning_service
+
+            get_learning_service().ingest_event(payload)
+        except Exception:
+            pass
 
     def _idempotent_replay(
         self,

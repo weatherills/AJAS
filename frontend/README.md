@@ -1,9 +1,8 @@
 # AJAS Frontend (React + TypeScript + Vite)
 
-Web UI for the AI Job Application System. This is the Phase 0 skeleton — a
-placeholder landing page listing the planned feature phases. Feature screens
-(resume library/editor, review & decision, settings, email reply, ...) are
-implemented per `.codespring/CURSOR_RUNBOOK.md`.
+Web UI for the AI Job Application System. Feature screens (resume library,
+review, auto-apply, settings, job feed, email, learning) are implemented per
+`.codespring/CURSOR_RUNBOOK.md`.
 
 ## Develop
 
