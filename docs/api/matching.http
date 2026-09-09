@@ -1,0 +1,50 @@
+@base = http://localhost:7071
+@token = local-user
+@operationId = OPERATION_ID
+
+### Health includes matching
+GET {{base}}/api/health
+
+### Compute a single pair (sync)
+POST {{base}}/api/v1/matches/compute
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "resumeText": "Staff engineer Python Azure Cosmos Functions Kubernetes Terraform",
+  "jobText": "Title: Platform Engineer\nSkills: python azure cosmos kubernetes\nShip services on Azure.",
+  "threshold": 70,
+  "explanation": true
+}
+
+### Rank several jobs (N<=10 sync; N>10 returns 202)
+POST {{base}}/api/v1/matches/rank
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "resumeText": "Staff engineer Python Azure Cosmos Functions Kubernetes Terraform",
+  "jobIds": ["job-a", "job-b"],
+  "jobTexts": [
+    "Title: Platform Engineer\nSkills: python azure cosmos kubernetes",
+    "Title: Baker\nSkills: frosting pastry whisk"
+  ],
+  "threshold": 70,
+  "explanation": true
+}
+
+### Poll an async rank/compute operation
+GET {{base}}/api/v1/operations/{{operationId}}
+Authorization: Bearer {{token}}
+
+### Cancel a queued operation
+POST {{base}}/api/v1/operations/{{operationId}}/cancel
+Authorization: Bearer {{token}}
+
+### List persisted match results (scores at or above threshold)
+GET {{base}}/api/v1/match-results?minScore=70&limit=50
+Authorization: Bearer {{token}}
+
+### Review match queue is a different route (GET /v1/matches)
+GET {{base}}/api/v1/matches?status=pending&pageSize=10
+Authorization: Bearer {{token}}
