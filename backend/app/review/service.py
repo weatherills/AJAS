@@ -151,6 +151,7 @@ class ReviewService:
         self.clock = clock or utc_now
         self.processed_decisions = 0
         self.poisoned = 0
+        self.learning_events: list[dict[str, Any]] = []
 
     def list_matches(
         self,
@@ -319,6 +320,7 @@ class ReviewService:
                 "timestamp": event.decided_at,
             },
         )
+        self._log_learning_decision(updated, event, outcome=action)
         return 201, {
             "decisionId": event.id,
             "matchStatus": _api_status(updated.status),
@@ -340,6 +342,8 @@ class ReviewService:
         status: str | None = "awaiting_decision",
         page_size: int | None = None,
         continuation: str | None = None,
+        sort: str | None = None,
+        order: str | None = None,
     ) -> dict[str, Any]:
         wanted = _store_status(status or "awaiting_decision")
         rows = self.store.list_matches(user_id, source="saved")
@@ -349,6 +353,16 @@ class ReviewService:
             rows = [match for match in rows if match.status in {"APPROVED", "REJECTED"}]
         elif wanted:
             rows = [match for match in rows if match.status == wanted]
+        key_name = (sort or "createdAt").strip()
+        keys = {
+            "createdAt": lambda match: match.created_at or "",
+            "jobTitle": lambda match: (match.job_title or "").lower(),
+            "company": lambda match: (match.company or "").lower(),
+        }
+        if key_name not in keys:
+            raise ReviewValidationError("sort must be createdAt, jobTitle, or company", path="sort")
+        reverse = (order or "desc").strip().lower() != "asc"
+        rows = sorted(rows, key=keys[key_name], reverse=reverse)
         size = _page_size(page_size)
         page, token = _paginate(rows, page_size=size, continuation=continuation)
         items = [
@@ -362,6 +376,37 @@ class ReviewService:
             for match in page
         ]
         body: dict[str, Any] = {"items": items}
+        if token:
+            body["continuationToken"] = token
+        return body
+
+    def list_decisions(
+        self,
+        user_id: str,
+        *,
+        match_id: str | None = None,
+        job_id: str | None = None,
+        decision: str | None = None,
+        page_size: int | None = None,
+        continuation: str | None = None,
+    ) -> dict[str, Any]:
+        events = self.store.list_decisions(user_id, match_id)
+        if job_id:
+            by_id = {match.id: match for match in self.store.list_matches(user_id)}
+            events = [
+                event
+                for event in events
+                if (match := by_id.get(event.match_id)) is not None and match.job_id == job_id
+            ]
+        if decision:
+            wanted = decision.strip().lower()
+            if wanted not in {"approve", "reject"}:
+                raise ReviewValidationError("decision must be approve or reject", path="decision")
+            events = [event for event in events if event.decision == wanted]
+        events = list(reversed(events))
+        size = _page_size(page_size)
+        page, token = _paginate(events, page_size=size, continuation=continuation)
+        body: dict[str, Any] = {"items": [_decision_payload(event) for event in page]}
         if token:
             body["continuationToken"] = token
         return body
@@ -420,6 +465,35 @@ class ReviewService:
         hours = settings.review_overwrite_hours or OVERWRITE_WINDOW_HOURS
         age = parse_ts(self.clock()) - parse_ts(decided_at)
         return age <= timedelta(hours=hours)
+
+    def _match_threshold(self, user_id: str) -> float:
+        try:
+            from app.settings.mapping import api_threshold
+            from app.settings.runtime import try_get_service
+            from app.settings.store import get_settings_store
+
+            service = try_get_service()
+            store = service.store if service is not None else get_settings_store()
+            row = store.get_or_create_settings(user_id)
+            return api_threshold(row.match_threshold)
+        except Exception:
+            return 0.7
+
+    def _log_learning_decision(self, match: ReviewMatch, event: DecisionEvent, *, outcome: str) -> None:
+        payload = {
+            "eventType": "LearningDecisionLogged",
+            "userId": match.user_id,
+            "jobId": match.job_id,
+            "resumeId": match.resume_id,
+            "matchId": match.id,
+            "decisionId": event.id,
+            "score": event.ai_score,
+            "threshold": self._match_threshold(match.user_id),
+            "outcome": outcome,
+            "occurredAt": event.decided_at,
+        }
+        self.learning_events.append(payload)
+        self.queue.enqueue(get_settings().learning_decisions_queue, payload)
 
     def _idempotent_replay(
         self,

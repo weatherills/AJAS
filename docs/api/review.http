@@ -1,0 +1,95 @@
+@base = http://localhost:7071
+@token = local-user
+@matchId = MATCH_ID
+@etag = 1
+
+### Health
+GET {{base}}/api/health
+
+### Unauthenticated match queue → 401
+GET {{base}}/api/v1/matches
+
+### Match queue (pending, paginated)
+GET {{base}}/api/v1/matches?status=pending&minScore=70&pageSize=25
+Authorization: Bearer {{token}}
+
+### Match detail
+GET {{base}}/api/v1/matches/{{matchId}}
+Authorization: Bearer {{token}}
+
+### Saved jobs awaiting a decision, newest first
+GET {{base}}/api/v1/queue/saved-jobs?status=awaiting_decision&sort=createdAt&order=desc
+Authorization: Bearer {{token}}
+
+### Saved jobs sorted by title
+GET {{base}}/api/v1/queue/saved-jobs?status=awaiting_decision&sort=jobTitle&order=asc
+Authorization: Bearer {{token}}
+
+### Invalid sort → 400
+GET {{base}}/api/v1/queue/saved-jobs?sort=score
+Authorization: Bearer {{token}}
+
+### Approve a match
+POST {{base}}/api/v1/matches/{{matchId}}/decision
+Authorization: Bearer {{token}}
+Idempotency-Key: approve-1
+If-Match: "{{etag}}"
+Content-Type: application/json
+
+{
+  "decision": "approve",
+  "comment": "Strong platform overlap"
+}
+
+### Duplicate approve (same Idempotency-Key) → 200 replay
+POST {{base}}/api/v1/matches/{{matchId}}/decision
+Authorization: Bearer {{token}}
+Idempotency-Key: approve-1
+If-Match: "{{etag}}"
+Content-Type: application/json
+
+{
+  "decision": "approve"
+}
+
+### Reject without overwrite after a decision → 409
+POST {{base}}/api/v1/matches/{{matchId}}/decision
+Authorization: Bearer {{token}}
+Idempotency-Key: reject-1
+If-Match: "{{etag}}"
+Content-Type: application/json
+
+{
+  "decision": "reject"
+}
+
+### Stale If-Match → 412
+POST {{base}}/api/v1/matches/{{matchId}}/decision
+Authorization: Bearer {{token}}
+Idempotency-Key: stale-1
+If-Match: "999"
+Content-Type: application/json
+
+{
+  "decision": "approve"
+}
+
+### Paginated decisions (newest first)
+GET {{base}}/api/v1/decisions?pageSize=25
+Authorization: Bearer {{token}}
+
+### Filter decisions by job and outcome
+GET {{base}}/api/v1/decisions?jobId=job-1&decision=approve
+Authorization: Bearer {{token}}
+
+### Decision history for one match (exactly one of matchId, jobId, resumeId)
+GET {{base}}/api/v1/decisions/history?matchId={{matchId}}
+Authorization: Bearer {{token}}
+
+### History without a filter → 400
+GET {{base}}/api/v1/decisions/history
+Authorization: Bearer {{token}}
+
+### Reopen a decided match
+POST {{base}}/api/v1/matches/{{matchId}}/reopen
+Authorization: Bearer {{token}}

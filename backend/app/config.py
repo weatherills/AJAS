@@ -57,6 +57,26 @@ class Settings(BaseSettings):
     settings_connect_rate_per_minute: int = 3
     match_recalc_queue: str = "match-recalc"
     source_discovery_queue: str = "source-discovery"
+    learning_decisions_queue: str = "learning-decisions"
+
+    resume_blob_container: str = "resumes"
+    resume_parse_queue: str = "resume-parse"
+    resume_max_upload_bytes: int = 10 * 1024 * 1024
+    resume_max_pdf_pages: int = 20
+    resume_upload_rate_per_hour: int = 30
+    resume_max_concurrent_parses: int = 5
+
+    crawl_runs_queue: str = "crawl-runs"
+    job_fetch_queue: str = "job-fetch"
+    job_raw_blob_container: str = "job-raw"
+    crawl_poison_dequeue: int = 10
+
+    match_compute_queue: str = "match-compute"
+    match_poison_dequeue: int = 5
+    match_sync_rate_per_minute: int = 60
+    match_max_text_chars: int = 100_000
+    match_max_rank_pairs: int = 1000
+    match_rank_async_after: int = 10
 
 
 @lru_cache

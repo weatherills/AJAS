@@ -8,6 +8,34 @@ def test_function_app_imports_and_registers_health(function_names):
     assert "health" in function_names
 
 
+def test_health_reports_live_features(monkeypatch):
+    import azure.functions as func
+
+    from app.config import get_settings
+    from app.features.health import health
+
+    monkeypatch.delenv("COSMOS_CONNECTION_STRING", raising=False)
+    monkeypatch.setenv("AUTH_MODE", "dev")
+    get_settings.cache_clear()
+    resp = health(
+        func.HttpRequest(
+            method="GET",
+            url="http://localhost/api/health",
+            headers={},
+            params={},
+            route_params={},
+            body=b"",
+        )
+    )
+    body = json.loads(resp.get_body())
+    assert resp.status_code == 200
+    assert body["status"] == "ok"
+    assert body["service"] == "ajas-backend"
+    assert body["authMode"] == "dev"
+    assert body["storage"] == "memory"
+    assert body["features"] == ["health", "review", "auto-apply", "settings", "resume", "jobs", "matching"]
+
+
 def test_json_response_shape():
     from app.http import json_response
 
