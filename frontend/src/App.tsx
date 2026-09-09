@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import { ApplyPage } from './pages/Apply'
+import { ResumeEditor } from './pages/ResumeEditor'
+import { ResumeLibrary } from './pages/ResumeLibrary'
 import { ReviewPage } from './pages/Review'
 import { SettingsPage } from './pages/Settings'
 
 const phases = [
-  { name: 'Resume Management', desc: 'Upload, parse to schema, edit, set active per run', pill: 'Planned' },
+  {
+    name: 'Resume Management',
+    desc: 'Upload, parse to schema, edit, set active per run',
+    href: '#/resumes',
+    pill: 'Live',
+  },
   { name: 'Source Ingestion', desc: 'Scan Greenhouse & Lever for postings', pill: 'Planned' },
   { name: 'AI Matching', desc: 'Hybrid keyword + semantic scoring with reasons', pill: 'Planned' },
   {
@@ -35,12 +42,17 @@ type Route =
   | { name: 'review' }
   | { name: 'apply'; requestId: string | null }
   | { name: 'settings' }
+  | { name: 'library' }
+  | { name: 'edit'; id: string }
 
 function parseRoute(hash: string): Route {
   const raw = (hash.replace(/^#/, '') || '/').split('?')[0]
   const path = raw.startsWith('/') ? raw : `/${raw}`
   if (path === '/review') return { name: 'review' }
   if (path === '/settings') return { name: 'settings' }
+  if (path === '/resumes') return { name: 'library' }
+  const edit = path.match(/^\/resumes\/([^/]+)\/edit$/)
+  if (edit) return { name: 'edit', id: decodeURIComponent(edit[1]) }
   if (path === '/apply' || path.startsWith('/apply/')) {
     const rest = path.slice('/apply'.length).replace(/^\//, '')
     return { name: 'apply', requestId: rest || null }
@@ -62,15 +74,15 @@ function Home() {
   return (
     <div className="page">
       <header className="header">
-        <span className="badge">Phase 3</span>
+        <span className="badge">Phase 4</span>
         <h1>AJAS</h1>
         <p className="tagline">AI Job Application System</p>
       </header>
 
       <main>
         <p className="intro">
-          Review, Auto-Apply, and Settings are live. Tune the match threshold, connect Microsoft
-          365, and toggle Greenhouse/Lever sources. Remaining features follow{' '}
+          Resume Management, Review, Auto-Apply, and Settings are live. Upload a PDF or DOCX,
+          review parsed fields, then approve matches and apply. Remaining features follow{' '}
           <code>.codespring/CURSOR_RUNBOOK.md</code>.
         </p>
 
@@ -108,6 +120,18 @@ function App() {
   if (route.name === 'review') return <ReviewPage />
   if (route.name === 'apply') return <ApplyPage requestId={route.requestId} />
   if (route.name === 'settings') return <SettingsPage />
+  if (route.name === 'library') return <ResumeLibrary />
+  if (route.name === 'edit') {
+    return (
+      <ResumeEditor
+        resumeId={route.id}
+        onBack={() => {
+          window.location.hash = '#/resumes'
+        }}
+        onSaved={() => undefined}
+      />
+    )
+  }
   return <Home />
 }
 
