@@ -115,18 +115,46 @@ class InMemoryJobSourceStore:
             rows = [item for item in rows if item.source_id == source_id]
         return [deepcopy(item) for item in rows]
 
-    def start_run(self, tenant_id: str) -> SourceFetchRun:
+    def start_run(self, tenant_id: str, *, status: str = "running") -> SourceFetchRun:
         self.get_tenant(tenant_id)
+        if status not in RUN_STATUSES:
+            raise JobSourceValidationError(f"invalid run status {status}", path="status")
         now = utc_now()
         run = SourceFetchRun(
             source_tenant_id=tenant_id,
-            status="running",
-            started_at=now,
+            status=status,  # type: ignore[arg-type]
+            started_at=now if status == "running" else None,
             created_at=now,
             updated_at=now,
         )
         self._runs[run.id] = run
         return deepcopy(run)
+
+    def set_run_status(self, run_id: str, status: str) -> SourceFetchRun:
+        if status not in RUN_STATUSES:
+            raise JobSourceValidationError(f"invalid run status {status}", path="status")
+        run = self._require_run(run_id)
+        now = utc_now()
+        run.status = status  # type: ignore[assignment]
+        if status == "running" and not run.started_at:
+            run.started_at = now
+        run.updated_at = now
+        return deepcopy(run)
+
+    def set_run_job_counts(
+        self, run_id: str, *, expected: int | None = None, completed_delta: int = 0
+    ) -> SourceFetchRun:
+        run = self._require_run(run_id)
+        if expected is not None:
+            run.expected_count = expected
+        run.completed_count += completed_delta
+        run.updated_at = utc_now()
+        return deepcopy(run)
+
+    def list_runs(self, tenant_id: str) -> list[SourceFetchRun]:
+        rows = [item for item in self._runs.values() if item.source_tenant_id == tenant_id]
+        rows.sort(key=lambda item: item.created_at)
+        return [deepcopy(item) for item in rows]
 
     def record_request(
         self,

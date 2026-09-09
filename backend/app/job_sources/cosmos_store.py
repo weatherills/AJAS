@@ -69,11 +69,26 @@ class CosmosJobSourceStore:
     def list_tenants(self, source_id: str | None = None) -> list[SourceTenant]:
         return self._hydrate().list_tenants(source_id)
 
-    def start_run(self, tenant_id: str) -> SourceFetchRun:
+    def start_run(self, tenant_id: str, **kwargs: Any) -> SourceFetchRun:
         working = self._hydrate()
-        saved = working.start_run(tenant_id)
+        saved = working.start_run(tenant_id, **kwargs)
         self._persist_working(working)
         return saved
+
+    def set_run_status(self, run_id: str, status: str) -> SourceFetchRun:
+        working = self._hydrate()
+        saved = working.set_run_status(run_id, status)
+        self._persist_working(working)
+        return saved
+
+    def set_run_job_counts(self, run_id: str, **kwargs: Any) -> SourceFetchRun:
+        working = self._hydrate()
+        saved = working.set_run_job_counts(run_id, **kwargs)
+        self._persist_working(working)
+        return saved
+
+    def list_runs(self, tenant_id: str) -> list[SourceFetchRun]:
+        return self._hydrate().list_runs(tenant_id)
 
     def record_request(self, tenant_id: str, run_id: str, **kwargs: Any) -> FetchRequest:
         working = self._hydrate()
