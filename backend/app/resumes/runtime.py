@@ -13,17 +13,25 @@ def get_service() -> ResumeService:
         from app.config import get_settings
         from app.resumes.blobs import AzureResumeBlobStore
         from app.resumes.parser import default_parser
-        from app.resumes.queueing import default_queue
+        from app.resumes.queueing import AzureParseQueue, InMemoryParseQueue
         from app.resumes.store import get_resume_store
 
         settings = get_settings()
-        _ = settings
-        _service = ResumeService(
+        # In-memory resume rows live in this process. Azurite queue workers cannot
+        # see them, so parse locally unless Cosmos is configured.
+        use_local_queue = not (settings.cosmos_connection_string or "").strip()
+        queue = InMemoryParseQueue() if use_local_queue else AzureParseQueue()
+        service = ResumeService(
             store=get_resume_store(),
             blobs=AzureResumeBlobStore(),
-            queue=default_queue(),
+            queue=queue,
             parser=default_parser(),
         )
+        if use_local_queue:
+            # Same-process parse: fail the job immediately instead of raising for
+            # Azure queue retries (those would 500 the upload request).
+            queue.handler = lambda msg: service.process_parse_job(msg, dequeue_count=3)
+        _service = service
     return _service
 
 

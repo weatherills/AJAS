@@ -239,6 +239,43 @@ def test_preview_url_and_expiry(svc):
     )
 
 
+def test_in_process_queue_parses_before_upload_returns():
+    queue = InMemoryParseQueue()
+    service = ResumeService(
+        store=InMemoryResumeStore(),
+        blobs=InMemoryBlobStore(),
+        queue=queue,
+        parser=HeuristicResumeParser(),
+    )
+    queue.handler = lambda msg: service.process_parse_job(msg, dequeue_count=3)
+    set_service(service)
+    try:
+        created = _body(
+            routes.upload_resume(
+                _req(
+                    "POST",
+                    "http://localhost/api/resumes",
+                    file=(
+                        "cv.docx",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        _docx("Skills: Python, Azure"),
+                    ),
+                )
+            )
+        )
+        stored = service.store.get_resume(USER, created["id"])
+        assert stored.processing_status == "parsed"
+        listed = _body(routes.list_resumes(_req("GET", "http://localhost/api/resumes")))
+        assert listed["items"][0]["status"] == "parsed"
+        assert listed["items"][0]["id"] == created["id"]
+        detail = _body(
+            routes.get_resume(_req("GET", "http://localhost/api/resumes/x", route={"id": created["id"]}))
+        )
+        assert "Python" in detail["skills"]
+    finally:
+        set_service(None)
+
+
 def test_parse_worker_success_and_failure(svc):
     created = _body(
         routes.upload_resume(

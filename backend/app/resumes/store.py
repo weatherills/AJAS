@@ -84,15 +84,23 @@ class ResumeStore(Protocol):
     def clear_selections_for_resume(self, user_id: str, resume_id: str) -> int: ...
 
 
+_store: ResumeStore | None = None
+
+
 def get_resume_store() -> ResumeStore:
-    """Return Cosmos when configured, otherwise the in-memory store."""
+    """Return Cosmos when configured, otherwise a process-wide in-memory store."""
+    global _store
+    if _store is not None:
+        return _store
     from app.config import get_settings
     from app.resumes.memory import InMemoryResumeStore
 
     settings = get_settings()
     if not settings.cosmos_connection_string:
-        return InMemoryResumeStore()
+        _store = InMemoryResumeStore()
+        return _store
     from app.resumes.cosmos_store import CosmosResumeStore
     from app.storage.cosmos import get_database
 
-    return CosmosResumeStore(get_database())
+    _store = CosmosResumeStore(get_database())
+    return _store
