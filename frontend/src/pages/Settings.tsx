@@ -58,9 +58,10 @@ export function SettingsPage() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [tuningMode, setTuningMode] = useState<'auto' | 'manual'>('auto')
   const [strictness, setStrictness] = useState<0 | 1 | 2>(1)
+  const [learningError, setLearningError] = useState<string | null>(null)
   const [learningSample, setLearningSample] = useState(0)
   const [learningStatus, setLearningStatus] = useState<SaveStatus>('idle')
-  const [learningError, setLearningError] = useState<string | null>(null)
+  const [learningTick, setLearningTick] = useState(0)
   const toastId = useRef(1)
   const saveGen = useRef(0)
   const oauthState = useRef<string | null>(null)
@@ -147,6 +148,7 @@ export function SettingsPage() {
       setStrictness(asStrictness(patched.strictness))
       setLearningSample(patched.sample_size)
       setLearningStatus('saved')
+      setLearningTick((tick) => tick + 1)
       toast('Preferences updated. Takes effect on new suggestions.')
     } catch {
       setLearningStatus('error')
@@ -426,7 +428,7 @@ export function SettingsPage() {
             Retry
           </button>
         )}
-        <LearningPanel compact />
+        <LearningPanel compact key={learningTick} />
       </section>
 
       <section className="editor-section" aria-labelledby="email-heading">
