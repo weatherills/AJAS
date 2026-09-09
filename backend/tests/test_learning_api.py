@@ -231,7 +231,7 @@ def test_tune_keeps_global_below_min_samples(svc, store):
 
 
 def test_tune_personalizes_with_enough_samples(svc, store):
-    monkey_days = []
+    svc._rate_limit = lambda _user_id: None  # bulk seed; production cap is 10/s
     for idx in range(22):
         rec_id = f"rec-{idx}"
         _seed_rec(store, rec_id=rec_id, score=0.85 if idx < 18 else 0.4)
@@ -249,7 +249,6 @@ def test_tune_personalizes_with_enough_samples(svc, store):
                 },
             )
         )
-        monkey_days.append(idx)
     resp = routes.tune_learning(
         _req(
             "POST",
