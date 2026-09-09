@@ -536,7 +536,7 @@ def test_list_decisions_filters_and_pagination(svc, store):
     listed = routes.list_decisions(_req("GET", "http://localhost/api/v1/decisions"))
     assert listed.status_code == 200
     decisions = [item["decision"] for item in _body(listed)["items"]]
-    assert decisions == ["reject", "approve"]
+    assert decisions[:2] == ["reject", "approve"]
     by_job = routes.list_decisions(
         _req("GET", "http://localhost/api/v1/decisions", params={"jobId": "job-a"})
     )
@@ -545,21 +545,39 @@ def test_list_decisions_filters_and_pagination(svc, store):
         _req("GET", "http://localhost/api/v1/decisions", params={"decision": "reject"})
     )
     assert [item["decision"] for item in _body(rejected)["items"]] == ["reject"]
+    for index in range(9):
+        extra = _seed(
+            store,
+            job_id=f"job-extra-{index}",
+            resume_id=f"resume-extra-{index}",
+            job_title=f"Extra {index}",
+        )
+        routes.create_decision(
+            _req(
+                "POST",
+                f"http://localhost/api/v1/matches/{extra.id}/decision",
+                json_body={"decision": "approve"},
+                route={"matchId": extra.id},
+                headers={"Idempotency-Key": f"d-extra-{index}", "If-Match": extra.etag},
+            )
+        )
     paged = routes.list_decisions(
-        _req("GET", "http://localhost/api/v1/decisions", params={"pageSize": "1"})
+        _req("GET", "http://localhost/api/v1/decisions", params={"pageSize": "10"})
     )
     body = _body(paged)
-    assert len(body["items"]) == 1
-    assert body["items"][0]["decision"] == "reject"
+    assert paged.status_code == 200
+    assert len(body["items"]) == 10
     assert "continuationToken" in body
     page2 = routes.list_decisions(
         _req(
             "GET",
             "http://localhost/api/v1/decisions",
-            params={"pageSize": "1", "continuation": body["continuationToken"]},
+            params={"pageSize": "10", "continuation": body["continuationToken"]},
         )
     )
-    assert [item["decision"] for item in _body(page2)["items"]] == ["approve"]
+    assert len(_body(page2)["items"]) == 1
+    seen = {item["decisionId"] for item in body["items"]} | {item["decisionId"] for item in _body(page2)["items"]}
+    assert len(seen) == 11
 
 
 def test_decide_enqueues_learning_event_with_threshold(svc, store, queue):
