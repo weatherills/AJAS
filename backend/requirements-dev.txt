@@ -2,3 +2,5 @@
 
 # Test tooling
 pytest
+pypdf
+python-docx

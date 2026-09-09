@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AJAS Microsoft sign-in</title>
+  </head>
+  <body>
+    <p>You can close this window and return to AJAS.</p>
+    <script>
+      const params = new URLSearchParams(window.location.search)
+      const payload = {
+        type: 'ajas-ms-oauth',
+        code: params.get('code'),
+        state: params.get('state'),
+        error: params.get('error'),
+        errorDescription: params.get('error_description'),
+      }
+      if (window.opener) {
+        window.opener.postMessage(payload, window.location.origin)
+      }
+      window.close()
+    </script>
+  </body>
+</html>

@@ -3,6 +3,7 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AUTH_MODE": "dev",
 
     "COSMOS_CONNECTION_STRING": "",
     "COSMOS_DATABASE": "ajas",
@@ -14,6 +15,13 @@
     "AZURE_OPENAI_API_KEY": "",
     "AZURE_OPENAI_API_VERSION": "2024-10-21",
     "AZURE_OPENAI_EMBEDDINGS_DEPLOYMENT": "text-embedding-3-small",
-    "AZURE_OPENAI_CHAT_DEPLOYMENT": "gpt-4o-mini"
+    "AZURE_OPENAI_CHAT_DEPLOYMENT": "gpt-4o-mini",
+
+    "AUTO_APPLY_WEBHOOK_SECRET": "dev-webhook-secret",
+
+    "MICROSOFT_TENANT": "common",
+    "MICROSOFT_CLIENT_ID": "",
+    "MICROSOFT_CLIENT_SECRET": "",
+    "SETTINGS_TOKEN_KEY": "dev-settings-token-key"
   }
 }

@@ -1,0 +1,66 @@
+@base = http://localhost:7071
+@token = local-user
+
+### Health
+GET {{base}}/api/health
+
+### Unauthenticated settings → 401
+GET {{base}}/api/v1/settings
+
+### Get settings (defaults: threshold 0.7, sources off, email disconnected)
+GET {{base}}/api/v1/settings
+Authorization: Bearer {{token}}
+
+### Patch match threshold (0.10–0.99) and enqueue match-recalc
+PATCH {{base}}/api/v1/settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "matchThreshold": 0.8
+}
+
+### Out-of-range threshold → 400
+PATCH {{base}}/api/v1/settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "matchThreshold": 1.2
+}
+
+### Enable Greenhouse (enqueues source-discovery)
+PATCH {{base}}/api/v1/settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sources": {
+    "greenhouseEnabled": true,
+    "leverEnabled": false
+  }
+}
+
+### Microsoft 365 connect (PKCE authorize URL)
+POST {{base}}/api/v1/settings/email/connect
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "redirectUri": "http://localhost:3000/oauth-callback.html"
+}
+
+### OAuth callback (exchange code + state from the connect response)
+POST {{base}}/api/v1/settings/email/callback
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "code": "AUTH_CODE",
+  "state": "STATE_FROM_CONNECT",
+  "redirectUri": "http://localhost:3000/oauth-callback.html"
+}
+
+### Disconnect Microsoft 365 (idempotent)
+POST {{base}}/api/v1/settings/email/disconnect
+Authorization: Bearer {{token}}

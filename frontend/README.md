@@ -12,7 +12,7 @@ Prerequisites (provided by the Cloud Agent environment): Node.js 22.
 ```bash
 cd frontend
 npm install
-npm run dev      # http://localhost:5173
+npm run dev      # http://localhost:3000
 ```
 
 ## Build & check

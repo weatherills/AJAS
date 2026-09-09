@@ -10,6 +10,10 @@ azure-identity
 # Azure OpenAI (embeddings + chat) via the OpenAI SDK
 openai
 
+# Resume parse (PDF / DOCX text extraction)
+pypdf
+python-docx
+
 # Config, schema modeling, and validation
 pydantic
 pydantic-settings

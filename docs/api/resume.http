@@ -1,0 +1,78 @@
+@base = http://localhost:7071
+@token = local-user
+@resumeId = RESUME_ID
+@runId = run-1
+
+### Health
+GET {{base}}/api/health
+
+### Unauthenticated library → 401
+GET {{base}}/api/resumes
+
+### List resumes
+GET {{base}}/api/resumes?limit=20
+Authorization: Bearer {{token}}
+
+### Upload PDF or DOCX (multipart field name: file)
+POST {{base}}/api/resumes
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----ResumeBoundary
+
+------ResumeBoundary
+Content-Disposition: form-data; name="file"; filename="cv.docx"
+Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+
+< ./cv.docx
+------ResumeBoundary--
+
+### Resume detail (status: uploaded | parsing | parsed | parse_failed)
+GET {{base}}/api/resumes/{{resumeId}}
+Authorization: Bearer {{token}}
+
+### Short-lived original-file preview URL
+GET {{base}}/api/resumes/{{resumeId}}/preview-url
+Authorization: Bearer {{token}}
+
+### Patch structured fields (name + email or phone + experience or education)
+PATCH {{base}}/api/resumes/{{resumeId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "contact": {
+    "fullName": "Jane Doe",
+    "email": "jane@example.com",
+    "phone": "+15555550100"
+  },
+  "skills": ["Python", "Azure"],
+  "experience": [
+    {
+      "title": "Engineer",
+      "company": "Example",
+      "startDate": "2020-01",
+      "endDate": "2024-06",
+      "description": "Built APIs"
+    }
+  ]
+}
+
+### Retry a failed parse
+POST {{base}}/api/resumes/{{resumeId}}/retry-parse
+Authorization: Bearer {{token}}
+
+### Set the active resume for an apply run
+POST {{base}}/api/runs/{{runId}}/active-resume
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "resumeId": "{{resumeId}}"
+}
+
+### Get the active resume for a run
+GET {{base}}/api/runs/{{runId}}/active-resume
+Authorization: Bearer {{token}}
+
+### Soft-delete a resume
+DELETE {{base}}/api/resumes/{{resumeId}}
+Authorization: Bearer {{token}}
