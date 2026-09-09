@@ -13,9 +13,10 @@ from dataclasses import dataclass, field
 import azure.functions as func
 
 from app.config import get_settings
+from app.auto_apply.constants import READ_SCOPE as AUTO_APPLY_READ, WRITE_SCOPE as AUTO_APPLY_WRITE
 from app.review.constants import READ_SCOPE, WRITE_SCOPE
 
-DEV_SCOPES = frozenset({READ_SCOPE, WRITE_SCOPE})
+DEV_SCOPES = frozenset({READ_SCOPE, WRITE_SCOPE, AUTO_APPLY_READ, AUTO_APPLY_WRITE})
 
 
 class AuthError(Exception):
