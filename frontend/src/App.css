@@ -1248,4 +1248,98 @@ select:focus-visible {
   }
 }
 
+.apply-layout {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.apply-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.apply-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.apply-row.is-active,
+.apply-row:hover {
+  border-color: #6366f1;
+}
+
+.apply-detail {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 1rem;
+  background: rgba(148, 163, 184, 0.04);
+}
+
+.apply-history {
+  padding-left: 1.1rem;
+}
+
+.apply-modal {
+  max-width: 560px;
+}
+
+.apply-preview {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  margin: 0.75rem 0;
+}
+
+.apply-check {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.55rem !important;
+}
+
+.status-submitted,
+.status-ready {
+  color: #34d399;
+}
+
+.status-packaged,
+.status-submitting {
+  color: #38bdf8;
+}
+
+.status-cancelled,
+.status-created {
+  color: #94a3b8;
+}
+
+.status-rate_limited,
+.status-rate-limited {
+  color: #fbbf24;
+}
+
+.status-greenhouse,
+.status-lever {
+  color: #a5b4fc;
+}
+
+.status-manual {
+  color: #fbbf24;
+}
+
+@media (min-width: 900px) {
+  .apply-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  }
+}
+
 

@@ -5,9 +5,9 @@ keyword + semantic scoring, and streamlines review, auto-apply, and email
 follow-up. See `.codespring/project-overview.md` for the product overview and
 `.codespring/CURSOR_RUNBOOK.md` for the phased implementation plan.
 
-> Status: **Phase 1 — Review & Decision UI.** Users can list AI/saved matches,
-> read summaries, and approve or reject with comments. Remaining features are
-> still planned.
+> Status: **Phase 2 — Auto-Apply.** Users can review matches and submit
+> Greenhouse/Lever applications (or a manual package) from the Review UI.
+> Application status is tracked at `#/apply`. Remaining features are still planned.
 
 ## Repository layout
 

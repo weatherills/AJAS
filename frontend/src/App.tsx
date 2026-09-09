@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import { ApplyPage } from './pages/Apply'
 import { ReviewPage } from './pages/Review'
 
 const phases = [
@@ -12,18 +13,27 @@ const phases = [
     href: '#/review',
     pill: 'Live',
   },
-  { name: 'Auto-Apply', desc: 'Auto-fill and submit approved applications', pill: 'Planned' },
+  {
+    name: 'Auto-Apply',
+    desc: 'Auto-fill and submit approved applications',
+    href: '#/apply',
+    pill: 'Live',
+  },
   { name: 'Email Ingestion & Reply', desc: 'Pull related emails via Microsoft Graph', pill: 'Planned' },
   { name: 'Learning Loop', desc: 'Adjust matching weights from user decisions', pill: 'Planned' },
   { name: 'Settings', desc: 'Threshold, email connection, source toggles', pill: 'Planned' },
 ]
 
-type Route = { name: 'home' } | { name: 'review' }
+type Route = { name: 'home' } | { name: 'review' } | { name: 'apply'; requestId: string | null }
 
 function parseRoute(hash: string): Route {
   const raw = (hash.replace(/^#/, '') || '/').split('?')[0]
   const path = raw.startsWith('/') ? raw : `/${raw}`
   if (path === '/review') return { name: 'review' }
+  if (path === '/apply' || path.startsWith('/apply/')) {
+    const rest = path.slice('/apply'.length).replace(/^\//, '')
+    return { name: 'apply', requestId: rest || null }
+  }
   return { name: 'home' }
 }
 
@@ -41,15 +51,16 @@ function Home() {
   return (
     <div className="page">
       <header className="header">
-        <span className="badge">Phase 1</span>
+        <span className="badge">Phase 2</span>
         <h1>AJAS</h1>
         <p className="tagline">AI Job Application System</p>
       </header>
 
       <main>
         <p className="intro">
-          Review &amp; Decision is live. Open the queue to approve or reject AI matches with
-          optional comments. Other features follow <code>.codespring/CURSOR_RUNBOOK.md</code>.
+          Review &amp; Decision and Auto-Apply are live. Approve matches, then submit Greenhouse
+          or Lever applications — or generate a manual package when programmatic submit is blocked.
+          Remaining features follow <code>.codespring/CURSOR_RUNBOOK.md</code>.
         </p>
 
         <ul className="phases">
@@ -84,6 +95,7 @@ function Home() {
 function App() {
   const route = useHashRoute()
   if (route.name === 'review') return <ReviewPage />
+  if (route.name === 'apply') return <ApplyPage requestId={route.requestId} />
   return <Home />
 }
 

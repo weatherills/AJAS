@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { reviewApi, USE_MOCK } from '../api'
 import type { DecisionValue, ReviewDetail, ReviewFilters, ReviewMatch, ReviewTab } from '../api/reviewTypes'
+import { ApplyModal } from '../components/ApplyModal'
 import { ToastStack } from '../components/Toast'
 import {
   COMMENT_MAX,
@@ -44,6 +45,7 @@ export function ReviewPage() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 1023px)').matches)
+  const [applyOpen, setApplyOpen] = useState(false)
   const toastId = useRef(1)
   const commentRef = useRef<HTMLTextAreaElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -228,6 +230,9 @@ export function ReviewPage() {
           <p className="tagline">Approve or reject matches and saved jobs. Shortcuts: A approve · R reject · ⌘/Ctrl+Enter save with comment.</p>
         </div>
         <div className="feed-header-actions">
+          <a className="secondary" href="#/apply">
+            Applications
+          </a>
           <button type="button" className="secondary feed-filters-toggle" onClick={() => setFiltersOpen(true)}>
             Filters
           </button>
@@ -549,9 +554,14 @@ export function ReviewPage() {
                         : 'Historical decision'}
                     </p>
                     {detail.decision?.comment && <p>{detail.decision.comment}</p>}
-                    <button type="button" className="secondary" disabled={saving} onClick={() => void reopen()}>
-                      {saving ? 'Working…' : 'Reopen'}
-                    </button>
+                    <div className="review-action-row">
+                      <button type="button" className="secondary" disabled={saving} onClick={() => void reopen()}>
+                        {saving ? 'Working…' : 'Reopen'}
+                      </button>
+                      <button type="button" className="primary" onClick={() => setApplyOpen(true)}>
+                        Auto-Apply
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="review-actions">
@@ -594,6 +604,15 @@ export function ReviewPage() {
                       >
                         Reject
                       </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={!detail.match.jobId}
+                        title={detail.match.jobId ? 'Submit this posting' : 'Missing job metadata'}
+                        onClick={() => setApplyOpen(true)}
+                      >
+                        Auto-Apply
+                      </button>
                     </div>
                     <p className="muted">⌘/Ctrl+Enter saves while the comment box is focused.</p>
                   </div>
@@ -604,6 +623,21 @@ export function ReviewPage() {
         )}
       </div>
       <ToastStack toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))} />
+      {applyOpen && detail && (
+        <ApplyModal
+          jobTitle={detail.match.jobTitle}
+          company={detail.match.company}
+          jobId={detail.match.jobId}
+          resumeId={detail.match.resumeId}
+          postingUrl={detail.match.postingUrl || detail.blobs.jobUrl}
+          onClose={() => setApplyOpen(false)}
+          onSubmitted={(requestId, state) => {
+            setApplyOpen(false)
+            toast(`Application ${state}`)
+            window.location.hash = `#/apply/${requestId}`
+          }}
+        />
+      )}
     </div>
   )
 }
