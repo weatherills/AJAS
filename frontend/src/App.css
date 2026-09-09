@@ -793,6 +793,7 @@ select:focus-visible {
   border-radius: 12px;
   padding: 1rem;
   background: rgba(15, 23, 42, 0.92);
+  color: #e2e8f0;
 }
 
 .job-drawer-head {
@@ -1046,6 +1047,7 @@ select:focus-visible {
 
 .why-body {
   white-space: pre-wrap;
+  color: #e2e8f0;
 }
 
 .threshold-number {

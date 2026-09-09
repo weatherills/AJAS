@@ -6,7 +6,7 @@ from app.http import json_response
 
 bp = func.Blueprint()
 
-LIVE_FEATURES = ["health", "review", "auto-apply", "settings", "resume", "jobs"]
+LIVE_FEATURES = ["health", "review", "auto-apply", "settings", "resume", "jobs", "matching"]
 
 
 @bp.route(route="health", methods=["GET"])

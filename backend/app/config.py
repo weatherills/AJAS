@@ -71,6 +71,13 @@ class Settings(BaseSettings):
     job_raw_blob_container: str = "job-raw"
     crawl_poison_dequeue: int = 10
 
+    match_compute_queue: str = "match-compute"
+    match_poison_dequeue: int = 5
+    match_sync_rate_per_minute: int = 60
+    match_max_text_chars: int = 100_000
+    match_max_rank_pairs: int = 1000
+    match_rank_async_after: int = 10
+
 
 @lru_cache
 def get_settings() -> Settings:

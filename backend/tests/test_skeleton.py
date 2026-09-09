@@ -33,7 +33,7 @@ def test_health_reports_live_features(monkeypatch):
     assert body["service"] == "ajas-backend"
     assert body["authMode"] == "dev"
     assert body["storage"] == "memory"
-    assert body["features"] == ["health", "review", "auto-apply", "settings", "resume", "jobs"]
+    assert body["features"] == ["health", "review", "auto-apply", "settings", "resume", "jobs", "matching"]
 
 
 def test_json_response_shape():
