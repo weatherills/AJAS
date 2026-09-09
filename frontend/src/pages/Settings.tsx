@@ -14,6 +14,7 @@ import {
   SLIDER_MIN,
   SLIDER_STEP,
 } from '../lib/settings'
+import { parseThresholdInput } from '../lib/matching'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -33,6 +34,8 @@ export function SettingsPage() {
   const [userId, setUser] = useState(getUserId())
   const [doc, setDoc] = useState<SettingsDoc | null>(null)
   const [percent, setPercent] = useState(70)
+  const [percentInput, setPercentInput] = useState('70')
+  const [percentError, setPercentError] = useState<string | null>(null)
   const [savedPercent, setSavedPercent] = useState(70)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [thresholdStatus, setThresholdStatus] = useState<SaveStatus>('idle')
@@ -64,6 +67,8 @@ export function SettingsPage() {
     setDoc(next)
     const value = apiToPercent(next.matchThreshold)
     setPercent(value)
+    setPercentInput(String(value))
+    setPercentError(null)
     setSavedPercent(value)
   }, [])
 
@@ -105,13 +110,14 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (!doc) return
+    if (percentError) return
     if (percent === savedPercent) return
     if (failedPercent.current === percent) return
     const handle = window.setTimeout(() => {
       void saveThreshold(percent)
     }, 600)
     return () => window.clearTimeout(handle)
-  }, [percent, savedPercent, doc, saveThreshold])
+  }, [percent, savedPercent, doc, saveThreshold, percentError])
 
   async function saveSource(key: 'greenhouseEnabled' | 'leverEnabled', value: boolean) {
     if (!doc) return
@@ -250,7 +256,7 @@ export function SettingsPage() {
       {loadError && <p className="inline-error">{loadError}</p>}
 
       <section className="editor-section" aria-labelledby="threshold-heading">
-        <h2 id="threshold-heading">Matching threshold</h2>
+        <h2 id="threshold-heading">Matching</h2>
         <p className="muted">Jobs below this score are not saved. Default is 70%.</p>
         <div className="slider-row">
           <span className="muted">More matches</span>
@@ -269,6 +275,8 @@ export function SettingsPage() {
             onChange={(event) => {
               const next = clampPercent(Number(event.target.value))
               setPercent(next)
+              setPercentInput(String(next))
+              setPercentError(null)
             }}
             onKeyDown={(event) => {
               if (event.key === 'PageUp') {
@@ -284,11 +292,36 @@ export function SettingsPage() {
           <span className="muted">Fewer matches</span>
         </div>
         <p className="threshold-value">
-          <strong>{percent}%</strong> — {previewCopy(percent)}
+          <label className="threshold-number">
+            <span className="sr-only">Match threshold percent</span>
+            <input
+              type="number"
+              min={SLIDER_MIN}
+              max={SLIDER_MAX}
+              step={SLIDER_STEP}
+              value={percentInput}
+              aria-invalid={Boolean(percentError)}
+              aria-describedby={percentError ? 'threshold-error' : undefined}
+              onChange={(event) => {
+                const raw = event.target.value
+                setPercentInput(raw)
+                const parsed = parseThresholdInput(raw)
+                setPercentError(parsed.error)
+                if (parsed.value != null) setPercent(parsed.value)
+              }}
+            />
+            %
+          </label>{' '}
+          — {previewCopy(percent)}
         </p>
+        {percentError && (
+          <p id="threshold-error" className="inline-error" role="alert">
+            {percentError}
+          </p>
+        )}
         <p className="save-status" aria-live="polite">
           {thresholdStatus === 'saving' && 'Saving…'}
-          {thresholdStatus === 'saved' && 'Saved'}
+          {thresholdStatus === 'saved' && 'Threshold updated.'}
           {thresholdStatus === 'error' && thresholdError}
         </p>
         {thresholdStatus === 'error' && (

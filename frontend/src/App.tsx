@@ -3,20 +3,21 @@ import './App.css'
 import { JobFeedPage } from './pages/JobFeed'
 import { ResumeEditor } from './pages/ResumeEditor'
 import { ResumeLibrary } from './pages/ResumeLibrary'
+import { ReviewPage } from './pages/Review'
 import { SettingsPage } from './pages/Settings'
 
 const phases = [
   { name: 'Resume Management', desc: 'Upload, parse to schema, edit, set active per run', href: '#/resumes', pill: 'Live' },
   { name: 'Source Ingestion', desc: 'Scan Greenhouse & Lever for postings', href: '#/jobs', pill: 'Live' },
-  { name: 'AI Matching', desc: 'Hybrid keyword + semantic scoring with reasons', pill: 'Planned' },
-  { name: 'Review & Decision', desc: 'Approve / reject with comments and summary', pill: 'Planned' },
+  { name: 'AI Matching', desc: 'Hybrid keyword + semantic scoring with reasons', href: '#/jobs', pill: 'Live' },
+  { name: 'Review & Decision', desc: 'Approve / reject with comments and summary', href: '#/review', pill: 'Live' },
   { name: 'Auto-Apply', desc: 'Auto-fill and submit approved applications', pill: 'Planned' },
   { name: 'Email Ingestion & Reply', desc: 'Pull related emails via Microsoft Graph', pill: 'Planned' },
   { name: 'Learning Loop', desc: 'Adjust matching weights from user decisions', pill: 'Planned' },
   { name: 'Settings', desc: 'Threshold, email connection, source toggles', href: '#/settings', pill: 'Live' },
 ]
 
-type Route = { name: 'home' } | { name: 'library' } | { name: 'edit'; id: string } | { name: 'settings' } | { name: 'jobs' }
+type Route = { name: 'home' } | { name: 'library' } | { name: 'edit'; id: string } | { name: 'settings' } | { name: 'jobs' } | { name: 'review' }
 
 function parseRoute(hash: string): Route {
   const raw = (hash.replace(/^#/, '') || '/').split('?')[0]
@@ -24,6 +25,7 @@ function parseRoute(hash: string): Route {
   if (path === '/resumes') return { name: 'library' }
   if (path === '/settings') return { name: 'settings' }
   if (path === '/jobs') return { name: 'jobs' }
+  if (path === '/review') return { name: 'review' }
   const match = path.match(/^\/resumes\/([^/]+)\/edit$/)
   if (match) return { name: 'edit', id: decodeURIComponent(match[1]) }
   return { name: 'home' }
@@ -50,7 +52,7 @@ function Home() {
 
       <main>
         <p className="intro">
-          Resume Management, the job feed, and Settings are live. Scan Greenhouse and Lever, then tune matching and email.
+          Resume Management, the job feed, Matching, Review, and Settings are live. Scan roles, then approve or reject matches.
         </p>
 
         <ul className="phases">
@@ -87,6 +89,7 @@ function App() {
   if (route.name === 'library') return <ResumeLibrary />
   if (route.name === 'settings') return <SettingsPage />
   if (route.name === 'jobs') return <JobFeedPage />
+  if (route.name === 'review') return <ReviewPage />
   if (route.name === 'edit') {
     return (
       <ResumeEditor
