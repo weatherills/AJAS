@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { ApplyPage } from './pages/Apply'
 import { ReviewPage } from './pages/Review'
+import { SettingsPage } from './pages/Settings'
 
 const phases = [
   { name: 'Resume Management', desc: 'Upload, parse to schema, edit, set active per run', pill: 'Planned' },
@@ -21,15 +22,25 @@ const phases = [
   },
   { name: 'Email Ingestion & Reply', desc: 'Pull related emails via Microsoft Graph', pill: 'Planned' },
   { name: 'Learning Loop', desc: 'Adjust matching weights from user decisions', pill: 'Planned' },
-  { name: 'Settings', desc: 'Threshold, email connection, source toggles', pill: 'Planned' },
+  {
+    name: 'Settings',
+    desc: 'Threshold, email connection, source toggles',
+    href: '#/settings',
+    pill: 'Live',
+  },
 ]
 
-type Route = { name: 'home' } | { name: 'review' } | { name: 'apply'; requestId: string | null }
+type Route =
+  | { name: 'home' }
+  | { name: 'review' }
+  | { name: 'apply'; requestId: string | null }
+  | { name: 'settings' }
 
 function parseRoute(hash: string): Route {
   const raw = (hash.replace(/^#/, '') || '/').split('?')[0]
   const path = raw.startsWith('/') ? raw : `/${raw}`
   if (path === '/review') return { name: 'review' }
+  if (path === '/settings') return { name: 'settings' }
   if (path === '/apply' || path.startsWith('/apply/')) {
     const rest = path.slice('/apply'.length).replace(/^\//, '')
     return { name: 'apply', requestId: rest || null }
@@ -51,16 +62,16 @@ function Home() {
   return (
     <div className="page">
       <header className="header">
-        <span className="badge">Phase 2</span>
+        <span className="badge">Phase 3</span>
         <h1>AJAS</h1>
         <p className="tagline">AI Job Application System</p>
       </header>
 
       <main>
         <p className="intro">
-          Review &amp; Decision and Auto-Apply are live. Approve matches, then submit Greenhouse
-          or Lever applications — or generate a manual package when programmatic submit is blocked.
-          Remaining features follow <code>.codespring/CURSOR_RUNBOOK.md</code>.
+          Review, Auto-Apply, and Settings are live. Tune the match threshold, connect Microsoft
+          365, and toggle Greenhouse/Lever sources. Remaining features follow{' '}
+          <code>.codespring/CURSOR_RUNBOOK.md</code>.
         </p>
 
         <ul className="phases">
@@ -96,6 +107,7 @@ function App() {
   const route = useHashRoute()
   if (route.name === 'review') return <ReviewPage />
   if (route.name === 'apply') return <ApplyPage requestId={route.requestId} />
+  if (route.name === 'settings') return <SettingsPage />
   return <Home />
 }
 

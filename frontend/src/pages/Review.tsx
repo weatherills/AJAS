@@ -230,6 +230,9 @@ export function ReviewPage() {
           <p className="tagline">Approve or reject matches and saved jobs. Shortcuts: A approve · R reject · ⌘/Ctrl+Enter save with comment.</p>
         </div>
         <div className="feed-header-actions">
+          <a className="secondary" href="#/settings">
+            Settings
+          </a>
           <a className="secondary" href="#/apply">
             Applications
           </a>
