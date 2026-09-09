@@ -17,3 +17,11 @@ class MatchingNotFoundError(MatchingStoreError):
 
 class MatchingConflictError(MatchingStoreError):
     """Idempotency or uniqueness rule failed."""
+
+
+class MatchingRateLimitedError(MatchingStoreError):
+    """Sync matching rate limit exceeded."""
+
+
+class MatchingPayloadTooLargeError(MatchingStoreError):
+    """Resume or job text exceeded the configured size limit."""

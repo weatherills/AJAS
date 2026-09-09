@@ -15,6 +15,8 @@ from app.matching.containers import container_specs, ensure_matching_containers
 from app.matching.errors import (
     MatchingConflictError,
     MatchingNotFoundError,
+    MatchingPayloadTooLargeError,
+    MatchingRateLimitedError,
     MatchingStoreError,
     MatchingValidationError,
 )
@@ -32,6 +34,8 @@ __all__ = [
     "MatchRun",
     "MatchingConflictError",
     "MatchingNotFoundError",
+    "MatchingPayloadTooLargeError",
+    "MatchingRateLimitedError",
     "MatchingStore",
     "MatchingStoreError",
     "MatchingValidationError",

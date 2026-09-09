@@ -29,6 +29,19 @@ class Settings(BaseSettings):
     azure_openai_embeddings_deployment: str = "text-embedding-3-small"
     azure_openai_chat_deployment: str = "gpt-4o-mini"
 
+    # Auth: "dev" accepts Bearer <user_id>; "aad" validates a JWT.
+    auth_mode: str = "dev"
+    auth_jwt_secret: str = ""
+    auth_jwt_audience: str = ""
+    auth_jwt_jwks_url: str = ""
+
+    match_compute_queue: str = "match-compute"
+    match_poison_dequeue: int = 5
+    match_sync_rate_per_minute: int = 60
+    match_max_text_chars: int = 100_000
+    match_max_rank_pairs: int = 1000
+    match_rank_async_after: int = 10
+
 
 @lru_cache
 def get_settings() -> Settings:
