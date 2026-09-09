@@ -15,7 +15,12 @@ const phases = [
     pill: 'Live',
   },
   { name: 'Source Ingestion', desc: 'Scan Greenhouse & Lever for postings', href: '#/jobs', pill: 'Live' },
-  { name: 'AI Matching', desc: 'Hybrid keyword + semantic scoring with reasons', pill: 'Planned' },
+  {
+    name: 'AI Matching',
+    desc: 'Hybrid keyword + semantic scoring with reasons',
+    href: '#/jobs',
+    pill: 'Live',
+  },
   {
     name: 'Review & Decision',
     desc: 'Approve / reject with comments and summary',
@@ -77,15 +82,15 @@ function Home() {
   return (
     <div className="page">
       <header className="header">
-        <span className="badge">Phase 5</span>
+        <span className="badge">Phase 6</span>
         <h1>AJAS</h1>
         <p className="tagline">AI Job Application System</p>
       </header>
 
       <main>
         <p className="intro">
-          Resume Management, the job feed, Review, Auto-Apply, and Settings are live.
-          Upload a resume, scan Greenhouse and Lever, then approve matches and apply.
+          Resume Management, the job feed with match scores, Review, Auto-Apply, and Settings are live.
+          Upload a resume, scan Greenhouse and Lever, then review scores, approve matches, and apply.
           Remaining features follow <code>.codespring/CURSOR_RUNBOOK.md</code>.
         </p>
 

@@ -5,9 +5,10 @@ keyword + semantic scoring, and streamlines review, auto-apply, and email
 follow-up. See `.codespring/project-overview.md` for the product overview and
 `.codespring/CURSOR_RUNBOOK.md` for the phased implementation plan.
 
-> Status: **Phase 5 — Job Source Integration.** Users can upload resumes, scan
-> Greenhouse and Lever into a unified feed, review matches, auto-apply, and
-> persist settings. Matching, email, and the learning loop are still planned.
+> Status: **Phase 6 — Matching & Ranking.** Users can upload resumes, scan
+> Greenhouse and Lever into a unified feed, score jobs against a resume, review
+> matches, auto-apply, and persist settings. Email and the learning loop are
+> still planned.
 
 ## Repository layout
 

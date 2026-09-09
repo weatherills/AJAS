@@ -8,11 +8,14 @@ import { liveResumeApi } from './resumeLive'
 import { mockApi as mockResumeApi, seedMockResume } from './resumeMock'
 import { liveJobsApi } from './jobsLive'
 import { mockJobsApi } from './jobsMock'
+import { liveMatchingApi } from './matchingLive'
+import { mockMatchingApi } from './matchingMock'
 import type { ReviewApi } from './reviewTypes'
 import type { AutoApplyApi } from './autoApplyTypes'
 import type { SettingsApi } from './settingsTypes'
 import type { ResumeApi } from './resumeTypes'
 import type { JobsApi } from './jobsTypes'
+import type { MatchingApi } from './matchingTypes'
 
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
@@ -21,6 +24,7 @@ export const autoApplyApi: AutoApplyApi = USE_MOCK ? mockAutoApplyApi : liveAuto
 export const settingsApi: SettingsApi = USE_MOCK ? mockSettingsApi : liveSettingsApi
 export const resumeApi: ResumeApi = USE_MOCK ? mockResumeApi : liveResumeApi
 export const jobsApi: JobsApi = USE_MOCK ? mockJobsApi : liveJobsApi
+export const matchingApi: MatchingApi = USE_MOCK ? mockMatchingApi : liveMatchingApi
 
 if (USE_MOCK) {
   seedMockResume()
@@ -44,3 +48,4 @@ export type { AutoApplyApi } from './autoApplyTypes'
 export type { SettingsApi } from './settingsTypes'
 export type { ResumeApi, ResumeDetail, ResumeListItem } from './resumeTypes'
 export type { JobCard, JobsApi } from './jobsTypes'
+export type { MatchView, MatchingApi } from './matchingTypes'
