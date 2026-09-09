@@ -16,9 +16,9 @@ describe('resume client validation', () => {
       experience: [],
       education: [],
     })
-    expect(empty.fullName).toBeTruthy()
-    expect(empty.contact).toBeTruthy()
-    expect(empty.history).toBeTruthy()
+    expect(empty['contact.fullName']).toBeTruthy()
+    expect(empty['contact.email']).toBeTruthy()
+    expect(empty.experience).toBeTruthy()
     expect(
       editorIsReady({
         contact: { fullName: 'Jane Doe', email: 'jane@example.com' },
