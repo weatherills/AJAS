@@ -21,6 +21,8 @@ describe('matching display helpers', () => {
     expect(scoreBand(70)).toBe('green')
     expect(scoreLabel(82)).toBe('Good match')
     expect(displayScore(81.6)).toBe(82)
+    expect(scoreBand(69.6)).toBe('green')
+    expect(scoreLabel(69.6)).toBe('Good match')
   })
 
   it('combines keyword and semantic with 0.4 / 0.6 weights', () => {

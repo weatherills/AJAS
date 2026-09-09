@@ -93,14 +93,16 @@ export function displayScore(score: number): number {
 }
 
 export function scoreBand(score: number): MatchBand {
-  if (score >= 70) return 'green'
-  if (score >= 50) return 'amber'
+  const shown = displayScore(score)
+  if (shown >= 70) return 'green'
+  if (shown >= 50) return 'amber'
   return 'red'
 }
 
 export function scoreLabel(score: number): string {
-  if (score >= 70) return 'Good match'
-  if (score >= 50) return 'Fair match'
+  const shown = displayScore(score)
+  if (shown >= 70) return 'Good match'
+  if (shown >= 50) return 'Fair match'
   return 'Poor match'
 }
 
