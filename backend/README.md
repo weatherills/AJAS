@@ -1,8 +1,8 @@
 # AJAS Backend (Azure Functions, Python)
 
 Azure Functions app (Python v2 programming model) for the AI Job Application
-System. This is the Phase 0 skeleton — shared infrastructure plus a health
-endpoint. Feature routes/workers are added per `.codespring/CURSOR_RUNBOOK.md`.
+System. Feature blueprints cover Review, Auto-Apply, Settings, Resume,
+Job Source, Matching, and Email Ingestion.
 
 ## Layout
 

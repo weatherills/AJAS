@@ -1354,4 +1354,178 @@ select:focus-visible {
   font-size: 1rem;
 }
 
+.email-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 900px) {
+  .email-layout {
+    grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.thread-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: rgba(148, 163, 184, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  color: inherit;
+  padding: 0.75rem 0.9rem;
+}
+
+.thread-item.is-selected,
+.drawer-tabs button.is-selected,
+.job-email-threads button.is-selected {
+  border-color: #818cf8;
+  background: rgba(99, 102, 241, 0.18);
+}
+
+.thread-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.unread-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #818cf8;
+  display: inline-block;
+}
+
+.email-pane {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.55);
+  color: #e2e8f0;
+}
+
+.email-pane-head,
+.job-emails-head,
+.composer-tools,
+.composer-files {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.message-list,
+.suggestion-list,
+.job-pick,
+.job-email-threads,
+.attach-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.message-card {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.message-card.is-out {
+  border-color: rgba(129, 140, 248, 0.35);
+}
+
+.message-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.message-body {
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.composer textarea,
+.composer select,
+.composer input,
+.job-pick button,
+.file-btn {
+  width: 100%;
+}
+
+.composer textarea {
+  margin-top: 0.5rem;
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+}
+
+.suggestion-card {
+  display: grid;
+  gap: 0.35rem;
+  text-align: left;
+  width: 100%;
+  background: rgba(99, 102, 241, 0.12);
+  color: inherit;
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+}
+
+.unlinked-badge {
+  display: inline-block;
+  background: rgba(251, 191, 36, 0.15);
+  color: #fde68a;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.8rem;
+}
+
+.drawer-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+}
+
+.drawer-tabs button,
+.job-email-threads button,
+.job-pick button {
+  background: rgba(148, 163, 184, 0.08);
+  color: inherit;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  padding: 0.4rem 0.7rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.chip {
+  background: rgba(148, 163, 184, 0.12);
+  color: inherit;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+}
+
+
 

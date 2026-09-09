@@ -14,6 +14,7 @@ The examples use `local-user`, which matches the frontend default.
 | [resume.http](resume.http) | Upload, list, detail, preview URL, patch, retry-parse, run active resume |
 | [jobs.http](jobs.http) | Job feed, source status, on-demand Greenhouse/Lever crawl |
 | [matching.http](matching.http) | Compute/rank scores, list persisted results, async operations |
+| [email.http](email.http) | Graph webhook, mailbox status, threads, reply, suggestions, link |
 
 Health (no auth):
 
@@ -29,7 +30,7 @@ Expected 200:
   "service": "ajas-backend",
   "authMode": "dev",
   "storage": "memory",
-  "features": ["health", "review", "auto-apply", "settings", "resume", "jobs", "matching"]
+  "features": ["health", "review", "auto-apply", "settings", "resume", "jobs", "matching", "email"]
 }
 ```
 

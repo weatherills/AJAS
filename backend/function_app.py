@@ -1,11 +1,13 @@
 """AJAS Azure Functions app entry point.
 
 Registers health, Review, Auto-Apply, Settings, Resume Management, Job
-Source Integration, and Matching & Ranking HTTP plus queue workers.
+Source Integration, Matching & Ranking, and Email Ingestion HTTP plus
+queue workers.
 """
 import azure.functions as func
 
 from app.features.auto_apply import bp as auto_apply_bp
+from app.features.email import bp as email_bp
 from app.features.health import bp as health_bp
 from app.features.matching import bp as matching_bp
 from app.features.resume_management import bp as resume_bp
@@ -22,3 +24,4 @@ app.register_blueprint(settings_bp)
 app.register_blueprint(resume_bp)
 app.register_blueprint(job_source_bp)
 app.register_blueprint(matching_bp)
+app.register_blueprint(email_bp)

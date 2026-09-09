@@ -1,0 +1,80 @@
+@base = http://localhost:7071
+@token = local-user
+@threadId = THREAD_ID
+@jobId = JOB_ID
+
+### Health includes email
+GET {{base}}/api/health
+
+### Graph webhook validation handshake (echo token as text/plain)
+POST {{base}}/api/webhooks/graph/mail?validationToken=abc-123
+
+### Graph mail notification (202)
+POST {{base}}/api/webhooks/graph/mail
+Content-Type: application/json
+
+{
+  "value": [
+    {
+      "clientState": "dev-mail-webhook",
+      "changeType": "created",
+      "resourceData": { "id": "graph-message-id" }
+    }
+  ]
+}
+
+### Mailbox status
+GET {{base}}/api/v1/email/status
+Authorization: Bearer {{token}}
+
+### List all threads
+GET {{base}}/api/v1/email/threads
+Authorization: Bearer {{token}}
+
+### Refresh / poll mailbox
+POST {{base}}/api/v1/email/refresh
+Authorization: Bearer {{token}}
+
+### Templates
+GET {{base}}/api/v1/email/templates
+Authorization: Bearer {{token}}
+
+### Threads for a job
+GET {{base}}/api/v1/jobs/{{jobId}}/threads
+Authorization: Bearer {{token}}
+
+### Messages in a thread (marks unread as read)
+GET {{base}}/api/v1/threads/{{threadId}}/messages
+Authorization: Bearer {{token}}
+
+### AI reply suggestions (3 drafts; 10/day/thread)
+POST {{base}}/api/v1/threads/{{threadId}}/suggestions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tone": "professional"
+}
+
+### Send a reply
+POST {{base}}/api/v1/threads/{{threadId}}/reply
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "bodyText": "Thanks, Thursday afternoon works.",
+  "idempotencyKey": "reply-1"
+}
+
+### Link an unlinked thread to a job
+POST {{base}}/api/v1/threads/{{threadId}}/link
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "jobId": "{{jobId}}"
+}
+
+### Unlink a thread
+POST {{base}}/api/v1/threads/{{threadId}}/unlink
+Authorization: Bearer {{token}}

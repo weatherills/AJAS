@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { jobsApi, matchingApi, resumeApi, settingsApi, USE_MOCK } from '../api'
 import type { JobCard, JobDetail, JobFilters, JobSourceName, SourceStatus } from '../api/jobsTypes'
 import type { MatchView } from '../api/matchingTypes'
+import { JobEmailsTab } from '../components/JobEmailsTab'
 import { MatchBadge } from '../components/MatchBadge'
 import { MatchMeter } from '../components/MatchMeter'
 import { WhyThisScore, WhyThisScoreInline } from '../components/MatchWhy'
@@ -54,6 +55,7 @@ export function JobFeedPage() {
   const [whyMatch, setWhyMatch] = useState<MatchView | null>(null)
   const [saveOverride, setSaveOverride] = useState<Record<string, boolean>>({})
   const [listMinHeight, setListMinHeight] = useState(0)
+  const [drawerTab, setDrawerTab] = useState<'details' | 'emails'>('details')
   const toastId = useRef(1)
   const sentinel = useRef<HTMLDivElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -279,6 +281,10 @@ export function JobFeedPage() {
     observer.observe(node)
     return () => observer.disconnect()
   }, [cursor, filters.pagination, loadPage, loading, loadingMore])
+
+  useEffect(() => {
+    setDrawerTab('details')
+  }, [selected?.id])
 
   useEffect(() => {
     if (!selected) {
@@ -621,8 +627,29 @@ export function JobFeedPage() {
                 Close
               </button>
             </div>
-            {detailLoading && <p className="skeleton">Loading details…</p>}
-            {!detailLoading && detail && (
+            <div className="drawer-tabs" role="tablist" aria-label="Job details">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={drawerTab === 'details'}
+                className={drawerTab === 'details' ? 'is-selected' : ''}
+                onClick={() => setDrawerTab('details')}
+              >
+                Details
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={drawerTab === 'emails'}
+                className={drawerTab === 'emails' ? 'is-selected' : ''}
+                onClick={() => setDrawerTab('emails')}
+              >
+                Emails
+              </button>
+            </div>
+            {drawerTab === 'emails' && <JobEmailsTab jobId={selected.id} />}
+            {drawerTab === 'details' && detailLoading && <p className="skeleton">Loading details…</p>}
+            {drawerTab === 'details' && !detailLoading && detail && (
               <>
                 <p className="muted">
                   {detail.company} · {detail.location}

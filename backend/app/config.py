@@ -78,6 +78,15 @@ class Settings(BaseSettings):
     match_max_rank_pairs: int = 1000
     match_rank_async_after: int = 10
 
+    mail_ingest_queue: str = "mail-ingest"
+    mail_webhook_client_state: str = "dev-mail-webhook"
+    mail_suggestion_limit_per_day: int = 10
+    mail_attachment_max_file_bytes: int = 10 * 1024 * 1024
+    mail_attachment_max_message_bytes: int = 25 * 1024 * 1024
+    mail_link_auto_threshold: float = 0.85
+    mail_reply_idempotency_hours: int = 24
+    mail_blob_container: str = "mail-attachments"
+
 
 @lru_cache
 def get_settings() -> Settings:

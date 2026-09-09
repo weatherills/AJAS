@@ -47,7 +47,7 @@ infrastructure lives in `backend/app/`; each feature is a blueprint registered i
 | `matching` | 3, 11 | `PRDs/matching-ranking/backend` | Cosmos, OpenAI, Queue |
 | `review_decision` | 4 | (see overview) | Cosmos |
 | `auto_apply` | 5 | (see overview) | Queue, Container Apps |
-| `email` | 6, 12 | (see overview) | Microsoft Graph |
+| `email` | 7, 12 | `PRDs/email-ingestion-reply` | Microsoft Graph, Cosmos, Queue, Blob |
 | `learning_loop` | 7, 13 | (see overview) | Cosmos |
 | `settings` | 8 | (see overview) | Cosmos |
 
