@@ -49,6 +49,15 @@ class Settings(BaseSettings):
     auto_apply_sas_minutes: int = 10
     auto_apply_webhook_secret: str = "dev-webhook-secret"
 
+    microsoft_tenant: str = "common"
+    microsoft_client_id: str = ""
+    microsoft_client_secret: str = ""
+    settings_token_key: str = "dev-settings-token-key"
+    settings_write_rate_per_minute: int = 10
+    settings_connect_rate_per_minute: int = 3
+    match_recalc_queue: str = "match-recalc"
+    source_discovery_queue: str = "source-discovery"
+
 
 @lru_cache
 def get_settings() -> Settings:
