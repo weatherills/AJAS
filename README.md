@@ -5,9 +5,10 @@ keyword + semantic scoring, and streamlines review, auto-apply, and email
 follow-up. See `.codespring/project-overview.md` for the product overview and
 `.codespring/CURSOR_RUNBOOK.md` for the phased implementation plan.
 
-> Status: **Phase 4 — Resume Management.** Users can upload and parse resumes,
-> review matches, auto-apply, and persist settings. Remaining features are still
-> planned.
+> Status: **Phase 6 — Matching & Ranking.** Users can upload resumes, scan
+> Greenhouse and Lever into a unified feed, score jobs against a resume, review
+> matches, auto-apply, and persist settings. Email and the learning loop are
+> still planned.
 
 ## Repository layout
 
@@ -21,8 +22,8 @@ follow-up. See `.codespring/project-overview.md` for the product overview and
 
 Each runbook phase adds a feature module under `backend/app/features/` and its
 corresponding UI under `frontend/`. See `docs/architecture.md` for how the PRD
-features map onto the skeleton and Azure services. REST Client samples for
-Review and Settings live in `docs/api/`.
+features map onto the skeleton and Azure services. REST Client samples live in
+`docs/api/`.
 
 ## Tech stack
 
