@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     review_sas_minutes: int = 10
     review_blob_container: str = "review-artifacts"
 
+    auto_apply_request_queue: str = "auto-apply-requests"
+    auto_apply_submit_queue: str = "auto-apply-submits"
+    auto_apply_webhook_queue: str = "auto-apply-webhooks"
+    auto_apply_poison_dequeue: int = 5
+    auto_apply_sas_minutes: int = 10
+    auto_apply_webhook_secret: str = "dev-webhook-secret"
+
 
 @lru_cache
 def get_settings() -> Settings:
