@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     source_discovery_queue: str = "source-discovery"
     learning_decisions_queue: str = "learning-decisions"
 
+    resume_blob_container: str = "resumes"
+    resume_parse_queue: str = "resume-parse"
+    resume_max_upload_bytes: int = 10 * 1024 * 1024
+    resume_max_pdf_pages: int = 20
+    resume_upload_rate_per_hour: int = 30
+    resume_max_concurrent_parses: int = 5
+
 
 @lru_cache
 def get_settings() -> Settings:

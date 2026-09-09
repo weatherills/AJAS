@@ -5,9 +5,9 @@ keyword + semantic scoring, and streamlines review, auto-apply, and email
 follow-up. See `.codespring/project-overview.md` for the product overview and
 `.codespring/CURSOR_RUNBOOK.md` for the phased implementation plan.
 
-> Status: **Phase 3 — Settings.** Users can review matches, auto-apply, and
-> persist match threshold, Microsoft 365 connection, and source toggles at
-> `#/settings`. Remaining features are still planned.
+> Status: **Phase 4 — Resume Management.** Users can upload and parse resumes,
+> review matches, auto-apply, and persist settings. Remaining features are still
+> planned.
 
 ## Repository layout
 
