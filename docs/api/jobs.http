@@ -1,0 +1,38 @@
+@base = http://localhost:7071
+@token = local-user
+@jobId = JOB_ID
+@runId = RUN_ID
+
+### Health
+GET {{base}}/api/health
+
+### Unauthenticated feed → 401
+GET {{base}}/api/v1/jobs
+
+### Unified job feed (deduped, paginated)
+GET {{base}}/api/v1/jobs?sources=greenhouse,lever&limit=25
+Authorization: Bearer {{token}}
+
+### Search and location filters
+GET {{base}}/api/v1/jobs?q=engineer&location=Remote&status=all
+Authorization: Bearer {{token}}
+
+### Job detail (includes description + sources)
+GET {{base}}/api/v1/jobs/{{jobId}}
+Authorization: Bearer {{token}}
+
+### Per-source sync status
+GET {{base}}/api/v1/sources/status
+Authorization: Bearer {{token}}
+
+### Start a Greenhouse crawl (202)
+POST {{base}}/api/v1/sources/greenhouse/crawl
+Authorization: Bearer {{token}}
+
+### Start a Lever crawl (202)
+POST {{base}}/api/v1/sources/lever/crawl
+Authorization: Bearer {{token}}
+
+### Crawl run status
+GET {{base}}/api/v1/sources/greenhouse/runs/{{runId}}
+Authorization: Bearer {{token}}

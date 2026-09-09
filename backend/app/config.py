@@ -66,6 +66,11 @@ class Settings(BaseSettings):
     resume_upload_rate_per_hour: int = 30
     resume_max_concurrent_parses: int = 5
 
+    crawl_runs_queue: str = "crawl-runs"
+    job_fetch_queue: str = "job-fetch"
+    job_raw_blob_container: str = "job-raw"
+    crawl_poison_dequeue: int = 10
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import { ApplyPage } from './pages/Apply'
+import { JobFeedPage } from './pages/JobFeed'
 import { ResumeEditor } from './pages/ResumeEditor'
 import { ResumeLibrary } from './pages/ResumeLibrary'
 import { ReviewPage } from './pages/Review'
@@ -13,7 +14,7 @@ const phases = [
     href: '#/resumes',
     pill: 'Live',
   },
-  { name: 'Source Ingestion', desc: 'Scan Greenhouse & Lever for postings', pill: 'Planned' },
+  { name: 'Source Ingestion', desc: 'Scan Greenhouse & Lever for postings', href: '#/jobs', pill: 'Live' },
   { name: 'AI Matching', desc: 'Hybrid keyword + semantic scoring with reasons', pill: 'Planned' },
   {
     name: 'Review & Decision',
@@ -44,6 +45,7 @@ type Route =
   | { name: 'settings' }
   | { name: 'library' }
   | { name: 'edit'; id: string }
+  | { name: 'jobs' }
 
 function parseRoute(hash: string): Route {
   const raw = (hash.replace(/^#/, '') || '/').split('?')[0]
@@ -51,6 +53,7 @@ function parseRoute(hash: string): Route {
   if (path === '/review') return { name: 'review' }
   if (path === '/settings') return { name: 'settings' }
   if (path === '/resumes') return { name: 'library' }
+  if (path === '/jobs') return { name: 'jobs' }
   const edit = path.match(/^\/resumes\/([^/]+)\/edit$/)
   if (edit) return { name: 'edit', id: decodeURIComponent(edit[1]) }
   if (path === '/apply' || path.startsWith('/apply/')) {
@@ -74,16 +77,16 @@ function Home() {
   return (
     <div className="page">
       <header className="header">
-        <span className="badge">Phase 4</span>
+        <span className="badge">Phase 5</span>
         <h1>AJAS</h1>
         <p className="tagline">AI Job Application System</p>
       </header>
 
       <main>
         <p className="intro">
-          Resume Management, Review, Auto-Apply, and Settings are live. Upload a PDF or DOCX,
-          review parsed fields, then approve matches and apply. Remaining features follow{' '}
-          <code>.codespring/CURSOR_RUNBOOK.md</code>.
+          Resume Management, the job feed, Review, Auto-Apply, and Settings are live.
+          Upload a resume, scan Greenhouse and Lever, then approve matches and apply.
+          Remaining features follow <code>.codespring/CURSOR_RUNBOOK.md</code>.
         </p>
 
         <ul className="phases">
@@ -121,6 +124,7 @@ function App() {
   if (route.name === 'apply') return <ApplyPage requestId={route.requestId} />
   if (route.name === 'settings') return <SettingsPage />
   if (route.name === 'library') return <ResumeLibrary />
+  if (route.name === 'jobs') return <JobFeedPage />
   if (route.name === 'edit') {
     return (
       <ResumeEditor
