@@ -16,6 +16,17 @@ DECISION_SOURCES: Final[frozenset[str]] = frozenset({"manual", "system"})
 
 MAX_COMMENT_CHARS: Final[int] = 2000
 DEFAULT_LOCK_SECONDS: Final[int] = 120
+OVERWRITE_WINDOW_HOURS: Final[int] = 24
+IDEMPOTENCY_TTL_HOURS: Final[int] = 24
+DEFAULT_PAGE_SIZE: Final[int] = 25
+MIN_PAGE_SIZE: Final[int] = 10
+MAX_PAGE_SIZE: Final[int] = 100
+SAS_TTL_MINUTES: Final[int] = 10
+READ_SCOPE: Final[str] = "read:review"
+WRITE_SCOPE: Final[str] = "write:review"
+DECISION_QUEUE: Final[str] = "decision-events"
+ENRICH_QUEUE: Final[str] = "review-enrich"
+POISON_DEQUEUE: Final[int] = 5
 
 MATCHES_CONTAINER: Final[str] = "matches"
 DECISIONS_CONTAINER: Final[str] = "decision_events"
