@@ -32,10 +32,12 @@ def get(path: str, auth: bool = True) -> tuple[int, dict | str]:
 def main() -> int:
     checks = [
         ("/api/health", False),
+        ("/api/ready", False),
         ("/api/v1/settings", True),
         ("/api/v1/ops/slo", True),
         ("/api/v1/meta/pagination", True),
         ("/api/v1/auth/me", True),
+        ("/api/v1/auth/config", False),
     ]
     failed = 0
     for path, auth in checks:
