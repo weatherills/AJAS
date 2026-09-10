@@ -42,12 +42,12 @@ def seed_demo_feed(store: JobSourceStore) -> None:
     greenhouse = store.upsert_tenant(
         "greenhouse",
         "acme",
-        config={"board_token": "acme", "company": "Acme", "namespace": "acme"},
+        config={"board_token": "acme", "company": "Acme", "namespace": "acme", "demo_seed": True},
     )
     lever = store.upsert_tenant(
         "lever",
         "acme",
-        config={"site": "acme", "company": "Acme", "namespace": "acme"},
+        config={"site": "acme", "company": "Acme", "namespace": "acme", "demo_seed": True},
     )
     samples = [
         (greenhouse, "1", "Staff Engineer", "Remote", "Acme", "greenhouse"),

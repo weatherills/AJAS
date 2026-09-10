@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { emailApi, USE_MOCK } from '../api'
 import type { EmailStatus, EmailThread } from '../api/emailTypes'
+import { AppNav } from '../components/AppNav'
 import { EmailThreadPane } from '../components/EmailThreadPane'
 import { ToastStack } from '../components/Toast'
 import { formatWhen, relativeTime } from '../lib/email'
@@ -66,11 +67,9 @@ export function EmailPage() {
 
   return (
     <div className="page library-page email-page">
+      <AppNav />
       <header className="library-header">
         <div>
-          <a href="#/" className="back-link">
-            Home
-          </a>
           <h1>Email</h1>
           <p className="tagline">Recruiter threads linked to tracked jobs, with in-app replies.</p>
         </div>

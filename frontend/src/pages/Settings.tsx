@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getUserId, learningApi, setUserId, settingsApi, USE_MOCK } from '../api'
 import type { SettingsDoc } from '../api/settingsTypes'
+import { AppNav } from '../components/AppNav'
 import { Modal } from '../components/Modal'
 import { ToastStack } from '../components/Toast'
 import {
@@ -268,11 +269,9 @@ export function SettingsPage() {
 
   return (
     <div className="page library-page">
+      <AppNav />
       <header className="library-header">
         <div>
-          <a href="#/" className="back-link">
-            Home
-          </a>
           <h1>Settings</h1>
           <p className="tagline">Match threshold, learning, Microsoft 365 email, and job sources.</p>
         </div>

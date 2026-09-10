@@ -5,6 +5,7 @@ import { sha256Hex } from '../lib/hash'
 import { LAST_READY_KEY, RUN_LOCK_KEY } from '../lib/runLock'
 import { canSelectForRun, isParsing, preselectReady, uiStatus } from '../lib/status'
 import { validateClientFile } from '../lib/validation'
+import { AppNav } from '../components/AppNav'
 import { Modal } from '../components/Modal'
 import { StatusBadge } from '../components/StatusBadge'
 import { ToastStack } from '../components/Toast'
@@ -126,11 +127,9 @@ export function ResumeLibrary() {
 
   return (
     <div className="page library-page">
+      <AppNav />
       <header className="library-header">
         <div>
-          <a href="#/" className="back-link">
-            Home
-          </a>
           <h1>Resume library</h1>
           <p className="tagline">Upload, parse, edit, and pick a resume for an apply run.</p>
         </div>

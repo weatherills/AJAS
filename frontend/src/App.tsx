@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import { AppNav } from './components/AppNav'
 import { ApplyPage } from './pages/Apply'
 import { EmailPage } from './pages/Email'
 import { JobFeedPage } from './pages/JobFeed'
@@ -97,8 +98,9 @@ function useHashRoute(): Route {
 function Home() {
   return (
     <div className="page">
+      <AppNav />
       <header className="header">
-        <span className="badge">Phase 8</span>
+        <span className="badge">Live</span>
         <h1>AJAS</h1>
         <p className="tagline">AI Job Application System</p>
       </header>
