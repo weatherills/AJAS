@@ -1,4 +1,14 @@
-import type { JobCard, JobFilters, JobListQuery, JobSourceName, JobSourceRef, SourceStatus } from '../api/jobsTypes'
+import type {
+  AddTenantResult,
+  JobCard,
+  JobFilters,
+  JobListQuery,
+  JobSourceName,
+  JobSourceRef,
+  SourceBoard,
+  SourceStatus,
+} from '../api/jobsTypes'
+import type { SettingsApi } from '../api/settingsTypes'
 
 const FILTER_KEY = 'ajas.jobFeed.filters'
 const VISIT_KEY = 'ajas.jobFeed.lastVisit'
@@ -27,6 +37,10 @@ export function sourceDomain(url: string): string {
 
 export function defaultFilters(): JobFilters {
   return { sources: [...ALL_SOURCES], q: '', location: '', status: 'all', pagination: 'infinite' }
+}
+
+export function clearSessionFilters(filters: JobFilters): JobFilters {
+  return { ...defaultFilters(), sources: [...filters.sources] }
 }
 
 export function loadFilters(): JobFilters {
@@ -82,13 +96,133 @@ export function formatCountdown(ms: number): string {
 }
 
 export function statusLabel(row: SourceStatus, now = Date.now()): string {
+  if (row.status === 'unconfigured' || row.configured === false) return 'Not configured'
   if (row.status === 'syncing') return row.progress ? `Syncing… ${row.progress}` : 'Syncing…'
   if (row.status === 'rate_limited') {
     const left = backoffRemainingMs(row.backoffUntil, now)
     return left > 0 ? `Temporarily limited ${formatCountdown(left)}` : 'Temporarily limited'
   }
-  if (row.status === 'error') return 'Error'
+  if (row.status === 'error') {
+    const copy = sourceErrorCopy(row) || ''
+    if (/not found/i.test(copy)) return 'Board not found'
+    if (/unreachable/i.test(copy)) return 'Unreachable'
+    return 'Error'
+  }
   return 'OK'
+}
+
+export function sourceIsConfiguredStatus(row: Pick<SourceStatus, 'status' | 'configured'> | undefined): boolean {
+  if (!row) return true
+  if (row.status === 'unconfigured') return false
+  return row.configured !== false
+}
+
+export function sourceUnconfiguredCopy(row: Pick<SourceStatus, 'source' | 'status' | 'errorMessage' | 'configured'>): string | null {
+  if (sourceIsConfiguredStatus(row)) return null
+  const raw = (row.errorMessage || '').trim()
+  if (raw) return raw
+  return `${sourceTitle(row.source)} is not configured. Add a board token before turning this source on, or Job Feed stays empty.`
+}
+
+export function sourceErrorCopy(row: Pick<SourceStatus, 'source' | 'status' | 'errorMessage'>): string | null {
+  if (row.status !== 'error') return null
+  const name = sourceTitle(row.source)
+  const raw = (row.errorMessage || '').trim()
+  if (!raw) return `${name} fetch failed.`
+  return raw
+}
+
+export function boardErrorCopy(
+  board: Pick<SourceBoard, 'tenantKey' | 'status' | 'errorMessage'>,
+  source: Pick<SourceStatus, 'source' | 'status' | 'errorMessage'>,
+  boardCount = 1,
+): string | null {
+  const own = (board.errorMessage || '').trim()
+  if (own && (board.status === 'error' || /not found|unreachable|fetch failed|returned HTTP/i.test(own))) {
+    return own
+  }
+  if (board.status === 'error') {
+    return sourceErrorCopy(source) || `${sourceTitle(source.source)} fetch failed.`
+  }
+  const sourceCopy = sourceErrorCopy(source)
+  if (!sourceCopy) return null
+  const key = (board.tenantKey || '').trim().toLowerCase()
+  if (key && sourceCopy.toLowerCase().includes(key)) return sourceCopy
+  if (boardCount === 1) return sourceCopy
+  return null
+}
+
+export function sourceBoardErrors(
+  row: Pick<SourceStatus, 'source' | 'status' | 'errorMessage' | 'boards'>,
+): { tenantKey: string; message: string }[] {
+  const boards = row.boards || []
+  const lines: { tenantKey: string; message: string }[] = []
+  for (const board of boards) {
+    const message = boardErrorCopy(board, row, boards.length)
+    if (message) lines.push({ tenantKey: board.tenantKey, message })
+  }
+  return lines
+}
+
+export function feedErrorLines(rows: SourceStatus[]): { key: string; message: string }[] {
+  const lines: { key: string; message: string }[] = []
+  for (const row of rows) {
+    const boards = sourceBoardErrors(row)
+    if (boards.length) {
+      for (const board of boards) {
+        lines.push({ key: `${row.source}:${board.tenantKey}`, message: board.message })
+      }
+      continue
+    }
+    const copy = sourceErrorCopy(row)
+    if (copy) lines.push({ key: row.source, message: copy })
+  }
+  return lines
+}
+
+export function addBoardToast(
+  source: JobSourceName,
+  result: Pick<AddTenantResult, 'tenantKey' | 'status'>,
+): { text: string; tone: 'info' | 'error' } {
+  const row = result.status
+  const boards = row?.boards || []
+  const board = boards.find((item) => item.tenantKey === result.tenantKey)
+  if (row && board) {
+    const err = boardErrorCopy(board, row, boards.length)
+    if (err) return { text: err, tone: 'error' }
+  }
+  if (row) {
+    const err = sourceErrorCopy(row)
+    if (err) return { text: err, tone: 'error' }
+  }
+  return { text: `${sourceTitle(source)} board “${result.tenantKey}” added`, tone: 'info' }
+}
+
+export function refreshToastForStatuses(
+  source: JobSourceName | 'all',
+  rows: SourceStatus[],
+  added: number,
+): { text: string; tone: 'info' | 'error'; live: string } {
+  const targeted = rows.filter((item) => source === 'all' || item.source === source)
+  const missing = targeted.filter((item) => !sourceIsConfiguredStatus(item))
+  if (missing.length) {
+    const text = missing.map((item) => sourceUnconfiguredCopy(item) || `${sourceTitle(item.source)} is not configured.`).join(' ')
+    return { text, tone: 'error', live: 'Source not configured' }
+  }
+  const failed = targeted.filter((item) => item.status === 'error')
+  if (failed.length) {
+    const text = feedErrorLines(failed)
+      .map((item) => item.message)
+      .join(' ')
+    return {
+      text: text || failed.map((item) => sourceErrorCopy(item) || `${sourceTitle(item.source)} fetch failed.`).join(' '),
+      tone: 'error',
+      live: 'Sync error',
+    }
+  }
+  const label = source === 'all' ? 'Sources' : sourceTitle(source)
+  const text = added > 0 ? `${label} updated: ${added} new job${added === 1 ? '' : 's'}` : `${label}: no new jobs.`
+  return { text, tone: 'info', live: 'Syncing completed' }
 }
 
 export function mergeJobs(items: JobCard[]): JobCard[] {
@@ -146,4 +280,69 @@ export function alsoFromLabel(sources: JobSourceRef[], primary: JobSourceName): 
 
 export function sourceTitle(source: JobSourceName): string {
   return source === 'greenhouse' ? 'Greenhouse' : 'Lever'
+}
+
+export function boardInputHint(source: JobSourceName): string {
+  return source === 'greenhouse'
+    ? 'Board token or https://boards.greenhouse.io/… URL'
+    : 'Company slug or https://jobs.lever.co/… URL'
+}
+
+export function boardAddPayload(raw: string): { boardToken?: string; boardUrl?: string } {
+  const value = raw.trim()
+  if (!value) return {}
+  if (/^https?:\/\//i.test(value)) return { boardUrl: value }
+  return { boardToken: value }
+}
+
+export function sourcesOffCopy(): string {
+  return 'Job sources are turned off in Settings, so the feed is empty even if boards are configured.'
+}
+
+export function feedSourcesFromSettings(sources: {
+  greenhouseEnabled?: boolean
+  leverEnabled?: boolean
+  greenhouseConfigured?: boolean
+  leverConfigured?: boolean
+}): JobSourceName[] | null {
+  // Missing configured flags means settings did not see job-source wiring; keep current filters.
+  if (sources.greenhouseConfigured === undefined && sources.leverConfigured === undefined) {
+    return null
+  }
+  const next: JobSourceName[] = []
+  if (sources.greenhouseEnabled) next.push('greenhouse')
+  if (sources.leverEnabled) next.push('lever')
+  return next
+}
+
+export function sourceEnabledField(name: JobSourceName): 'greenhouseEnabled' | 'leverEnabled' {
+  return name === 'greenhouse' ? 'greenhouseEnabled' : 'leverEnabled'
+}
+
+export function sourceChipPatch(
+  name: JobSourceName,
+  enabled: boolean,
+): { sources: { greenhouseEnabled?: boolean; leverEnabled?: boolean } } {
+  return { sources: { [sourceEnabledField(name)]: enabled } }
+}
+
+export function nextFeedSources(current: JobSourceName[], name: JobSourceName): { sources: JobSourceName[]; enabled: boolean } {
+  const on = current.includes(name)
+  return {
+    sources: on ? current.filter((item) => item !== name) : [...current, name],
+    enabled: !on,
+  }
+}
+
+export function feedSourcesQueryParam(sources: JobSourceName[]): string {
+  return sources.join(',') || 'none'
+}
+
+export async function persistFeedSourceChip(
+  api: Pick<SettingsApi, 'patch'>,
+  name: JobSourceName,
+  enabled: boolean,
+): Promise<JobSourceName[] | null> {
+  const doc = await api.patch(sourceChipPatch(name, enabled))
+  return feedSourcesFromSettings(doc.sources)
 }

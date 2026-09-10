@@ -150,6 +150,24 @@ def test_duplicate_match_conflicts(store):
     assert saved.source == "saved"
 
 
+def test_update_pending_match_rewrites_score(store):
+    created = _create(store, ai_score=88)
+    updated = store.update_pending_match(
+        USER,
+        created.id,
+        ai_score=48.1,
+        suggestion="reject",
+        why="Live score from Job Feed Save match.",
+        summary="Live score from Job Feed Save match.",
+    )
+    assert updated.ai_score == 48.1
+    assert updated.suggestion == "reject"
+    assert updated.why.startswith("Live score")
+    assert updated.etag != created.etag
+    loaded = store.get_match(created.id, user_id=USER)
+    assert loaded.ai_score == 48.1
+
+
 def test_list_pending_and_filters(store):
     _create(store, job_id="j1", job_title="Staff Engineer", company="Acme", location="Austin", ai_score=88)
     _create(
