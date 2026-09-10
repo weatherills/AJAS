@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyHref, emailHref, hashHref, jobHref, parseHash, reviewHref } from './routes'
+import { applyHref, emailHref, hashHref, jobHref, parseHash, parseReviewTab, resumeHref, reviewHref } from './routes'
 
 describe('hash routes', () => {
   it('parses path and query from the hash', () => {
@@ -13,13 +13,17 @@ describe('hash routes', () => {
     expect(jobHref('job-1', 'emails')).toBe('#/jobs?job=job-1&tab=emails')
     expect(reviewHref({ matchId: 'match-staff', pane: 'emails' })).toBe('#/review?match=match-staff&pane=emails')
     expect(reviewHref({ jobId: 'job-1' })).toBe('#/review?job=job-1')
+    expect(reviewHref({ resumeId: 'resume-1', tab: 'history' })).toBe('#/review?tab=history&resume=resume-1')
     expect(emailHref({ jobId: 'job-1', threadId: 't-staff' })).toBe('#/email?job=job-1&thread=t-staff')
     expect(applyHref('req-1', 'job-1')).toBe('#/apply/req-1?job=job-1')
+    expect(resumeHref('seed-ready')).toBe('#/resumes/seed-ready/edit')
     expect(hashHref('/settings')).toBe('#/settings')
   })
 
   it('omits empty query values', () => {
     expect(reviewHref({ matchId: 'match-staff', jobId: 'job-1' })).toBe('#/review?match=match-staff')
     expect(emailHref({})).toBe('#/email')
+    expect(parseReviewTab('history')).toBe('history')
+    expect(parseReviewTab('nope')).toBe('matches')
   })
 })

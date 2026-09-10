@@ -1,9 +1,10 @@
 import { json, request } from './live'
-import type { JobDetail, JobListPage, JobListQuery, JobSourceName, JobsApi, SourceStatus } from './jobsTypes'
+import type { AddTenantBody, AddTenantResult, JobDetail, JobListPage, JobListQuery, JobSourceName, JobsApi, SourceStatus } from './jobsTypes'
+import { feedSourcesQueryParam } from '../lib/jobs'
 
 function queryString(query: JobListQuery): string {
   const params = new URLSearchParams()
-  params.set('sources', query.sources.join(',') || 'none')
+  params.set('sources', feedSourcesQueryParam(query.sources))
   if (query.q) params.set('q', query.q)
   if (query.location) params.set('location', query.location)
   if (query.status) params.set('status', query.status)
@@ -24,11 +25,39 @@ export const liveJobsApi: JobsApi = {
     return json<SourceStatus[]>(await request('/api/v1/sources/status'))
   },
   async refresh(source: JobSourceName | 'all') {
-    const id = source === 'all' ? 'greenhouse' : source
-    await json(await request(`/api/v1/sources/${id}/crawl`, { method: 'POST' }))
-    if (source === 'all') {
-      await json(await request('/api/v1/sources/lever/crawl', { method: 'POST' }))
+    const ids = source === 'all' ? (['greenhouse', 'lever'] as const) : [source]
+    for (const id of ids) {
+      const resp = await request(`/api/v1/sources/${id}/crawl`, { method: 'POST' })
+      if (resp.status === 404) {
+        await resp.json().catch(() => ({}))
+        continue
+      }
+      await json(resp)
     }
     return json<SourceStatus[]>(await request('/api/v1/sources/status'))
+  },
+  async refreshTenant(source: JobSourceName, tenantKey: string) {
+    await json(
+      await request(`/api/v1/sources/${source}/tenants/${encodeURIComponent(tenantKey)}/crawl`, {
+        method: 'POST',
+      }),
+    )
+    return json<SourceStatus[]>(await request('/api/v1/sources/status'))
+  },
+  async addTenant(source: JobSourceName, body: AddTenantBody) {
+    return json<AddTenantResult>(
+      await request(`/api/v1/sources/${source}/tenants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    )
+  },
+  async removeTenant(source: JobSourceName, tenantKey: string) {
+    return json<AddTenantResult>(
+      await request(`/api/v1/sources/${source}/tenants/${encodeURIComponent(tenantKey)}`, {
+        method: 'DELETE',
+      }),
+    )
   },
 }

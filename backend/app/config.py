@@ -103,3 +103,9 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return a cached Settings instance loaded from the environment."""
     return Settings()
+
+
+def microsoft_oauth_configured(settings: Settings | None = None) -> bool:
+    """True when Graph OAuth can actually start (client id and secret are set)."""
+    cfg = settings or get_settings()
+    return bool((cfg.microsoft_client_id or "").strip() and (cfg.microsoft_client_secret or "").strip())

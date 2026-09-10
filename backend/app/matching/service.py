@@ -303,7 +303,8 @@ class MatchingService:
                 )
             except Exception:
                 explanation = None
-        persisted = score >= options["threshold_used"] or bool(options.get("force_persist"))
+        force_persist = bool(options.get("force_persist"))
+        persisted = score >= options["threshold_used"] or force_persist
         match_id = None
         resume_hash = sha256_text(resume_text)
         job_hash = sha256_text(job_text)
@@ -319,8 +320,12 @@ class MatchingService:
                 source=source,
                 resume_hash=resume_hash,
                 job_hash=job_hash,
+                force_save=force_persist,
             )
-            self._push_review(user_id, pair, score=score, explanation=explanation, match_id=match_id)
+            review_pair = dict(pair)
+            if force_persist:
+                review_pair["save_source"] = "saved"
+            self._push_review(user_id, review_pair, score=score, explanation=explanation, match_id=match_id)
         body: dict[str, Any] = {
             "score": score,
             "breakdown": {
@@ -355,6 +360,7 @@ class MatchingService:
         source: str,
         resume_hash: str,
         job_hash: str,
+        force_save: bool = False,
     ) -> str:
         resume_ref = pair.get("resume_id") or resume_hash
         job_ref = pair.get("job_id") or job_hash
@@ -385,6 +391,7 @@ class MatchingService:
                 run_status="completed",
                 source=source,
                 idempotency_key_value=key,
+                force_save=force_save,
             )
         except MatchingConflictError:
             found = self._find_saved(user_id, key)
@@ -399,7 +406,7 @@ class MatchingService:
         return run.id
 
     def _find_saved(self, user_id: str, key: str) -> MatchRun | None:
-        for run in self.store.list_runs(user_id, saved_only=True, include_expired=True):
+        for run in self.store.list_runs(user_id, include_expired=True):
             if run.idempotency_key == key:
                 return run
         return None

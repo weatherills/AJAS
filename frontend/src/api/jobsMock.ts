@@ -1,5 +1,6 @@
-import type { JobCard, JobListQuery, JobSourceName, JobsApi, SourceStatus } from './jobsTypes'
-import { canonicalKey, mergeJobs, matchesQuery, paginate, PAGE_SIZE, sourceDomain } from '../lib/jobs'
+import type { AddTenantResult, JobCard, JobListQuery, JobSourceName, JobsApi, SourceBoard, SourceStatus } from './jobsTypes'
+import { boardAddPayload, canonicalKey, mergeJobs, matchesQuery, paginate, PAGE_SIZE, sourceDomain } from '../lib/jobs'
+import { markMockSourceConfigured } from './settingsMock'
 
 type RawJob = Omit<JobCard, 'isNew' | 'snippet'> & {
   description: string
@@ -97,6 +98,9 @@ let statuses: SourceStatus[] = [
     backoffUntil: null,
     errorMessage: null,
     progress: null,
+    configured: true,
+    tenantCount: 1,
+    boards: [{ tenantKey: 'acme', enabled: true, status: 'ok', errorMessage: null }],
   },
   {
     source: 'lever',
@@ -105,6 +109,9 @@ let statuses: SourceStatus[] = [
     backoffUntil: null,
     errorMessage: null,
     progress: null,
+    configured: true,
+    tenantCount: 1,
+    boards: [{ tenantKey: 'acme', enabled: true, status: 'ok', errorMessage: null }],
   },
 ]
 let extraAdded = false
@@ -120,6 +127,9 @@ export function resetMockJobs() {
       backoffUntil: null,
       errorMessage: null,
       progress: null,
+      configured: true,
+      tenantCount: 1,
+      boards: [{ tenantKey: 'acme', enabled: true, status: 'ok', errorMessage: null }],
     },
     {
       source: 'lever',
@@ -128,8 +138,98 @@ export function resetMockJobs() {
       backoffUntil: null,
       errorMessage: null,
       progress: null,
+      configured: true,
+      tenantCount: 1,
+      boards: [{ tenantKey: 'acme', enabled: true, status: 'ok', errorMessage: null }],
     },
   ]
+}
+
+export function simulateUnconfigured(source: JobSourceName) {
+  statuses = statuses.map((item) =>
+    item.source === source
+      ? {
+          ...item,
+          status: 'unconfigured',
+          lastSyncAt: null,
+          backoffUntil: null,
+          errorMessage: `${source === 'greenhouse' ? 'Greenhouse' : 'Lever'} is not configured. Add a board token before turning this source on, or Job Feed stays empty.`,
+          progress: null,
+          configured: false,
+          tenantCount: 0,
+          boards: [],
+        }
+      : item,
+  )
+}
+
+export function simulateSourceError(source: JobSourceName, message: string) {
+  statuses = statuses.map((item) => {
+    if (item.source !== source) return item
+    const boards = stampBoardError(item.boards || [], message)
+    return {
+      ...item,
+      status: 'error',
+      backoffUntil: null,
+      errorMessage: message,
+      progress: null,
+      boards,
+    }
+  })
+}
+
+function mockListingError(source: JobSourceName, key: string): string | null {
+  if (!/no-such|not-found|missing|404/i.test(key)) return null
+  const name = source === 'greenhouse' ? 'Greenhouse' : 'Lever'
+  return `${name} board "${key}" was not found. Check the board token or URL.`
+}
+
+function stampBoardError(boards: SourceBoard[], message: string): SourceBoard[] {
+  const lowered = message.toLowerCase()
+  const named = boards.map((board) =>
+    lowered.includes(board.tenantKey.toLowerCase())
+      ? { ...board, status: 'error' as const, errorMessage: message }
+      : board,
+  )
+  if (named.some((board) => board.status === 'error' && board.errorMessage)) return named
+  if (boards.length === 1) {
+    return [{ ...boards[0], status: 'error', errorMessage: message }]
+  }
+  return named
+}
+
+function syncSourceFromBoards(row: SourceStatus): SourceStatus {
+  const boards = row.boards || []
+  if (boards.length === 0) {
+    return {
+      ...row,
+      configured: false,
+      status: 'unconfigured',
+      lastSyncAt: null,
+      backoffUntil: null,
+      errorMessage: `${row.source === 'greenhouse' ? 'Greenhouse' : 'Lever'} is not configured. Add a board token before turning this source on, or Job Feed stays empty.`,
+      progress: null,
+      tenantCount: 0,
+    }
+  }
+  const failed = boards.find((board) => board.status === 'error' && board.errorMessage)
+  if (failed) {
+    return {
+      ...row,
+      configured: true,
+      tenantCount: boards.length,
+      status: 'error',
+      errorMessage: failed.errorMessage || row.errorMessage,
+    }
+  }
+  const clearError = row.status === 'error' || row.status === 'unconfigured'
+  return {
+    ...row,
+    configured: true,
+    tenantCount: boards.length,
+    status: clearError ? 'ok' : row.status,
+    errorMessage: clearError ? null : row.errorMessage,
+  }
 }
 
 export function simulateLeverRateLimit(seconds = 12) {
@@ -184,6 +284,7 @@ export const mockJobsApi: JobsApi = {
     for (const name of targets) {
       const row = statuses.find((item) => item.source === name)
       if (!row) continue
+      if (row.status === 'error' || row.status === 'unconfigured' || row.configured === false) continue
       if (row.status === 'rate_limited' && row.backoffUntil && new Date(row.backoffUntil).getTime() > Date.now()) {
         continue
       }
@@ -219,10 +320,100 @@ export const mockJobsApi: JobsApi = {
           description: 'New Greenhouse posting after a manual refresh.',
         })
       }
+      if (row.status === 'error' || row.status === 'unconfigured' || row.configured === false) continue
       row.status = 'ok'
       row.lastSyncAt = new Date().toISOString()
       row.progress = null
     }
     return structuredClone(statuses)
+  },
+  async refreshTenant(source, tenantKey) {
+    statuses = currentStatuses()
+    const row = statuses.find((item) => item.source === source)
+    if (!row) throw Object.assign(new Error('not found'), { code: 'NOT_FOUND' })
+    const boards = [...(row.boards || [])]
+    const index = boards.findIndex((item) => item.tenantKey === tenantKey)
+    if (index < 0) throw Object.assign(new Error('not found'), { code: 'NOT_FOUND' })
+    const listingError = mockListingError(source, tenantKey)
+    boards[index] = {
+      ...boards[index],
+      status: listingError ? 'error' : 'ok',
+      errorMessage: listingError,
+      lastSyncAt: new Date().toISOString(),
+    }
+    row.boards = boards
+    Object.assign(row, syncSourceFromBoards(row))
+    if (!listingError) {
+      row.lastSyncAt = boards[index].lastSyncAt || row.lastSyncAt
+      row.progress = null
+    }
+    return structuredClone(statuses)
+  },
+  async addTenant(source, body) {
+    const raw = (body.boardToken || body.boardUrl || '').trim()
+    if (!raw) throw Object.assign(new Error('board token or URL is required'), { code: 'VALIDATION_ERROR' })
+    const payload = boardAddPayload(raw)
+    const key = (payload.boardToken || payload.boardUrl || raw)
+      .replace(/^https:\/\/(boards\.greenhouse\.io|boards-api\.greenhouse\.io\/v1\/boards|jobs\.lever\.co|api\.lever\.co\/v0\/postings)\//i, '')
+      .split(/[/?#]/)[0]
+      .toLowerCase()
+    if (!key) throw Object.assign(new Error('board token or URL is required'), { code: 'VALIDATION_ERROR' })
+    statuses = currentStatuses()
+    const row = statuses.find((item) => item.source === source)
+    if (row) {
+      const boards = [...(row.boards || [])]
+      const listingError = mockListingError(source, key)
+      if (!boards.some((item) => item.tenantKey === key)) {
+        boards.push({
+          tenantKey: key,
+          enabled: body.enabled !== false,
+          status: listingError ? 'error' : 'ok',
+          errorMessage: listingError,
+          lastSyncAt: listingError ? undefined : new Date().toISOString(),
+        })
+      }
+      row.boards = boards
+      Object.assign(row, syncSourceFromBoards(row))
+      if (!listingError) {
+        row.lastSyncAt = boards.find((item) => item.tenantKey === key)?.lastSyncAt || row.lastSyncAt
+        row.progress = null
+      }
+    }
+    markMockSourceConfigured(source, true)
+    const sources = structuredClone(statuses)
+    const result: AddTenantResult = {
+      id: `tenant-${source}-${key}`,
+      sourceId: source,
+      tenantKey: key,
+      enabled: body.enabled !== false,
+      status: structuredClone(row || null),
+      sources,
+    }
+    return result
+  },
+  async removeTenant(source, tenantKey) {
+    const key = tenantKey.trim()
+    statuses = currentStatuses()
+    const row = statuses.find((item) => item.source === source)
+    if (!row) throw Object.assign(new Error('not found'), { code: 'NOT_FOUND' })
+    const boards = (row.boards || []).filter((item) => item.tenantKey !== key)
+    if (boards.length === (row.boards || []).length) {
+      throw Object.assign(new Error('not found'), { code: 'NOT_FOUND' })
+    }
+    row.boards = boards
+    Object.assign(row, syncSourceFromBoards(row))
+    if (boards.length === 0) {
+      markMockSourceConfigured(source, false)
+    }
+    const sources = structuredClone(statuses)
+    return {
+      id: `tenant-${source}-${key}`,
+      sourceId: source,
+      tenantKey: key,
+      enabled: false,
+      deleted: true,
+      status: structuredClone(row),
+      sources,
+    }
   },
 }

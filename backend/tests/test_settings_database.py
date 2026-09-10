@@ -165,6 +165,8 @@ def test_get_or_create_is_one_row_per_user(store):
     assert first.match_threshold is None
     assert first.greenhouse_enabled is False
     assert first.lever_enabled is False
+    assert first.greenhouse_explicit is False
+    assert first.lever_explicit is False
     assert store.effective_threshold(USER) == DEFAULT_MATCH_THRESHOLD
     other = store.get_or_create_settings(OTHER, actor_id=OTHER)
     assert other.user_id == OTHER
@@ -216,6 +218,23 @@ def test_source_toggles_allow_both_false(store):
     )
     assert both_off.greenhouse_enabled is False
     assert both_off.lever_enabled is False
+    assert both_off.greenhouse_explicit is True
+    assert both_off.lever_explicit is True
+
+
+def test_source_off_is_explicit_even_when_stored_value_was_already_false(store):
+    created = store.get_or_create_settings(USER, actor_id=USER)
+    assert created.greenhouse_explicit is False
+    assert created.lever_explicit is False
+    off = store.update_settings(
+        USER,
+        actor_id=USER,
+        expected_version=created.version,
+        greenhouse_enabled=False,
+    )
+    assert off.greenhouse_enabled is False
+    assert off.greenhouse_explicit is True
+    assert off.lever_explicit is False
 
 
 def test_optimistic_lock_rejects_stale_version(store):

@@ -31,6 +31,11 @@ def get_service() -> ResumeService:
             # Same-process parse: fail the job immediately instead of raising for
             # Azure queue retries (those would 500 the upload request).
             queue.handler = lambda msg: service.process_parse_job(msg, dequeue_count=3)
+            from app.resumes.demo import seed_demo_resume
+            from app.resumes.memory import InMemoryResumeStore
+
+            if isinstance(service.store, InMemoryResumeStore):
+                seed_demo_resume(service.store)
         _service = service
     return _service
 

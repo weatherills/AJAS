@@ -2,6 +2,7 @@ import type { EmailApiStatus } from '../lib/settings'
 
 export type SettingsDoc = {
   matchThreshold: number
+  oauthConfigured?: boolean
   emailConnection: {
     status: EmailApiStatus
     provider: string | null
@@ -14,6 +15,8 @@ export type SettingsDoc = {
   sources: {
     greenhouseEnabled: boolean
     leverEnabled: boolean
+    greenhouseConfigured?: boolean
+    leverConfigured?: boolean
   }
   audit: {
     createdAt: string

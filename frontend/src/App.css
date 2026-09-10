@@ -599,12 +599,84 @@ button:disabled {
   color: #e2e8f0;
 }
 
+.toggle.is-disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.toggle input:disabled {
+  cursor: not-allowed;
+}
+
+.source-unconfigured {
+  margin: 0 0 0.75rem;
+}
+
+.source-boards {
+  margin: 0 0 0.5rem;
+}
+
+.source-board-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.source-board-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.source-board-copy {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.source-board-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.source-board-row .inline-error {
+  margin: 0;
+}
+
+.source-board-row code {
+  font-size: 0.9rem;
+}
+
+.source-add-form {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.75rem;
+  align-items: end;
+  margin: 0 0 1rem;
+}
+
+.source-add-form label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.source-add-form input {
+  width: 100%;
+}
+
 .email-connected p {
   margin: 0.35rem 0;
 }
 
 @media (max-width: 700px) {
   .source-row,
+  .source-add-form,
+  .source-board-row,
   .slider-row,
   .two-col,
   .library-header,
@@ -645,6 +717,30 @@ button:disabled {
     background: #4f46e5;
     color: #fff;
   }
+
+  a.primary {
+    color: #fff;
+  }
+
+  .email-graph-notice {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+  }
+
+  .email-graph-notice.is-unconfigured,
+  .oauth-unconfigured {
+    background: #fffbeb;
+    border-color: #f59e0b;
+  }
+
+  .oauth-unconfigured {
+    color: #92400e;
+  }
+
+  .banner {
+    color: #312e81;
+    background: rgba(99, 102, 241, 0.1);
+  }
 }
 
 .sr-only {
@@ -680,15 +776,36 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
-  align-items: center;
+  align-items: flex-start;
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
   padding: 0.85rem 1rem;
   background: rgba(148, 163, 184, 0.05);
 }
 
+.feed-source > button {
+  flex-shrink: 0;
+  align-self: center;
+}
+
 .feed-source p {
   margin: 0.15rem 0 0;
+}
+
+.feed-source-boards {
+  list-style: none;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.feed-source-boards li {
+  margin: 0;
+}
+
+.feed-source-boards code {
+  font-size: 0.85rem;
 }
 
 .feed-source-syncing {
@@ -701,6 +818,10 @@ button:disabled {
 
 .feed-source-error {
   border-color: #f87171;
+}
+
+.feed-source-unconfigured {
+  border-color: #f59e0b;
 }
 
 .feed-layout {
@@ -1447,6 +1568,58 @@ select:focus-visible {
   display: inline-block;
 }
 
+.email-graph-notice {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  margin: 1rem 0;
+  background: rgba(148, 163, 184, 0.06);
+}
+
+.email-graph-notice h2 {
+  margin: 0 0 0.45rem;
+  font-size: 1.15rem;
+}
+
+.email-graph-notice .primary {
+  display: inline-block;
+  margin-top: 0.75rem;
+  text-decoration: none;
+  border: 1px solid #4f46e5;
+  border-radius: 8px;
+  padding: 0.45rem 0.8rem;
+  background: #4f46e5;
+  color: #fff;
+}
+
+.email-graph-notice.is-compact {
+  text-align: left;
+  padding: 0.9rem 1rem;
+}
+
+.email-graph-notice.is-unconfigured {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.oauth-unconfigured {
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.oauth-unconfigured p {
+  margin: 0;
+}
+
+.email-demo-banner {
+  margin: 0.75rem 0;
+}
+
 .email-pane {
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
@@ -1553,6 +1726,13 @@ select:focus-visible {
   margin: 0.4rem 0 0.75rem;
 }
 
+.resume-filter-banner {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+}
+
 .drawer-tabs button,
 .job-email-threads button,
 .job-pick button {
@@ -1636,9 +1816,56 @@ select:focus-visible {
   border-radius: 10px;
 }
 
+.metric-grid a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.metric-grid a:hover,
+.metric-grid a:focus-visible {
+  color: #c7d2fe;
+}
+
 .metric-grid strong {
   font-size: 1.25rem;
 }
+
+.learning-recent {
+  margin: 1.5rem 0;
+}
+
+.learning-recent h2 {
+  margin: 0 0 0.6rem;
+}
+
+.learning-recent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.learning-recent-list a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.learning-recent-list a:hover,
+.learning-recent-list a:focus-visible {
+  border-color: rgba(129, 140, 248, 0.5);
+}
+
 
 
 

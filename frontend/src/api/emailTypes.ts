@@ -1,10 +1,13 @@
 export type EmailStatus = {
   connected: boolean
+  graphConnected?: boolean
   address: string | null
   lastSyncedAt: string | null
   unreadCount: number
   demo: boolean
+  provider?: 'microsoft365' | 'demo' | null
   lastSyncError?: string | null
+  oauthConfigured?: boolean
 }
 
 export type EmailThread = {
