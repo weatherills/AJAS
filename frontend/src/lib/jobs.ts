@@ -1,4 +1,5 @@
 import type { JobCard, JobFilters, JobListQuery, JobSourceName, JobSourceRef, SourceStatus } from '../api/jobsTypes'
+import type { SettingsApi } from '../api/settingsTypes'
 
 const FILTER_KEY = 'ajas.jobFeed.filters'
 const VISIT_KEY = 'ajas.jobFeed.lastVisit'
@@ -27,6 +28,10 @@ export function sourceDomain(url: string): string {
 
 export function defaultFilters(): JobFilters {
   return { sources: [...ALL_SOURCES], q: '', location: '', status: 'all', pagination: 'infinite' }
+}
+
+export function clearSessionFilters(filters: JobFilters): JobFilters {
+  return { ...defaultFilters(), sources: [...filters.sources] }
 }
 
 export function loadFilters(): JobFilters {
@@ -227,4 +232,36 @@ export function feedSourcesFromSettings(sources: {
   if (sources.greenhouseEnabled) next.push('greenhouse')
   if (sources.leverEnabled) next.push('lever')
   return next
+}
+
+export function sourceEnabledField(name: JobSourceName): 'greenhouseEnabled' | 'leverEnabled' {
+  return name === 'greenhouse' ? 'greenhouseEnabled' : 'leverEnabled'
+}
+
+export function sourceChipPatch(
+  name: JobSourceName,
+  enabled: boolean,
+): { sources: { greenhouseEnabled?: boolean; leverEnabled?: boolean } } {
+  return { sources: { [sourceEnabledField(name)]: enabled } }
+}
+
+export function nextFeedSources(current: JobSourceName[], name: JobSourceName): { sources: JobSourceName[]; enabled: boolean } {
+  const on = current.includes(name)
+  return {
+    sources: on ? current.filter((item) => item !== name) : [...current, name],
+    enabled: !on,
+  }
+}
+
+export function feedSourcesQueryParam(sources: JobSourceName[]): string {
+  return sources.join(',') || 'none'
+}
+
+export async function persistFeedSourceChip(
+  api: Pick<SettingsApi, 'patch'>,
+  name: JobSourceName,
+  enabled: boolean,
+): Promise<JobSourceName[] | null> {
+  const doc = await api.patch(sourceChipPatch(name, enabled))
+  return feedSourcesFromSettings(doc.sources)
 }

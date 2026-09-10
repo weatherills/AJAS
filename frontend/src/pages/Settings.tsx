@@ -609,7 +609,7 @@ export function SettingsPage() {
 
       <section className="editor-section" aria-labelledby="sources-heading">
         <h2 id="sources-heading">Sources</h2>
-        <p className="muted">Turn Greenhouse and Lever on or off. Add a public board token or company URL when a source is not configured.</p>
+        <p className="muted">Turn Greenhouse and Lever on or off. Job Feed source chips save the same setting. Add a public board token or company URL when a source is not configured.</p>
         {(['greenhouse', 'lever'] as const).map((name) => {
           const enabledKey = name === 'greenhouse' ? 'greenhouseEnabled' : 'leverEnabled'
           const configured = sourceConfigured(name)

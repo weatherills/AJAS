@@ -1,19 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import { mockJobsApi, resetMockJobs, simulateLeverRateLimit, simulateSourceError, simulateUnconfigured } from '../api/jobsMock'
+import { mockSettingsApi, resetMockSettings, markMockSourceConfigured } from '../api/settingsMock'
 import {
   alsoFromLabel,
   backoffRemainingMs,
   boardAddPayload,
   boardInputHint,
   canonicalKey,
+  clearSessionFilters,
   defaultFilters,
   feedSourcesFromSettings,
+  feedSourcesQueryParam,
   formatCountdown,
   mergeJobs,
   matchesQuery,
+  nextFeedSources,
   paginate,
   PAGE_SIZE,
+  persistFeedSourceChip,
   refreshToastForStatuses,
+  sourceChipPatch,
   sourceErrorCopy,
   sourceIsConfiguredStatus,
   sourceUnconfiguredCopy,
@@ -94,6 +100,57 @@ describe('job feed helpers', () => {
     ])
     expect(feedSourcesFromSettings({ greenhouseEnabled: false, leverEnabled: false })).toBeNull()
   })
+
+  it('builds a Settings PATCH from a Job Feed chip and leaves session filters when clearing search', () => {
+    expect(sourceChipPatch('greenhouse', false)).toEqual({ sources: { greenhouseEnabled: false } })
+    expect(sourceChipPatch('lever', true)).toEqual({ sources: { leverEnabled: true } })
+    expect(nextFeedSources(['greenhouse', 'lever'], 'lever')).toEqual({ sources: ['greenhouse'], enabled: false })
+    expect(nextFeedSources(['greenhouse'], 'lever')).toEqual({ sources: ['greenhouse', 'lever'], enabled: true })
+    expect(nextFeedSources(['greenhouse'], 'greenhouse')).toEqual({ sources: [], enabled: false })
+    const cleared = clearSessionFilters({
+      sources: [],
+      q: 'staff',
+      location: 'Austin',
+      status: 'new',
+      pagination: 'pages',
+    })
+    expect(cleared.sources).toEqual([])
+    expect(cleared.q).toBe('')
+    expect(cleared.location).toBe('')
+    expect(cleared.status).toBe('all')
+    expect(cleared.pagination).toBe('infinite')
+    expect(feedSourcesQueryParam([])).toBe('none')
+    expect(feedSourcesQueryParam(['greenhouse'])).toBe('greenhouse')
+    expect(feedSourcesQueryParam(['greenhouse', 'lever'])).toBe('greenhouse,lever')
+  })
+
+  it('persists Job Feed chips through Settings so both-off survives a reload', async () => {
+    resetMockSettings()
+    const first = await mockSettingsApi.get()
+    expect(feedSourcesFromSettings(first.sources)).toEqual(['greenhouse', 'lever'])
+    expect(await persistFeedSourceChip(mockSettingsApi, 'greenhouse', false)).toEqual(['lever'])
+    expect(await persistFeedSourceChip(mockSettingsApi, 'lever', false)).toEqual([])
+    const reloaded = await mockSettingsApi.get()
+    expect(reloaded.sources.greenhouseEnabled).toBe(false)
+    expect(reloaded.sources.leverEnabled).toBe(false)
+    expect(feedSourcesFromSettings(reloaded.sources)).toEqual([])
+    markMockSourceConfigured('greenhouse', true)
+    markMockSourceConfigured('lever', true)
+    const stillOff = await mockSettingsApi.get()
+    expect(feedSourcesFromSettings(stillOff.sources)).toEqual([])
+    expect(await persistFeedSourceChip(mockSettingsApi, 'greenhouse', true)).toEqual(['greenhouse'])
+  })
+
+  it('keeps SOURCE_NOT_CONFIGURED when a Job Feed chip turns on a source with zero tenants', async () => {
+    resetMockSettings()
+    markMockSourceConfigured('greenhouse', false)
+    await expect(persistFeedSourceChip(mockSettingsApi, 'greenhouse', true)).rejects.toMatchObject({
+      code: 'SOURCE_NOT_CONFIGURED',
+    })
+    const doc = await mockSettingsApi.get()
+    expect(doc.sources.greenhouseEnabled).toBe(false)
+    expect(doc.sources.greenhouseConfigured).toBe(false)
+  })
 })
 
 describe('mock jobs api', () => {
@@ -111,6 +168,20 @@ describe('mock jobs api', () => {
     expect(page.nextCursor).toBeTruthy()
     const staff = page.items.find((item) => item.title === 'Staff Engineer' && item.company === 'Acme')
     expect(staff?.sources.length).toBe(2)
+  })
+
+  it('returns no jobs when the sources query is empty', async () => {
+    resetMockJobs()
+    const page = await mockJobsApi.list({
+      sources: [],
+      q: '',
+      location: '',
+      status: 'all',
+      cursor: null,
+      limit: 25,
+    })
+    expect(page.items).toEqual([])
+    expect(page.total).toBe(0)
   })
 
   it('returns the Acme Staff Engineer by the id Review and Email mocks share', async () => {
