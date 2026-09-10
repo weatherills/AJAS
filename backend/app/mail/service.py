@@ -7,6 +7,7 @@ import logging
 from datetime import timedelta
 
 from app.config import get_settings as get_app_settings
+from app.config import microsoft_oauth_configured
 from app.mail.errors import (
     MailConflictError,
     MailForbiddenError,
@@ -56,32 +57,20 @@ class EmailService:
         *,
         local_mode: bool = True,
         clock=utc_now,
+        settings_store=None,
     ) -> None:
         self.store = store
         self.queue = queue
         self.graph = graph
         self.local_mode = local_mode
         self.clock = clock
+        self.settings_store = settings_store
 
     def status(self, user_id: str) -> dict:
-        account = self._mailbox(user_id, create_demo=self.local_mode)
-        if account is None:
-            return {
-                "connected": False,
-                "address": None,
-                "lastSyncedAt": None,
-                "unreadCount": 0,
-                "demo": False,
-            }
-        threads = self.store.list_threads(account.id)
-        return {
-            "connected": True,
-            "address": account.address,
-            "lastSyncedAt": account.last_synced_at,
-            "unreadCount": sum(item.unread_count for item in threads),
-            "demo": account.demo,
-            "lastSyncError": account.last_sync_error,
-        }
+        connection = self._graph_connection(user_id)
+        graph_ok = connection is not None
+        account = self._mailbox(user_id, create_demo=self.local_mode and not graph_ok)
+        return self._status_json(account, connection)
 
     def list_threads(self, user_id: str, *, job_id: str | None = None, unlinked_only: bool = False, limit: int = 50, cursor: str | None = None) -> dict:
         account = self._require_mailbox(user_id)
@@ -535,18 +524,74 @@ class EmailService:
             )
         return out
 
+    def _status_json(self, account: EmailAccount | None, connection) -> dict:
+        graph_ok = connection is not None
+        demo = bool(account and account.demo and not graph_ok)
+        if account is None:
+            return {
+                "connected": False,
+                "graphConnected": False,
+                "address": None,
+                "lastSyncedAt": None,
+                "unreadCount": 0,
+                "demo": False,
+                "provider": None,
+                "oauthConfigured": microsoft_oauth_configured(),
+            }
+        threads = self.store.list_threads(account.id) if graph_ok or demo else []
+        if graph_ok:
+            address = connection.account_email or account.address
+            provider = "microsoft365"
+        elif demo:
+            address = account.address
+            provider = "demo"
+        else:
+            address = None
+            provider = None
+        return {
+            "connected": graph_ok,
+            "graphConnected": graph_ok,
+            "address": address,
+            "lastSyncedAt": account.last_synced_at if graph_ok or demo else None,
+            "unreadCount": sum(item.unread_count for item in threads) if graph_ok or demo else 0,
+            "demo": demo,
+            "provider": provider,
+            "lastSyncError": account.last_sync_error if graph_ok or demo else None,
+            "oauthConfigured": microsoft_oauth_configured(),
+        }
+
+    def _settings_store(self):
+        if self.settings_store is not None:
+            return self.settings_store
+        try:
+            from app.settings.runtime import try_get_service
+
+            svc = try_get_service()
+            if svc is not None:
+                return svc.store
+        except Exception:
+            return None
+        return None
+
+    def _graph_connection(self, user_id: str):
+        store = self._settings_store()
+        if store is None:
+            return None
+        try:
+            return store.get_active_connection(user_id)
+        except Exception:
+            return None
+
     def _mailbox(self, user_id: str, *, create_demo: bool) -> EmailAccount | None:
+        connection = self._graph_connection(user_id)
         account = self.store.get_account_for_user(user_id)
         if account:
             return account
+        if connection is not None:
+            return self.store.ensure_account(
+                user_id, address=connection.account_email or user_id, demo=False
+            )
         if not create_demo:
-            if not self.local_mode:
-                from app.settings.store import get_settings_store
-
-                connection = get_settings_store().get_active_connection(user_id)
-                if connection is None or connection.status != "active":
-                    return None
-                return self.store.ensure_account(user_id, address=connection.account_email or user_id, demo=False)
             return None
         jobs = [{"id": job.id, "title": job.title, "company": job.company} for job in self._jobs()]
         return self.store.seed_demo_mailbox(user_id, jobs=jobs)

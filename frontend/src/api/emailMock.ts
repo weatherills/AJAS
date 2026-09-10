@@ -1,11 +1,14 @@
 import type { EmailApi, EmailMessage, EmailStatus, EmailTemplate, EmailThread } from './emailTypes'
 
 const mailbox: EmailStatus = {
-  connected: true,
+  connected: false,
+  graphConnected: false,
   address: 'local-user@ajas.dev',
   lastSyncedAt: new Date().toISOString(),
   unreadCount: 1,
   demo: true,
+  provider: 'demo',
+  oauthConfigured: true,
 }
 
 const templates: EmailTemplate[] = [

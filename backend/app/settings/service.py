@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 from app.config import get_settings as get_app_settings
+from app.config import microsoft_oauth_configured
 from app.settings.crypto import seal_token
 from app.settings.errors import SettingsConflictError, SettingsNotFoundError, SettingsValidationError
 from app.settings.mapping import api_threshold, db_threshold, requested_at, settings_response
@@ -26,6 +27,19 @@ from app.settings.validation import parse_ts, utc_now
 class SettingsRateLimitedError(Exception):
     def __init__(self, message: str = "Rate limit exceeded"):
         super().__init__(message)
+
+
+class SettingsOAuthNotConfiguredError(Exception):
+    def __init__(self, message: str = "Microsoft OAuth is not configured"):
+        super().__init__(message)
+
+
+class SettingsSourceNotConfiguredError(Exception):
+    def __init__(self, source_id: str):
+        from app.job_sources.service import source_not_configured_message
+
+        self.source_id = source_id
+        super().__init__(source_not_configured_message(source_id))
 
 
 class SettingsService:
@@ -64,6 +78,7 @@ class SettingsService:
         old_threshold = api_threshold(settings.match_threshold)
         old_gh = settings.greenhouse_enabled
         old_lv = settings.lever_enabled
+        self._reject_unconfigured_enable(sources)
 
         kwargs: dict = {"actor_id": user_id, "expected_version": settings.version}
         if "matchThreshold" in body:
@@ -110,8 +125,6 @@ class SettingsService:
         return settings_response(updated, connection, updated_by=user_id)
 
     def connect(self, user_id: str, body: dict) -> dict:
-        self._hit_write(user_id)
-        self._hit_connect(user_id)
         redirect_uri = (body or {}).get("redirectUri") if isinstance(body, dict) else None
         if not redirect_uri:
             raise SettingsValidationError("redirectUri is required", path="redirectUri")
@@ -119,8 +132,10 @@ class SettingsService:
         if self.store.get_active_connection(user_id) is not None:
             return {"authUrl": None, "state": None, "noOp": True}
         cfg = get_app_settings()
-        if not cfg.microsoft_client_id:
-            raise SettingsValidationError("Microsoft OAuth is not configured", path="client_id")
+        if not microsoft_oauth_configured(cfg):
+            raise SettingsOAuthNotConfiguredError()
+        self._hit_write(user_id)
+        self._hit_connect(user_id)
         verifier, challenge = pkce_pair()
         state = new_state()
         now = utc_now()
@@ -292,6 +307,22 @@ class SettingsService:
             store.update_prefs(user_id, threshold_pct=max(0, min(100, pct)))
         except Exception:
             pass
+
+    def _reject_unconfigured_enable(self, sources: dict) -> None:
+        if sources.get("greenhouseEnabled") is not True and sources.get("leverEnabled") is not True:
+            return
+        try:
+            from app.job_sources.runtime import tenant_counts_or_none
+
+            counts = tenant_counts_or_none()
+        except Exception:
+            counts = None
+        if counts is None:
+            return
+        if sources.get("greenhouseEnabled") is True and counts.get("greenhouse", 0) == 0:
+            raise SettingsSourceNotConfiguredError("greenhouse")
+        if sources.get("leverEnabled") is True and counts.get("lever", 0) == 0:
+            raise SettingsSourceNotConfiguredError("lever")
 
     def apply_source_discovery(self, payload: dict) -> None:
         try:

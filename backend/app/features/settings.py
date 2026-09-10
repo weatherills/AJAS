@@ -13,7 +13,11 @@ from app.observability import log_exception, log_request
 from app.settings.errors import SettingsConflictError, SettingsNotFoundError, SettingsValidationError
 from app.settings.oauth import GraphError
 from app.settings.runtime import get_service
-from app.settings.service import SettingsRateLimitedError
+from app.settings.service import (
+    SettingsOAuthNotConfiguredError,
+    SettingsRateLimitedError,
+    SettingsSourceNotConfiguredError,
+)
 
 bp = func.Blueprint()
 FEATURE = "settings"
@@ -26,6 +30,10 @@ def _auth(req: func.HttpRequest):
 def _map_error(exc: Exception) -> func.HttpResponse:
     if isinstance(exc, AuthError):
         return error_response("UNAUTHENTICATED", str(exc), 401)
+    if isinstance(exc, SettingsOAuthNotConfiguredError):
+        return error_response("OAUTH_NOT_CONFIGURED", str(exc), 400)
+    if isinstance(exc, SettingsSourceNotConfiguredError):
+        return error_response("SOURCE_NOT_CONFIGURED", str(exc), 400)
     if isinstance(exc, SettingsValidationError):
         pointer = f"/{exc.path}" if exc.path else None
         return error_response(
