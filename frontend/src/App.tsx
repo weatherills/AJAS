@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import './App.css'
 import { AppNav } from './components/AppNav'
-import { ApplyPage } from './pages/Apply'
-import { EmailPage } from './pages/Email'
-import { JobFeedPage } from './pages/JobFeed'
-import { LearningPage } from './pages/Learning'
-import { ResumeEditor } from './pages/ResumeEditor'
-import { ResumeLibrary } from './pages/ResumeLibrary'
-import { ReviewPage } from './pages/Review'
-import { SettingsPage } from './pages/Settings'
+import { jobsApi, matchingApi, reviewApi, settingsApi } from './api'
+import { filtersForTab } from './lib/review'
+import { onboardingSteps, type OnboardingStep } from './lib/onboarding'
+
+const ReviewPage = lazy(() => import('./pages/Review').then((mod) => ({ default: mod.ReviewPage })))
+const ApplyPage = lazy(() => import('./pages/Apply').then((mod) => ({ default: mod.ApplyPage })))
+const SettingsPage = lazy(() => import('./pages/Settings').then((mod) => ({ default: mod.SettingsPage })))
+const ResumeLibrary = lazy(() => import('./pages/ResumeLibrary').then((mod) => ({ default: mod.ResumeLibrary })))
+const ResumeEditor = lazy(() => import('./pages/ResumeEditor').then((mod) => ({ default: mod.ResumeEditor })))
+const JobFeedPage = lazy(() => import('./pages/JobFeed').then((mod) => ({ default: mod.JobFeedPage })))
+const EmailPage = lazy(() => import('./pages/Email').then((mod) => ({ default: mod.EmailPage })))
+const LearningPage = lazy(() => import('./pages/Learning').then((mod) => ({ default: mod.LearningPage })))
 
 const phases = [
   {
@@ -96,6 +100,43 @@ function useHashRoute(): Route {
 }
 
 function Home() {
+  const [steps, setSteps] = useState<OnboardingStep[] | null>(null)
+
+  useEffect(() => {
+    void matchingApi.warmup().catch(() => undefined)
+    void (async () => {
+      try {
+        const [settings, sources, history] = await Promise.all([
+          settingsApi.get(),
+          jobsApi.sourceStatus().catch(() => []),
+          reviewApi.list('history', filtersForTab('history')).catch(() => ({ items: [], total: 0 })),
+        ])
+        const emailOk =
+          settings.emailConnection.status === 'connected' || settings.emailConnection.status === 'pending'
+        const sourceOk = sources.some((item) => (item.boards || []).length > 0) ||
+          settings.sources.greenhouseEnabled ||
+          settings.sources.leverEnabled
+        setSteps(
+          onboardingSteps({
+            emailConnected: emailOk,
+            sourceEnabled: Boolean(sourceOk),
+            thresholdSet: settings.matchThreshold > 0,
+            reviewed: history.total > 0 || history.items.length > 0,
+          }),
+        )
+      } catch {
+        setSteps(
+          onboardingSteps({
+            emailConnected: false,
+            sourceEnabled: false,
+            thresholdSet: false,
+            reviewed: false,
+          }),
+        )
+      }
+    })()
+  }, [])
+
   return (
     <div className="page">
       <AppNav />
@@ -112,6 +153,21 @@ function Home() {
           threshold land in Review), apply, reply to recruiter mail, and let approve/reject decisions tune
           ranking.
         </p>
+
+        {steps && (
+          <section className="onboarding" aria-labelledby="onboarding-heading">
+            <h2 id="onboarding-heading">First-run checklist</h2>
+            <ol>
+              {steps.map((step) => (
+                <li key={step.id} className={step.done ? 'is-done' : undefined}>
+                  <a href={step.href}>
+                    <span aria-hidden="true">{step.done ? '✓' : '○'}</span> {step.label}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
 
         <ul className="phases">
           {phases.map((phase) => {
@@ -142,17 +198,27 @@ function Home() {
   )
 }
 
+function RouteFallback() {
+  return (
+    <div className="page">
+      <AppNav />
+      <p className="skeleton">Loading…</p>
+    </div>
+  )
+}
+
 function App() {
   const route = useHashRoute()
-  if (route.name === 'review') return <ReviewPage />
-  if (route.name === 'apply') return <ApplyPage requestId={route.requestId} />
-  if (route.name === 'settings') return <SettingsPage />
-  if (route.name === 'library') return <ResumeLibrary />
-  if (route.name === 'jobs') return <JobFeedPage />
-  if (route.name === 'email') return <EmailPage />
-  if (route.name === 'learning') return <LearningPage />
-  if (route.name === 'edit') {
-    return (
+  let page
+  if (route.name === 'review') page = <ReviewPage />
+  else if (route.name === 'apply') page = <ApplyPage requestId={route.requestId} />
+  else if (route.name === 'settings') page = <SettingsPage />
+  else if (route.name === 'library') page = <ResumeLibrary />
+  else if (route.name === 'jobs') page = <JobFeedPage />
+  else if (route.name === 'email') page = <EmailPage />
+  else if (route.name === 'learning') page = <LearningPage />
+  else if (route.name === 'edit') {
+    page = (
       <ResumeEditor
         resumeId={route.id}
         onBack={() => {
@@ -161,8 +227,8 @@ function App() {
         onSaved={() => undefined}
       />
     )
-  }
-  return <Home />
+  } else page = <Home />
+  return <Suspense fallback={<RouteFallback />}>{page}</Suspense>
 }
 
 export default App

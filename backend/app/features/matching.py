@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 
 import azure.functions as func
 
@@ -16,6 +17,7 @@ from app.matching.errors import (
     MatchingValidationError,
 )
 from app.matching.runtime import get_service
+from app.slo import record_latency, snapshot as slo_snapshot
 
 bp = func.Blueprint()
 
@@ -90,6 +92,7 @@ def _json_payload(msg: func.QueueMessage) -> dict:
 
 @bp.route(route="v1/matches/compute", methods=["POST"])
 def compute_match(req: func.HttpRequest) -> func.HttpResponse:
+    started = time.perf_counter()
     try:
         principal = _auth(req)
         status, body = get_service().compute(
@@ -97,6 +100,7 @@ def compute_match(req: func.HttpRequest) -> func.HttpResponse:
             _json_body(req),
             idempotency_key_header=_idempotency_key(req),
         )
+        record_latency("POST /v1/matches/compute", (time.perf_counter() - started) * 1000)
         return json_response(body, status_code=status)
     except Exception as exc:
         return _handle(exc)
@@ -104,6 +108,7 @@ def compute_match(req: func.HttpRequest) -> func.HttpResponse:
 
 @bp.route(route="v1/matches/rank", methods=["POST"])
 def rank_matches(req: func.HttpRequest) -> func.HttpResponse:
+    started = time.perf_counter()
     try:
         principal = _auth(req)
         status, body = get_service().rank(
@@ -111,7 +116,35 @@ def rank_matches(req: func.HttpRequest) -> func.HttpResponse:
             _json_body(req),
             idempotency_key_header=_idempotency_key(req),
         )
+        record_latency("POST /v1/matches/rank", (time.perf_counter() - started) * 1000)
         return json_response(body, status_code=status)
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/matches/warmup", methods=["POST"])
+def warmup_matches(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = _auth(req)
+        return json_response(get_service().warmup(principal.user_id))
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/matches/ab-variant", methods=["GET"])
+def match_ab_variant(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = _auth(req)
+        return json_response(get_service().ab_assignment(principal.user_id))
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/ops/slo", methods=["GET"])
+def matching_slo(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        _auth(req)
+        return json_response(slo_snapshot())
     except Exception as exc:
         return _handle(exc)
 

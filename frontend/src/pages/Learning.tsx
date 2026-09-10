@@ -81,6 +81,12 @@ export function LearningPanel({ compact = false }: { compact?: boolean }) {
                   {metrics.approveRateDeltaPct}% vs prior {period}
                 </span>
               )}
+              {metrics.liftVsBaseline != null && (
+                <span className="muted">
+                  {metrics.liftVsBaseline >= 0 ? '+' : ''}
+                  {metrics.liftVsBaseline} pts vs 50% baseline
+                </span>
+              )}
             </a>
           </li>
           <li>

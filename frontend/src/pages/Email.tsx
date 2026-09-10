@@ -111,7 +111,13 @@ export function EmailPage() {
           )}
         </p>
       )}
-      {loading && <p className="skeleton">Loading mailbox…</p>}
+          {selected?.deliveryAlert && (
+            <p className="inline-error" role="status">
+              {selected.deliveryAlert === 'bounced'
+                ? 'This thread has a bounce. Update the recipient address before resending.'
+                : 'Delivery is deferred. Wait and retry, or confirm the mailbox is accepting mail.'}
+            </p>
+          )}
       {error && (
         <p className="inline-error">
           {error}{' '}

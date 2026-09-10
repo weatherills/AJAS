@@ -109,7 +109,13 @@ export function EmailThreadPane({
     try {
       setSuggestions(await emailApi.suggestions(thread.id, { tone: 'professional' }))
     } catch (err) {
-      setSuggestError(err instanceof Error ? err.message : 'Could not generate replies')
+      const message =
+        err instanceof Error && (err.message.toLowerCase().includes('limit') || err.message.toLowerCase().includes('rate'))
+          ? 'Suggestion limit reached for today. Try again tomorrow.'
+          : err instanceof Error
+            ? err.message
+            : 'Could not generate replies'
+      setSuggestError(message)
     }
   }
 

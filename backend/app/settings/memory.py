@@ -47,6 +47,7 @@ class InMemorySettingsStore:
             lever_enabled=False,
             greenhouse_explicit=False,
             lever_explicit=False,
+            auto_apply_enabled=True,
             version=1,
             created_at=now,
             updated_at=now,
@@ -64,6 +65,7 @@ class InMemorySettingsStore:
                 "lever_enabled": False,
                 "greenhouse_explicit": False,
                 "lever_explicit": False,
+                "auto_apply_enabled": True,
             },
         )
         return deepcopy(settings)
@@ -84,6 +86,7 @@ class InMemorySettingsStore:
         match_threshold: object = UNSET,
         greenhouse_enabled: object = UNSET,
         lever_enabled: object = UNSET,
+        auto_apply_enabled: object = UNSET,
     ) -> UserSettings:
         settings = self._require_settings(user_id)
         if settings.version != expected_version:
@@ -120,6 +123,15 @@ class InMemorySettingsStore:
                 changes["lever_enabled"] = {"from": settings.lever_enabled, "to": lever_enabled}
                 settings.lever_enabled = lever_enabled
                 settings.lever_explicit = True
+        if auto_apply_enabled is not UNSET:
+            if not isinstance(auto_apply_enabled, bool):
+                raise SettingsValidationError("auto_apply_enabled must be a boolean", path="auto_apply_enabled")
+            if settings.auto_apply_enabled != auto_apply_enabled:
+                changes["auto_apply_enabled"] = {
+                    "from": settings.auto_apply_enabled,
+                    "to": auto_apply_enabled,
+                }
+                settings.auto_apply_enabled = auto_apply_enabled
         if not changes:
             return deepcopy(settings)
         settings.version += 1

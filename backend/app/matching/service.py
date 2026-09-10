@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import concurrent.futures
 import hashlib
 import json
 import time
@@ -11,8 +12,10 @@ from typing import Any, Callable
 from uuid import uuid4
 
 from app.config import get_settings as get_app_settings
+from app.matching.ab import assign_variant, weights_for
 from app.matching.constants import DEFAULT_MODEL_ID
 from app.matching.embedder import Embedder, default_embedder
+from app.slo import record_latency
 from app.matching.errors import (
     MatchingConflictError,
     MatchingNotFoundError,
@@ -31,6 +34,7 @@ from app.matching.texts import NotFoundTextLoader, TextLoader
 IDEMPOTENCY_TTL_SEC = 24 * 60 * 60
 PRINTABLE_EXTRA = {"\n", "\r", "\t"}
 Clock = Callable[[], float]
+_EMBED_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="embed")
 
 
 def _now() -> float:
@@ -86,6 +90,7 @@ class MatchingService:
         self.text_loader = text_loader or NotFoundTextLoader()
         self.clock = clock or _now
         self.low_confidence_events = 0
+        self.semantic_fallback_events = 0
         self._sync_hits: dict[str, list[float]] = {}
         self._idem: dict[tuple[str, str], dict[str, Any]] = {}
         self._operations: dict[str, Operation] = {}
@@ -278,19 +283,57 @@ class MatchingService:
         if failures and successes and op.status == "completed":
             op.error = op.error or "partial failure"
 
+    def warmup(self, user_id: str) -> dict:
+        started = self.clock()
+        sample = "Warmup resume text with python azure kubernetes terraform docker functions."
+        error = None
+        try:
+            self.embedder.embed([sample, sample])
+            warm = True
+        except Exception as exc:
+            warm = False
+            error = str(exc)
+        elapsed_ms = int((self.clock() - started) * 1000)
+        record_latency("POST /v1/matches/warmup", elapsed_ms)
+        return {
+            "warm": warm,
+            "elapsedMs": elapsed_ms,
+            "variant": assign_variant(user_id),
+            "fallbackRate": self.semantic_fallback_events,
+            "error": error,
+        }
+
+    def ab_assignment(self, user_id: str) -> dict:
+        model = self._model_for_user(user_id)
+        keyword, semantic, variant = weights_for(user_id, model.keyword_weight, model.semantic_weight)
+        return {
+            "variant": variant,
+            "weights": {"keyword": keyword, "semantic": semantic},
+            "control": {"keyword": model.keyword_weight, "semantic": model.semantic_weight},
+        }
+
     def _score_pair(self, user_id: str, pair: dict, options: dict, *, source: str) -> dict:
         resume_text = pair["resume_text"]
         job_text = pair["job_text"]
         if len(resume_text) < 30 or len(job_text) < 30:
             self.low_confidence_events += 1
         model = self._model_for_user(user_id)
+        keyword_w, semantic_w, variant = weights_for(user_id, model.keyword_weight, model.semantic_weight)
         keyword_norm = keyword_score(resume_text, job_text)
+        fallback = False
+        timeout = get_app_settings().match_semantic_timeout_sec
         try:
-            vectors = self.embedder.embed([resume_text, job_text])
+            future = _EMBED_POOL.submit(self.embedder.embed, [resume_text, job_text])
+            vectors = future.result(timeout=timeout)
             semantic_norm = cosine_similarity(vectors[0], vectors[1]) if len(vectors) >= 2 else 0.0
+        except concurrent.futures.TimeoutError:
+            semantic_norm = 0.0
+            fallback = True
+            keyword_w, semantic_w = 1.0, 0.0
+            self.semantic_fallback_events += 1
         except Exception:
             semantic_norm = 0.0
-        score = score_1dp(keyword_norm, semantic_norm, model.keyword_weight, model.semantic_weight)
+        score = score_1dp(keyword_norm, semantic_norm, keyword_w, semantic_w)
         explanation = None
         if options["explanation"]:
             try:
@@ -331,7 +374,9 @@ class MatchingService:
             "breakdown": {
                 "keyword": round(keyword_norm * 100.0, 1),
                 "semantic": round(semantic_norm * 100.0, 1),
-                "weights": {"keyword": model.keyword_weight, "semantic": model.semantic_weight},
+                "weights": {"keyword": keyword_w, "semantic": semantic_w},
+                "variant": variant,
+                "fallback": "keyword_only" if fallback else None,
             },
             "persisted": persisted,
             "thresholdUsed": options["threshold_used"],

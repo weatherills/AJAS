@@ -138,6 +138,15 @@ def disconnect_email(req: func.HttpRequest) -> func.HttpResponse:
     )
 
 
+@bp.route(route="v1/settings/audit", methods=["GET"])
+def list_settings_audit(req: func.HttpRequest) -> func.HttpResponse:
+    return _run(
+        req,
+        "GET /v1/settings/audit",
+        lambda principal: json_response(get_service().list_audit(principal.user_id)),
+    )
+
+
 @bp.queue_trigger(arg_name="msg", queue_name="match-recalc", connection="AzureWebJobsStorage")
 def settings_match_recalc_job(msg: func.QueueMessage) -> None:
     get_service().apply_match_recalc(json.loads(msg.get_body().decode("utf-8")))

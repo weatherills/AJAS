@@ -45,6 +45,18 @@ Authorization: Bearer {{token}}
 GET {{base}}/api/v1/match-results?minScore=70&limit=50
 Authorization: Bearer {{token}}
 
+### Warm embedding cache (cold start)
+POST {{base}}/api/v1/matches/warmup
+Authorization: Bearer {{token}}
+
+### A/B weight assignment (control unless MATCH_AB_TEST=true)
+GET {{base}}/api/v1/matches/ab-variant
+Authorization: Bearer {{token}}
+
+### p95 SLO snapshot
+GET {{base}}/api/v1/ops/slo
+Authorization: Bearer {{token}}
+
 ### Review match queue is a different route (GET /v1/matches)
 GET {{base}}/api/v1/matches?status=pending&pageSize=10
 Authorization: Bearer {{token}}

@@ -45,8 +45,10 @@ export type ApplyDetail = {
   failure_reason: string | null
   submitted_at: string | null
   packaged_at: string | null
-  created_at: string
-  updated_at: string
+  captcha?: boolean
+  manual_fallback?: boolean
+  retry_count?: number
+  manual_next_steps?: string | null
 }
 
 export type CreateApplyBody = {

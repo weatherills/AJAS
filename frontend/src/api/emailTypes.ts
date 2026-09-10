@@ -23,7 +23,8 @@ export type EmailThread = {
   lastMessageAt: string
   unreadCount: number
   snippet: string
-  participants: string[]
+  deliveryAlert?: 'bounced' | 'deferred' | null
+  canonical?: boolean
 }
 
 export type EmailAttachment = {

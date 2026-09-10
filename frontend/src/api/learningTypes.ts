@@ -24,6 +24,7 @@ export type LearningMetrics = {
   threshold: number
   model_version: string
   approveRateDeltaPct: number | null
+  liftVsBaseline: number | null
   empty: boolean
   summary: string
 }

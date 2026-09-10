@@ -69,6 +69,7 @@ export type ReviewFilters = {
   status: 'all' | 'awaiting' | 'approved' | 'rejected'
   createdAfter: string
   sort: 'score' | 'date' | 'company' | 'title'
+  q: string
 }
 
 export type ReviewApi = {

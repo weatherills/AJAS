@@ -41,6 +41,7 @@ export const mockLearningApi: LearningApi = {
       threshold: params.score_threshold,
       model_version: params.model_version,
       approveRateDeltaPct: 8,
+      liftVsBaseline: 25,
       empty: false,
       summary: `Last ${period}: 12 decisions, 75% approve rate, 10 matches shown above threshold.`,
     }

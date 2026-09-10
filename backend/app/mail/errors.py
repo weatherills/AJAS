@@ -30,6 +30,10 @@ class MailForbiddenError(MailStoreError):
 class MailRateLimitedError(MailStoreError):
     """Suggestion or send rate limit exceeded."""
 
+    def __init__(self, message: str = "Rate limit exceeded", *, retry_after: int = 86400):
+        super().__init__(message)
+        self.retry_after = retry_after
+
 
 class MailUnprocessableError(MailStoreError):
     """Template variables missing or attachment limits exceeded."""

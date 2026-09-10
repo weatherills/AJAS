@@ -187,6 +187,17 @@ def submit_to_vendor(
                 error_code="rate_limited",
                 error_message="Provider rate limited the request",
             )
+        if 500 <= status_code < 600:
+            return SubmitOutcome(
+                status="retryable",
+                vendor_application_id=None,
+                vendor_request_id=None,
+                status_code=status_code,
+                endpoint=endpoint,
+                fields=fields,
+                error_code="provider_unavailable",
+                error_message=str(body.get("error") or body.get("message") or f"HTTP {status_code}"),
+            )
         if status_code >= 400:
             return SubmitOutcome(
                 status="failed",

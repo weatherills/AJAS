@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { reviewApi, USE_MOCK } from '../api'
+import { reviewApi, settingsApi, USE_MOCK } from '../api'
 import type { DecisionValue, ReviewDetail, ReviewFilters, ReviewMatch, ReviewTab } from '../api/reviewTypes'
 import { AppNav } from '../components/AppNav'
 import { ApplyModal } from '../components/ApplyModal'
@@ -11,11 +11,14 @@ import {
   COMMENT_MAX,
   companiesFrom,
   filtersForTab,
+  filtersFromSearch,
   findReviewRow,
   formatDay,
   formatWhen,
+  loadReviewPresets,
   nextAfterRemove,
   PAGE_SIZE,
+  saveReviewPreset,
   statusLabel,
   suggestionLabel,
   truncateText,
@@ -43,7 +46,7 @@ export function ReviewPage() {
   const resumeFilter = search.get('resume')
   const [tab, setTab] = useState<ReviewTab>(() => parseReviewTab(parseHash(window.location.hash).params.get('tab')))
   const [filters, setFilters] = useState<ReviewFilters>(() =>
-    filtersForTab(parseReviewTab(parseHash(window.location.hash).params.get('tab'))),
+    filtersFromSearch(parseHash(window.location.hash).params, parseReviewTab(parseHash(window.location.hash).params.get('tab'))),
   )
   const [items, setItems] = useState<ReviewMatch[]>([])
   const [total, setTotal] = useState(0)
@@ -63,9 +66,14 @@ export function ReviewPage() {
   const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 1023px)').matches)
   const [applyOpen, setApplyOpen] = useState(false)
   const [pane, setPane] = useState<'details' | 'emails'>('details')
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [presets, setPresets] = useState(() => loadReviewPresets())
+  const [slow, setSlow] = useState(false)
+  const [autoApplyEnabled, setAutoApplyEnabled] = useState(true)
   const toastId = useRef(1)
   const commentRef = useRef<HTMLTextAreaElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
+  const searchRef = useRef<HTMLInputElement | null>(null)
   const locating = useRef(false)
 
   const toast = (text: string, tone: Toast['tone'] = 'info', extra?: Pick<Toast, 'actionLabel' | 'onAction'>) => {
@@ -104,6 +112,22 @@ export function ReviewPage() {
   }, [load])
 
   useEffect(() => {
+    if (!loading) {
+      setSlow(false)
+      return
+    }
+    const timer = window.setTimeout(() => setSlow(true), 2000)
+    return () => window.clearTimeout(timer)
+  }, [loading])
+
+  useEffect(() => {
+    void settingsApi
+      .get()
+      .then((doc) => setAutoApplyEnabled(doc.autoApplyEnabled !== false))
+      .catch(() => setAutoApplyEnabled(true))
+  }, [])
+
+  useEffect(() => {
     const media = window.matchMedia('(max-width: 1023px)')
     const onChange = () => setNarrow(media.matches)
     media.addEventListener('change', onChange)
@@ -125,6 +149,12 @@ export function ReviewPage() {
         pane: nextPane,
         tab,
         resumeId: resumeFilter,
+        min: filters.minScore,
+        max: filters.maxScore,
+        company: filters.company,
+        loc: filters.location,
+        q: filters.q,
+        sort: filters.sort,
       })
       if (window.location.hash !== href) window.location.hash = href
     } catch (err) {
@@ -133,12 +163,12 @@ export function ReviewPage() {
     } finally {
       setDetailLoading(false)
     }
-  }, [resumeFilter, tab])
+  }, [resumeFilter, tab, filters])
 
   useEffect(() => {
     if (hashTab === tab) return
     setTab(hashTab)
-    setFilters(filtersForTab(hashTab))
+    setFilters(filtersFromSearch(search, hashTab))
     if (!search.get('match') && !search.get('job')) {
       setSelectedId(null)
       setDetail(null)
@@ -275,17 +305,68 @@ export function ReviewPage() {
     [comment, detail, historyMode, items, load, narrow, openRow, reopenMatch, shown],
   )
 
+  const decideBulk = useCallback(
+    async (decision: DecisionValue) => {
+      if (historyMode || selectedIds.length === 0) return
+      const parsed = validateComment(comment)
+      if (parsed.error) {
+        setCommentError(parsed.error)
+        return
+      }
+      setSaving(true)
+      const previous = items
+      setItems((current) => current.filter((item) => !selectedIds.includes(item.matchId)))
+      try {
+        await Promise.all(
+          selectedIds.map(async (matchId) => {
+            const row = previous.find((item) => item.matchId === matchId)
+            await reviewApi.decide(
+              matchId,
+              { decision, comment: parsed.value.trim() || undefined },
+              { etag: row?.etag || '', idempotencyKey: crypto.randomUUID() },
+            )
+          }),
+        )
+        toast(`Recorded ${selectedIds.length} ${decision === 'approve' ? 'approvals' : 'rejections'}`)
+        setSelectedIds([])
+        await load()
+      } catch (err) {
+        setItems(previous)
+        toast(err instanceof Error ? err.message : 'Could not save bulk decision. Try again.', 'error')
+      } finally {
+        setSaving(false)
+      }
+    },
+    [comment, historyMode, items, load, selectedIds],
+  )
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
       const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')
+      if (event.key === '/' && !typing) {
+        event.preventDefault()
+        searchRef.current?.focus()
+        return
+      }
       if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && target === commentRef.current) {
         event.preventDefault()
         const suggested = detail?.match.suggestion
         void decide(suggested === 'reject' ? 'reject' : 'approve')
         return
       }
-      if (typing || !detail || historyMode || saving) return
+      if (typing || historyMode || saving) return
+      if ((event.key === 'j' || event.key === 'k' || event.key === 'J' || event.key === 'K') && shown.length) {
+        event.preventDefault()
+        const ids = shown.map((item) => item.matchId)
+        const current = ids.indexOf(selectedId || '')
+        const delta = event.key.toLowerCase() === 'j' ? 1 : -1
+        const nextIndex = Math.min(ids.length - 1, Math.max(0, (current < 0 ? 0 : current) + delta))
+        const nxt = ids[nextIndex]
+        if (nxt) void openRow(nxt)
+        return
+      }
+      if (!detail) return
       if (event.key === 'a' || event.key === 'A') {
         event.preventDefault()
         void decide('approve')
@@ -297,7 +378,7 @@ export function ReviewPage() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [decide, detail, historyMode, saving])
+  }, [decide, detail, historyMode, openRow, saving, selectedId, shown])
 
   const emptyCopy =
     resumeFilter && shown.length === 0
@@ -323,15 +404,24 @@ export function ReviewPage() {
       <header className="library-header">
         <div>
           <h1>Review &amp; Decision</h1>
-          <p className="tagline">Approve or reject matches and saved jobs. Shortcuts: A approve · R reject · ⌘/Ctrl+Enter save with comment.</p>
+          <p className="tagline">
+            Approve or reject matches. Shortcuts: A approve · R reject · J/K move · / search · ⌘/Ctrl+Enter save with
+            comment.
+          </p>
         </div>
         <div className="feed-header-actions">
           <a className="secondary" href="#/settings">
             Settings
           </a>
-          <a className="secondary" href="#/apply">
-            Applications
-          </a>
+          {autoApplyEnabled ? (
+            <a className="secondary" href="#/apply">
+              Applications
+            </a>
+          ) : (
+            <a className="secondary" href="#/settings">
+              Enable Auto-Apply
+            </a>
+          )}
           <a className="secondary" href="#/email">
             Email
           </a>
@@ -369,6 +459,16 @@ export function ReviewPage() {
               Close
             </button>
           </div>
+          <label>
+            Search
+            <input
+              ref={searchRef}
+              value={filters.q}
+              onChange={(event) => setFilters((prev) => ({ ...prev, q: event.target.value }))}
+              placeholder="Title or company"
+              aria-label="Search review queue"
+            />
+          </label>
           <label>
             Score {filters.minScore}–{filters.maxScore}
             <input
@@ -453,6 +553,34 @@ export function ReviewPage() {
               <option value="title">Title</option>
             </select>
           </label>
+          <div className="review-presets">
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                const name = window.prompt('Name this filter preset')
+                if (!name?.trim()) return
+                setPresets(saveReviewPreset(name.trim(), filters))
+              }}
+            >
+              Save preset
+            </button>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                void navigator.clipboard?.writeText(window.location.href)
+                toast('Copied shareable filter link')
+              }}
+            >
+              Copy link
+            </button>
+            {presets.map((preset) => (
+              <button key={preset.name} type="button" className="secondary" onClick={() => setFilters(preset.filters)}>
+                {preset.name}
+              </button>
+            ))}
+          </div>
         </aside>
 
         <div className="feed-main" ref={listRef}>
@@ -464,7 +592,7 @@ export function ReviewPage() {
               </button>
             </p>
           )}
-          {loading && <p className="skeleton">Loading queue…</p>}
+          {loading && <p className="skeleton">{slow ? 'Still loading — the queue is taking longer than usual…' : 'Loading queue…'}</p>}
           {resumeFilter && (
             <p className="resume-filter-banner">
               Showing matches for this resume.{' '}
@@ -501,10 +629,36 @@ export function ReviewPage() {
               <p className="muted review-count">
                 {listTotal} {listTotal === 1 ? 'item' : 'items'}
               </p>
+              {!historyMode && selectedIds.length > 0 && (
+                <div className="review-bulk" role="toolbar" aria-label="Bulk actions">
+                  <span>
+                    {selectedIds.length} selected
+                  </span>
+                  <button type="button" className="primary" disabled={saving} onClick={() => void decideBulk('approve')}>
+                    Approve selected
+                  </button>
+                  <button type="button" className="danger" disabled={saving} onClick={() => void decideBulk('reject')}>
+                    Reject selected
+                  </button>
+                </div>
+              )}
               <div className="review-table-wrap">
                 <table className="review-table" aria-label={tab === 'history' ? 'Decision history' : 'Review queue'}>
                   <thead>
                     <tr>
+                      {!historyMode && (
+                        <th>
+                          <input
+                            type="checkbox"
+                            aria-label="Select all visible matches"
+                            checked={shown.length > 0 && shown.every((item) => selectedIds.includes(item.matchId))}
+                            onChange={(event) => {
+                              if (event.target.checked) setSelectedIds(shown.map((item) => item.matchId))
+                              else setSelectedIds([])
+                            }}
+                          />
+                        </th>
+                      )}
                       <th>Job title</th>
                       <th>Company</th>
                       {historyMode ? (
@@ -532,6 +686,20 @@ export function ReviewPage() {
                       const commentPreview = truncateText(item.comment, 48)
                       return (
                         <tr key={item.matchId} className={active ? 'is-selected' : undefined}>
+                          {!historyMode && (
+                            <td>
+                              <input
+                                type="checkbox"
+                                aria-label={`Select ${item.jobTitle}`}
+                                checked={selectedIds.includes(item.matchId)}
+                                onChange={(event) => {
+                                  setSelectedIds((prev) =>
+                                    event.target.checked ? [...prev, item.matchId] : prev.filter((id) => id !== item.matchId),
+                                  )
+                                }}
+                              />
+                            </td>
+                          )}
                           <td>
                             <button
                               type="button"
@@ -733,9 +901,15 @@ export function ReviewPage() {
                       <button type="button" className="secondary" disabled={saving} onClick={() => void reopen()}>
                         {saving ? 'Working…' : 'Reopen'}
                       </button>
-                      <button type="button" className="primary" onClick={() => setApplyOpen(true)}>
-                        Auto-Apply
-                      </button>
+                      {autoApplyEnabled ? (
+                        <button type="button" className="primary" onClick={() => setApplyOpen(true)}>
+                          Auto-Apply
+                        </button>
+                      ) : (
+                        <a className="secondary" href="#/settings">
+                          Enable Auto-Apply in Settings
+                        </a>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -779,15 +953,21 @@ export function ReviewPage() {
                       >
                         Reject
                       </button>
-                      <button
-                        type="button"
-                        className="secondary"
-                        disabled={!detail.match.jobId}
-                        title={detail.match.jobId ? 'Submit this posting' : 'Missing job metadata'}
-                        onClick={() => setApplyOpen(true)}
-                      >
-                        Auto-Apply
-                      </button>
+                      {autoApplyEnabled ? (
+                        <button
+                          type="button"
+                          className="secondary"
+                          disabled={!detail.match.jobId}
+                          title={detail.match.jobId ? 'Submit this posting' : 'Missing job metadata'}
+                          onClick={() => setApplyOpen(true)}
+                        >
+                          Auto-Apply
+                        </button>
+                      ) : (
+                        <a className="secondary" href="#/settings">
+                          Enable Auto-Apply
+                        </a>
+                      )}
                     </div>
                     <p className="muted">⌘/Ctrl+Enter saves while the comment box is focused.</p>
                   </div>
@@ -800,7 +980,7 @@ export function ReviewPage() {
         )}
       </div>
       <ToastStack toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))} />
-      {applyOpen && detail && (
+      {applyOpen && detail && autoApplyEnabled && (
         <ApplyModal
           jobTitle={detail.match.jobTitle}
           company={detail.match.company}

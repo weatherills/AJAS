@@ -246,6 +246,7 @@ class LearningService:
             "threshold": snap.threshold,
             "model_version": snap.model_version,
             "approveRateDeltaPct": delta,
+            "liftVsBaseline": round((snap.precision_proxy - 0.5) * 100, 1) if snap.decisions else None,
             "empty": snap.decisions == 0,
             "summary": self._summary_text(snap, period),
         }

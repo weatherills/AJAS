@@ -2,13 +2,13 @@
 
 from typing import Final, Literal
 
-DeliveryStatus = Literal["received", "queued", "sending", "sent", "failed", "draft"]
+DeliveryStatus = Literal["received", "queued", "sending", "sent", "failed", "draft", "bounced", "deferred"]
 LinkSource = Literal["auto", "manual", "rule"]
 AttachmentStatus = Literal["stored", "skipped_oversize", "skipped_scan", "pending"]
 SyncMode = Literal["webhook", "poll", "both"]
 
 DELIVERY_STATUSES: Final[frozenset[str]] = frozenset(
-    {"received", "queued", "sending", "sent", "failed", "draft"}
+    {"received", "queued", "sending", "sent", "failed", "draft", "bounced", "deferred"}
 )
 LINK_SOURCES: Final[frozenset[str]] = frozenset({"auto", "manual", "rule"})
 TEMPLATE_VARS: Final[tuple[str, ...]] = ("firstName", "company", "role", "jobRef")

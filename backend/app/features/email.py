@@ -57,7 +57,14 @@ def _handle(exc: Exception, *, route: str, method: str, user_id: str | None = No
         return error_response("CONFLICT", str(exc), 409)
     if isinstance(exc, MailRateLimitedError):
         log_request(feature="email", route=route, method=method, status=429, user_id=user_id, error=str(exc))
-        return error_response("RATE_LIMITED", str(exc), 429)
+        retry_after = str(getattr(exc, "retry_after", 86400))
+        resp = error_response("RATE_LIMITED", str(exc), 429, details={"retryAfter": int(retry_after)})
+        return func.HttpResponse(
+            resp.get_body(),
+            status_code=429,
+            mimetype="application/json",
+            headers={"Retry-After": retry_after},
+        )
     log_exception("email", route, exc)
     raise exc
 
@@ -246,3 +253,8 @@ def mail_ingest_job(msg: func.QueueMessage) -> None:
 @bp.timer_trigger(schedule="0 */10 * * * *", arg_name="timer", run_on_startup=False)
 def mail_poll_timer(timer: func.TimerRequest) -> None:
     get_service().poll_all()
+
+
+@bp.timer_trigger(schedule="0 0 3 * * *", arg_name="timer", run_on_startup=False)
+def mail_retention_timer(timer: func.TimerRequest) -> None:
+    get_service().purge_expired()

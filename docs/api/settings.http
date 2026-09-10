@@ -7,8 +7,21 @@ GET {{base}}/api/health
 ### Unauthenticated settings → 401
 GET {{base}}/api/v1/settings
 
-### Get settings (defaults: threshold 0.7, sources off, email disconnected)
+### Get settings (defaults: threshold 0.7, Auto-Apply on, sources off, email disconnected)
 GET {{base}}/api/v1/settings
+Authorization: Bearer {{token}}
+
+### Toggle Auto-Apply
+PATCH {{base}}/api/v1/settings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "autoApplyEnabled": false
+}
+
+### Settings audit trail
+GET {{base}}/api/v1/settings/audit
 Authorization: Bearer {{token}}
 
 ### Patch match threshold (0.10–0.99) and enqueue match-recalc

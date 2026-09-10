@@ -26,6 +26,7 @@ class UserSettings(BaseModel):
     lever_enabled: bool = False
     greenhouse_explicit: bool = False
     lever_explicit: bool = False
+    auto_apply_enabled: bool = True
     version: int = 1
     created_at: str
     updated_at: str

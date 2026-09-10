@@ -14,6 +14,9 @@ export const liveSettingsApi: SettingsApi = {
       }),
     )
   },
+  async listAudit() {
+    return json(await request('/api/v1/settings/audit'))
+  },
   async connectEmail(redirectUri) {
     return json(
       await request('/api/v1/settings/email/connect', {

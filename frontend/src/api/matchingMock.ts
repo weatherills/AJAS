@@ -103,4 +103,7 @@ export const mockMatchingApi: MatchingApi = {
       .filter((row) => row.resumeId === query.resumeId)
       .filter((row) => (wanted ? wanted.has(row.jobId) : true))
   },
+  async warmup() {
+    return { warm: true, elapsedMs: 1 }
+  },
 }

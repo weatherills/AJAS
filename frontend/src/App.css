@@ -1277,6 +1277,48 @@ select:focus-visible {
   background: rgba(99, 102, 241, 0.16);
 }
 
+.review-bulk,
+.review-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.6rem 0;
+}
+
+.toggle-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.audit-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.audit-diff {
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  background: rgba(15, 23, 42, 0.4);
+  padding: 0.5rem;
+  border-radius: 0.4rem;
+}
+
+.onboarding {
+  margin: 1.25rem 0 1.5rem;
+}
+
+.onboarding ol {
+  padding-left: 1.2rem;
+}
+
+.onboarding li.is-done a {
+  color: inherit;
+  opacity: 0.75;
+}
+
 .review-row-btn {
   background: none;
   border: none;

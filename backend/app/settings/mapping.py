@@ -112,6 +112,7 @@ def settings_response(
         "emailConnection": api_email(connection),
         "oauthConfigured": microsoft_oauth_configured(),
         "sources": _source_payload(settings),
+        "autoApplyEnabled": bool(getattr(settings, "auto_apply_enabled", True)),
         "audit": {
             "createdAt": settings.created_at,
             "updatedAt": settings.updated_at,

@@ -40,6 +40,15 @@ export function reviewHref(
     resumeId?: string | null
     pane?: 'details' | 'emails'
     tab?: ReviewHashTab | null
+    min?: number | null
+    max?: number | null
+    company?: string | null
+    loc?: string | null
+    q?: string | null
+    sort?: string | null
+    source?: string | null
+    status?: string | null
+    after?: string | null
   } = {},
 ): string {
   return hashHref('/review', {
@@ -48,6 +57,15 @@ export function reviewHref(
     job: opts.matchId ? undefined : opts.jobId,
     resume: opts.resumeId,
     pane: opts.pane,
+    min: opts.min != null && opts.min !== 0 ? String(opts.min) : undefined,
+    max: opts.max != null && opts.max !== 100 ? String(opts.max) : undefined,
+    company: opts.company,
+    loc: opts.loc,
+    q: opts.q,
+    sort: opts.sort && opts.sort !== 'score' ? opts.sort : undefined,
+    source: opts.source && opts.source !== 'all' && opts.source !== 'ai' ? opts.source : undefined,
+    status: opts.status && opts.status !== 'awaiting' && opts.status !== 'all' ? opts.status : undefined,
+    after: opts.after,
   })
 }
 

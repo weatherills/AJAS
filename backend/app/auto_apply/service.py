@@ -20,6 +20,7 @@ from app.auto_apply.package import build_manual_package_zip
 from app.auto_apply.queues import InMemoryJobQueue, JobQueue
 from app.auto_apply.store import AutoApplyStore, get_auto_apply_store
 from app.auto_apply.submitters import HttpPoster, map_vendor_fields, submit_to_vendor
+from app.auto_apply.validation import retry_backoff_seconds, validate_apply_fields
 from app.config import get_settings
 
 Clock = Callable[[], str]
@@ -99,6 +100,7 @@ class AutoApplyService:
             pass
 
     def create_request(self, user_id: str, body: dict[str, Any], *, idempotency_key: str | None = None) -> tuple[int, dict[str, Any]]:
+        self._require_auto_apply_enabled(user_id)
         vendor = _vendor(body.get("job_source") or body.get("vendor"))
         posting_url = body.get("posting_url")
         job_posting_id = body.get("job_posting_id") or body.get("job_id")
@@ -109,6 +111,7 @@ class AutoApplyService:
         consent = bool(body.get("consent_approved") if "consent_approved" in body else True)
         if not consent:
             raise AutoApplyValidationError("consent_approved must be true", path="consent_approved")
+        validate_apply_fields(body, PROFILE)
         answers = body.get("answers") if isinstance(body.get("answers"), dict) else {}
         mode = "manual_package" if vendor == "manual" or _needs_manual_package(vendor, posting_url if isinstance(posting_url, str) else None) else "api"
         key = idempotency_key or (body.get("idempotency_key") if isinstance(body.get("idempotency_key"), str) else None)
@@ -252,13 +255,19 @@ class AutoApplyService:
         user_id = _require_str(payload.get("userId"), field_name="userId")
         request_id = _require_str(payload.get("requestId"), field_name="requestId")
         attempt = self.store.get_attempt(request_id, user_id=user_id)
+        if attempt.status == "rate_limited":
+            try:
+                self.store.transition(user_id, request_id, "queued")
+                attempt = self.store.get_attempt(request_id, user_id=user_id)
+            except Exception:
+                return
         if attempt.status != "queued":
             return
         self.processed += 1
         if attempt.mode == "manual_package" or _needs_manual_package(attempt.vendor, attempt.posting_url):
             self._package_manual(user_id, attempt)
             return
-        self._submit_programmatic(user_id, attempt)
+        self._submit_programmatic(user_id, attempt, dequeue_count=dequeue_count)
 
     def _package_manual(self, user_id: str, attempt: AutoApplyAttempt) -> None:
         package_uri = f"packages/{user_id}/{attempt.id}.zip"
@@ -278,14 +287,14 @@ class AutoApplyService:
         self.store.lock_package(user_id, attempt.id)
         self.store.transition(user_id, attempt.id, "needs_review", payload={"reason": "manual_package"})
 
-    def _submit_programmatic(self, user_id: str, attempt: AutoApplyAttempt) -> None:
+    def _submit_programmatic(self, user_id: str, attempt: AutoApplyAttempt, *, dequeue_count: int = 1) -> None:
         self.store.transition(user_id, attempt.id, "submitting")
         payload_uri = f"provider_payloads/{user_id}/{attempt.id}.json"
         submit = self.store.create_submit_request(
             user_id,
             attempt.id,
             vendor=attempt.vendor,
-            idempotency_key=f"{attempt.id}:{attempt.vendor}",
+            idempotency_key=f"{attempt.id}:{attempt.vendor}:{dequeue_count}",
             request_blob_uri=payload_uri,
         )
         mappings = self.store.list_vendor_mappings(attempt.vendor)
@@ -315,15 +324,28 @@ class AutoApplyService:
             payload_uri,
             json.dumps({"endpoint": outcome.endpoint, "fields": outcome.fields, "status": outcome.status}).encode("utf-8"),
         )
-        if outcome.status == "rate_limited":
+        if outcome.status in {"rate_limited", "retryable"}:
             self.store.complete_submit(
                 user_id,
                 submit.id,
                 status="retrying",
-                error_code="rate_limited",
+                retry_count=dequeue_count,
+                error_code=outcome.error_code or outcome.status,
                 error_message=outcome.error_message,
             )
             self.store.transition(user_id, attempt.id, "rate_limited")
+            limit = settings.auto_apply_poison_dequeue or POISON_DEQUEUE
+            if dequeue_count < limit:
+                delay = retry_backoff_seconds(dequeue_count)
+                payload = {
+                    "eventType": "AutoApplyQueued",
+                    "userId": user_id,
+                    "requestId": attempt.id,
+                    "retryAfterSec": delay,
+                }
+                self.queue.enqueue(settings.auto_apply_request_queue or REQUEST_QUEUE, payload)
+                if isinstance(self.queue, InMemoryJobQueue):
+                    self.process_request(payload, dequeue_count=dequeue_count + 1)
             return
         if outcome.status != "succeeded":
             self.store.complete_submit(
@@ -372,6 +394,22 @@ class AutoApplyService:
         except AutoApplyNotFoundError:
             return None
         return cover.body_text
+
+    def _require_auto_apply_enabled(self, user_id: str) -> None:
+        try:
+            from app.settings.runtime import try_get_service as try_settings
+
+            settings_svc = try_settings()
+        except Exception:
+            settings_svc = None
+        if settings_svc is None:
+            return
+        try:
+            doc = settings_svc.get(user_id)
+        except Exception:
+            return
+        if doc.get("autoApplyEnabled") is False:
+            raise AutoApplyValidationError("Auto-Apply is disabled. Enable it in Settings.", path="autoApplyEnabled")
 
     def _in_flight(self, user_id: str, job_id: str | None, posting_url: str | None):
         for row in self.store.list_attempts(user_id):
@@ -423,6 +461,9 @@ class AutoApplyService:
                 cover_blob = cover.blob_uri or cover_blob
             except AutoApplyNotFoundError:
                 cover_text = None
+        captcha = "captcha" in (attempt.posting_url or "").lower()
+        manual = attempt.mode == "manual_package" or _needs_manual_package(attempt.vendor, attempt.posting_url)
+        retry_count = max((row.retry_count for row in submits), default=0)
         return {
             "request_id": attempt.id,
             "state": _api_state(attempt, cancelled=cancelled),
@@ -454,4 +495,13 @@ class AutoApplyService:
             "packaged_at": next((event.created_ts for event in events if event.event_type == "needs_review"), None),
             "created_at": attempt.created_at,
             "updated_at": attempt.updated_at,
+            "captcha": captcha,
+            "manual_fallback": manual,
+            "retry_count": retry_count,
+            "manual_next_steps": (
+                "Download the package, copy the cover letter, then finish the posting in your browser. "
+                "Captcha and SSO steps cannot be completed automatically."
+                if manual
+                else None
+            ),
         }

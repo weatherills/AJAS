@@ -32,4 +32,5 @@ export type MatchingApi = {
   scoreMany(query: MatchScoreQuery): Promise<MatchView[]>
   scoreOne(query: Omit<MatchScoreQuery, 'jobs'> & { job: { id: string; text: string } }): Promise<MatchView>
   listResults(query: { resumeId: string; jobIds?: string[] }): Promise<MatchView[]>
+  warmup(): Promise<{ warm: boolean; elapsedMs: number }>
 }
