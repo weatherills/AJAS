@@ -17,6 +17,11 @@ export function mailboxReadable(status: EmailStatus | null | undefined): boolean
   return graphConnected(status) || demoMailbox(status)
 }
 
+export function oauthConfigured(status: EmailStatus | null | undefined): boolean {
+  if (!status) return true
+  return status.oauthConfigured !== false
+}
+
 const TOKEN = /\{(firstName|company|role|jobRef)\}/g
 
 export function fillTemplate(text: string, values: Partial<Record<TemplateVars, string>>): string {

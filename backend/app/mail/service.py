@@ -7,6 +7,7 @@ import logging
 from datetime import timedelta
 
 from app.config import get_settings as get_app_settings
+from app.config import microsoft_oauth_configured
 from app.mail.errors import (
     MailConflictError,
     MailForbiddenError,
@@ -535,6 +536,7 @@ class EmailService:
                 "unreadCount": 0,
                 "demo": False,
                 "provider": None,
+                "oauthConfigured": microsoft_oauth_configured(),
             }
         threads = self.store.list_threads(account.id) if graph_ok or demo else []
         if graph_ok:
@@ -555,6 +557,7 @@ class EmailService:
             "demo": demo,
             "provider": provider,
             "lastSyncError": account.last_sync_error if graph_ok or demo else None,
+            "oauthConfigured": microsoft_oauth_configured(),
         }
 
     def _settings_store(self):

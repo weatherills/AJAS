@@ -599,12 +599,84 @@ button:disabled {
   color: #e2e8f0;
 }
 
+.toggle.is-disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.toggle input:disabled {
+  cursor: not-allowed;
+}
+
+.source-unconfigured {
+  margin: 0 0 0.75rem;
+}
+
+.source-boards {
+  margin: 0 0 0.5rem;
+}
+
+.source-board-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.source-board-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.source-board-copy {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.source-board-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.source-board-row .inline-error {
+  margin: 0;
+}
+
+.source-board-row code {
+  font-size: 0.9rem;
+}
+
+.source-add-form {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.75rem;
+  align-items: end;
+  margin: 0 0 1rem;
+}
+
+.source-add-form label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.source-add-form input {
+  width: 100%;
+}
+
 .email-connected p {
   margin: 0.35rem 0;
 }
 
 @media (max-width: 700px) {
   .source-row,
+  .source-add-form,
+  .source-board-row,
   .slider-row,
   .two-col,
   .library-header,
@@ -655,6 +727,16 @@ button:disabled {
     border-color: #cbd5e1;
   }
 
+  .email-graph-notice.is-unconfigured,
+  .oauth-unconfigured {
+    background: #fffbeb;
+    border-color: #f59e0b;
+  }
+
+  .oauth-unconfigured {
+    color: #92400e;
+  }
+
   .banner {
     color: #312e81;
     background: rgba(99, 102, 241, 0.1);
@@ -694,15 +776,36 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
-  align-items: center;
+  align-items: flex-start;
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
   padding: 0.85rem 1rem;
   background: rgba(148, 163, 184, 0.05);
 }
 
+.feed-source > button {
+  flex-shrink: 0;
+  align-self: center;
+}
+
 .feed-source p {
   margin: 0.15rem 0 0;
+}
+
+.feed-source-boards {
+  list-style: none;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.feed-source-boards li {
+  margin: 0;
+}
+
+.feed-source-boards code {
+  font-size: 0.85rem;
 }
 
 .feed-source-syncing {
@@ -715,6 +818,10 @@ button:disabled {
 
 .feed-source-error {
   border-color: #f87171;
+}
+
+.feed-source-unconfigured {
+  border-color: #f59e0b;
 }
 
 .feed-layout {
@@ -1491,8 +1598,22 @@ select:focus-visible {
   padding: 0.9rem 1rem;
 }
 
-.email-graph-notice.is-compact h2 {
-  font-size: 1rem;
+.email-graph-notice.is-unconfigured {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.oauth-unconfigured {
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.oauth-unconfigured p {
+  margin: 0;
 }
 
 .email-demo-banner {

@@ -24,6 +24,8 @@ class UserSettings(BaseModel):
     match_threshold: int | None = None
     greenhouse_enabled: bool = False
     lever_enabled: bool = False
+    greenhouse_explicit: bool = False
+    lever_explicit: bool = False
     version: int = 1
     created_at: str
     updated_at: str

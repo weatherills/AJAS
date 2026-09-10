@@ -357,9 +357,26 @@ class ReviewService:
             for row in self.store.list_matches(user_id, source=source)
             if row.job_id == job_id and row.resume_id == resume_id
         ]
-        if existing:
-            return _match_row(existing[0])
         suggestion = "approve" if score >= 75 else "reject" if score < 50 else "review"
+        if existing:
+            pending = next((row for row in existing if row.status == "PENDING"), None)
+            if pending is None:
+                return _match_row(existing[0])
+            try:
+                updated = self.store.update_pending_match(
+                    user_id,
+                    pending.id,
+                    ai_score=score,
+                    suggestion=suggestion,
+                    why=why,
+                    summary=why,
+                    job_title=job_title or pending.job_title,
+                    company=company or pending.company,
+                    location=location or pending.location,
+                )
+            except ReviewConflictError:
+                return _match_row(pending)
+            return _match_row(updated)
         try:
             row = self.store.create_match(
                 user_id,

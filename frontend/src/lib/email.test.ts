@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mockEmailApi } from '../api/emailMock'
-import { demoMailbox, fillTemplate, graphConnected, leftoverVars, mailboxReadable, relativeTime, validateAttachments } from './email'
+import { demoMailbox, fillTemplate, graphConnected, leftoverVars, mailboxReadable, oauthConfigured, relativeTime, validateAttachments } from './email'
 
 describe('email helpers', () => {
   it('fills template variables and reports leftovers', () => {
@@ -70,6 +70,30 @@ describe('mailbox connection helpers', () => {
     expect(graphConnected(mixed)).toBe(false)
     expect(demoMailbox(mixed)).toBe(true)
   })
+
+  it('treats missing oauthConfigured as available and false as unconfigured', () => {
+    expect(
+      oauthConfigured({
+        connected: false,
+        graphConnected: false,
+        address: null,
+        lastSyncedAt: null,
+        unreadCount: 0,
+        demo: false,
+      }),
+    ).toBe(true)
+    expect(
+      oauthConfigured({
+        connected: false,
+        graphConnected: false,
+        address: 'local-user@ajas.dev',
+        lastSyncedAt: null,
+        unreadCount: 1,
+        demo: true,
+        oauthConfigured: false,
+      }),
+    ).toBe(false)
+  })
 })
 
 describe('mock email api', () => {
@@ -78,6 +102,7 @@ describe('mock email api', () => {
     expect(graphConnected(status)).toBe(false)
     expect(demoMailbox(status)).toBe(true)
     expect(mailboxReadable(status)).toBe(true)
+    expect(status.oauthConfigured).toBe(true)
   })
 
   it('lists threads and clears unread on view', async () => {
