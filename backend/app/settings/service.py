@@ -94,6 +94,18 @@ class SettingsService:
             self.queue.enqueue(cfg.source_discovery_queue, {"userId": user_id, "source": "greenhouse"})
         if updated.lever_enabled and not old_lv:
             self.queue.enqueue(cfg.source_discovery_queue, {"userId": user_id, "source": "lever"})
+        if "matchThreshold" in body and new_threshold != old_threshold:
+            self.apply_match_recalc({"userId": user_id, "newThreshold": new_threshold})
+        if "greenhouseEnabled" in sources or "leverEnabled" in sources:
+            self.apply_source_discovery(
+                {
+                    "userId": user_id,
+                    "greenhouseEnabled": updated.greenhouse_enabled,
+                    "leverEnabled": updated.lever_enabled,
+                    "crawlGreenhouse": bool(updated.greenhouse_enabled and not old_gh),
+                    "crawlLever": bool(updated.lever_enabled and not old_lv),
+                }
+            )
         connection = self._visible_connection(user_id)
         return settings_response(updated, connection, updated_by=user_id)
 
@@ -261,6 +273,69 @@ class SettingsService:
         if len(bucket) >= limit:
             raise SettingsRateLimitedError("Rate limit exceeded")
         bucket.append(now)
+
+    def apply_match_recalc(self, payload: dict) -> None:
+        user_id = payload.get("userId") or payload.get("user_id")
+        raw = payload.get("newThreshold")
+        if not user_id or raw is None:
+            return
+        try:
+            pct = int(round(float(raw) * 100)) if float(raw) <= 1 else int(round(float(raw)))
+        except (TypeError, ValueError):
+            return
+        try:
+            from app.matching.runtime import try_get_service as try_matching
+            from app.matching.store import get_matching_store
+
+            service = try_matching()
+            store = service.store if service is not None else get_matching_store()
+            store.update_prefs(user_id, threshold_pct=max(0, min(100, pct)))
+        except Exception:
+            pass
+
+    def apply_source_discovery(self, payload: dict) -> None:
+        try:
+            from app.job_sources.runtime import try_get_service
+
+            service = try_get_service()
+            if service is None:
+                return
+            greenhouse = payload.get("greenhouseEnabled")
+            lever = payload.get("leverEnabled")
+            if greenhouse is None and payload.get("source") == "greenhouse":
+                greenhouse = True
+            if lever is None and payload.get("source") == "lever":
+                lever = True
+            if greenhouse is not None:
+                for tenant in service.store.list_tenants("greenhouse"):
+                    service.store.upsert_tenant(
+                        "greenhouse",
+                        tenant.tenant_key,
+                        config=tenant.config,
+                        enabled=bool(greenhouse),
+                    )
+            if lever is not None:
+                for tenant in service.store.list_tenants("lever"):
+                    service.store.upsert_tenant(
+                        "lever",
+                        tenant.tenant_key,
+                        config=tenant.config,
+                        enabled=bool(lever),
+                    )
+            if payload.get("crawlGreenhouse"):
+                try:
+                    service.enqueue_crawl("greenhouse")
+                    service.drain()
+                except Exception:
+                    pass
+            if payload.get("crawlLever"):
+                try:
+                    service.enqueue_crawl("lever")
+                    service.drain()
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
 
 def _validate_redirect(uri: str) -> None:

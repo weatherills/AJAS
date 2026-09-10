@@ -37,6 +37,21 @@ def _now() -> float:
     return time.time()
 
 
+def _meta_from_job_text(job_text: str, job_id: str) -> tuple[str, str, str]:
+    title = job_id
+    company = "Unknown"
+    location = "Remote"
+    for line in job_text.splitlines():
+        lower = line.lower()
+        if lower.startswith("title:"):
+            title = line.split(":", 1)[1].strip() or title
+        elif lower.startswith("company:"):
+            company = line.split(":", 1)[1].strip() or company
+        elif lower.startswith("location:"):
+            location = line.split(":", 1)[1].strip() or location
+    return title, company, location
+
+
 @dataclass
 class Operation:
     id: str
@@ -288,7 +303,7 @@ class MatchingService:
                 )
             except Exception:
                 explanation = None
-        persisted = score >= options["threshold_used"]
+        persisted = score >= options["threshold_used"] or bool(options.get("force_persist"))
         match_id = None
         resume_hash = sha256_text(resume_text)
         job_hash = sha256_text(job_text)
@@ -305,6 +320,7 @@ class MatchingService:
                 resume_hash=resume_hash,
                 job_hash=job_hash,
             )
+            self._push_review(user_id, pair, score=score, explanation=explanation, match_id=match_id)
         body: dict[str, Any] = {
             "score": score,
             "breakdown": {
@@ -563,6 +579,7 @@ class MatchingService:
             if isinstance(top_n, bool) or not isinstance(top_n, int) or top_n < 1:
                 raise MatchingValidationError("topN must be a positive integer", path="topN")
         filter_below = bool(body.get("filterBelowThreshold"))
+        force_persist = bool(body.get("persist") or body.get("saveMatch"))
         return {
             "kind": kind,
             "threshold_used": threshold_used,
@@ -570,7 +587,43 @@ class MatchingService:
             "explanation": explanation,
             "top_n": top_n,
             "filter_below_threshold": filter_below,
+            "force_persist": force_persist,
         }
+
+    def _push_review(self, user_id: str, pair: dict, *, score: float, explanation: str | None, match_id: str | None) -> None:
+        job_id = pair.get("job_id")
+        resume_id = pair.get("resume_id")
+        if not job_id or not resume_id:
+            return
+        title, company, location = _meta_from_job_text(pair.get("job_text") or "", job_id)
+        try:
+            from app.job_sources.runtime import try_get_service as try_jobs
+
+            jobs = try_jobs()
+            if jobs is not None:
+                card = jobs.get_feed_job(job_id)
+                title = card.get("title") or title
+                company = card.get("company") or company
+                location = card.get("location") or location
+        except Exception:
+            pass
+        try:
+            from app.review.runtime import get_service as get_review_service
+
+            get_review_service().upsert_scored_match(
+                user_id,
+                job_id=job_id,
+                resume_id=resume_id,
+                job_title=title,
+                company=company,
+                location=location,
+                score=score,
+                why=explanation,
+                source="saved" if pair.get("save_source") == "saved" else "ai",
+                match_id=match_id,
+            )
+        except Exception:
+            pass
 
     def _learning_params(self, user_id: str):
         try:

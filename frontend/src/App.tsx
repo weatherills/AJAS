@@ -106,8 +106,9 @@ function Home() {
       <main>
         <p className="intro">
           Resume Management, the job feed with match scores, Review, Auto-Apply, Email, Learning, and Settings
-          are live. Upload a resume, scan Greenhouse and Lever, review scores, apply, reply to recruiter mail,
-          and let approve/reject decisions tune ranking.
+          are live. Upload a resume, scan Greenhouse and Lever, review scores (matches at or above your
+          threshold land in Review), apply, reply to recruiter mail, and let approve/reject decisions tune
+          ranking.
         </p>
 
         <ul className="phases">
