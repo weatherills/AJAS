@@ -201,8 +201,16 @@ def preview_email_template(req: func.HttpRequest) -> func.HttpResponse:
 def email_bounce_webhook(req: func.HttpRequest) -> func.HttpResponse:
     try:
         bind_request(req)
+        from hmac import compare_digest
+
+        from app.config import get_settings
         from app.mail.bounce import classify_delivery
         from app.mail import suppression
+
+        expected = (get_settings().mail_bounce_webhook_secret or "").strip()
+        got = (req.headers.get("X-Webhook-Secret") or req.headers.get("x-webhook-secret") or "").strip()
+        if not expected or not got or not compare_digest(expected, got):
+            return error_response("UNAUTHENTICATED", "invalid webhook secret", 401)
 
         payload = {}
         try:

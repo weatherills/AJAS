@@ -17,4 +17,18 @@ export const liveLearningApi: LearningApi = {
   async metrics(period) {
     return json<LearningMetrics>(await request(`/api/v1/metrics?scope=self&period=${period}`))
   },
+  async validatePipeline(events) {
+    return json(await request('/api/v1/learning/pipeline/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events }),
+    }))
+  },
+  async backfill(events) {
+    return json(await request('/api/v1/learning/pipeline/backfill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events }),
+    }))
+  },
 }

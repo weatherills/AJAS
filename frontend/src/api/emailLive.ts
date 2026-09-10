@@ -67,4 +67,10 @@ export const liveEmailApi: EmailApi = {
       }),
     )
   },
+  async listSuppressions() {
+    const result = await json<{ items: { address: string; reason: string; source?: string }[] }>(
+      await request('/api/v1/email/suppressions'),
+    )
+    return result.items
+  },
 }

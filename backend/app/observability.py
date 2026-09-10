@@ -6,6 +6,7 @@ import json
 import logging
 from typing import Any
 
+from app.mail.pii import redact_pii
 from app.request_context import current_request_id
 
 log = logging.getLogger("ajas")
@@ -30,9 +31,9 @@ def log_request(
         "request_id": current_request_id() or "-",
     }
     if extra:
-        payload.update(extra)
+        payload.update({key: redact_pii(str(value)) if isinstance(value, str) else value for key, value in extra.items()})
     if error:
-        payload["error"] = error
+        payload["error"] = redact_pii(error)
         log.warning("ajas.request %s", json.dumps(payload, default=str))
         return
     log.info("ajas.request %s", json.dumps(payload, default=str))

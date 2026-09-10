@@ -1,0 +1,15 @@
+{
+  "vendor": "lever",
+  "postingUrl": "https://jobs.lever.co/acme/abc-def",
+  "jobId": "abc-def",
+  "profile": {
+    "full_name": "Alex Jobseeker",
+    "email": "alex@example.com",
+    "phone": "+1-555-0100"
+  },
+  "expectedEndpoint": "https://api.lever.co/v0/postings/acme/abc-def",
+  "response": {
+    "id": "lv-app-42",
+    "request_id": "lv-req-1"
+  }
+}

@@ -6,6 +6,8 @@ import { ApplyModal } from '../components/ApplyModal'
 import { JobCrossLinks } from '../components/JobCrossLinks'
 import { JobEmailsTab } from '../components/JobEmailsTab'
 import { ToastStack } from '../components/Toast'
+import { describeApiError } from '../lib/apiErrors'
+import { trapFocus } from '../lib/focusTrap'
 import { applyHref, parseHash, parseReviewTab, resumeHref, reviewHref, useHashSearch } from '../lib/routes'
 import {
   COMMENT_MAX,
@@ -75,6 +77,7 @@ export function ReviewPage() {
   const commentRef = useRef<HTMLTextAreaElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
   const searchRef = useRef<HTMLInputElement | null>(null)
+  const drawerRef = useRef<HTMLElement | null>(null)
   const locating = useRef(false)
   const loadGen = useRef(0)
 
@@ -82,6 +85,11 @@ export function ReviewPage() {
     const id = toastId.current++
     setToasts((prev) => [...prev, { id, text, tone, ...extra }])
     window.setTimeout(() => setToasts((prev) => prev.filter((item) => item.id !== id)), 5000)
+  }
+
+  const toastApiError = (err: unknown, fallback: string, retry?: () => void) => {
+    const described = describeApiError(err)
+    toast(described.message || fallback, 'error', described.retryable && retry ? { actionLabel: 'Retry', onAction: retry } : undefined)
   }
 
   const scoped = useMemo(
@@ -106,7 +114,9 @@ export function ReviewPage() {
       setVisible(PAGE_SIZE)
     } catch (err) {
       if (gen !== loadGen.current) return
-      setLoadError(err instanceof Error ? err.message : 'Could not load the review queue')
+      const described = describeApiError(err)
+      setLoadError(described.message)
+      toastApiError(err, 'Could not load the review queue', () => void load())
     } finally {
       if (gen === loadGen.current) setLoading(false)
     }
@@ -300,9 +310,9 @@ export function ReviewPage() {
           setDetail(null)
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Could not save decision. Try again.'
-        setPaneError(message)
-        toast('Could not save decision. Try again.', 'error')
+        const described = describeApiError(err)
+        setPaneError(described.message)
+        toastApiError(err, 'Could not save decision. Try again.', () => void decide(decision))
       } finally {
         setSaving(false)
       }
@@ -337,7 +347,7 @@ export function ReviewPage() {
         await load()
       } catch (err) {
         setItems(previous)
-        toast(err instanceof Error ? err.message : 'Could not save bulk decision. Try again.', 'error')
+        toastApiError(err, 'Could not save bulk decision. Try again.')
       } finally {
         setSaving(false)
       }
@@ -363,7 +373,7 @@ export function ReviewPage() {
         await load()
       } catch (err) {
         setItems(previous)
-        toast(err instanceof Error ? err.message : 'Bulk update failed', 'error')
+        toastApiError(err, 'Bulk update failed', () => void bulkTriage(action))
       } finally {
         setSaving(false)
       }
@@ -375,6 +385,30 @@ export function ReviewPage() {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
       const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')
+      if (event.key === 'Escape') {
+        if (helpOpen) {
+          event.preventDefault()
+          setHelpOpen(false)
+          return
+        }
+        if (filtersOpen) {
+          event.preventDefault()
+          setFiltersOpen(false)
+          return
+        }
+        if (selectedId) {
+          event.preventDefault()
+          setSelectedId(null)
+          setDetail(null)
+          const href = reviewHref({ tab, resumeId: resumeFilter })
+          if (window.location.hash !== href) window.location.hash = href
+        }
+        return
+      }
+      if (event.key === 'Tab' && narrow && selectedId && drawerRef.current) {
+        trapFocus(drawerRef.current, event)
+        return
+      }
       if (event.key === '?' && !typing) {
         event.preventDefault()
         setHelpOpen((open) => !open)
@@ -414,7 +448,7 @@ export function ReviewPage() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [decide, detail, historyMode, openRow, saving, selectedId, shown])
+  }, [decide, detail, filtersOpen, helpOpen, historyMode, narrow, openRow, resumeFilter, saving, selectedId, shown, tab])
 
   const emptyCopy =
     resumeFilter && shown.length === 0
@@ -797,7 +831,13 @@ export function ReviewPage() {
         </div>
 
         {paneOpen && (
-          <aside className="job-drawer review-drawer" role="dialog" aria-modal={narrow} aria-labelledby="review-drawer-title">
+          <aside
+            ref={drawerRef}
+            className="job-drawer review-drawer"
+            role="dialog"
+            aria-modal={narrow}
+            aria-labelledby="review-drawer-title"
+          >
             <div className="job-drawer-head">
               <button
                 type="button"
@@ -1054,6 +1094,7 @@ export function ReviewPage() {
               <li><kbd>J</kbd> / <kbd>K</kbd> — next / previous match</li>
               <li><kbd>A</kbd> approve · <kbd>R</kbd> reject</li>
               <li><kbd>/</kbd> focus search</li>
+              <li><kbd>Esc</kbd> close help, filters, or the drawer</li>
               <li><kbd>?</kbd> this help</li>
               <li><kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> save with comment</li>
             </ul>

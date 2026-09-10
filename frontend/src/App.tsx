@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import './App.css'
 import { AppNav } from './components/AppNav'
+import { captureAadTokenFromHash } from './api/live'
 import { jobsApi, matchingApi, reviewApi, settingsApi } from './api'
 import { filtersForTab } from './lib/review'
 import { onboardingSteps, type OnboardingStep } from './lib/onboarding'
@@ -12,6 +13,7 @@ const ResumeLibrary = lazy(() => import('./pages/ResumeLibrary').then((mod) => (
 const ResumeEditor = lazy(() => import('./pages/ResumeEditor').then((mod) => ({ default: mod.ResumeEditor })))
 const JobFeedPage = lazy(() => import('./pages/JobFeed').then((mod) => ({ default: mod.JobFeedPage })))
 const EmailPage = lazy(() => import('./pages/Email').then((mod) => ({ default: mod.EmailPage })))
+const LearningPage = lazy(() => import('./pages/Learning').then((mod) => ({ default: mod.LearningPage })))
 const OpsPage = lazy(() => import('./pages/Ops').then((mod) => ({ default: mod.OpsPage })))
 
 const phases = [
@@ -211,6 +213,9 @@ function RouteFallback() {
 
 function App() {
   const route = useHashRoute()
+  useEffect(() => {
+    captureAadTokenFromHash()
+  }, [route])
   let page
   if (route.name === 'review') page = <ReviewPage />
   else if (route.name === 'apply') page = <ApplyPage requestId={route.requestId} />

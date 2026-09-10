@@ -22,6 +22,7 @@ export function EmailPage() {
   const [syncing, setSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [suppressions, setSuppressions] = useState<{ address: string; reason: string; source?: string }[]>([])
   const toastId = useRef(1)
 
   const toast = (text: string, tone: Toast['tone'] = 'info') => {
@@ -44,6 +45,11 @@ export function EmailPage() {
         })
       } else {
         setThreads([])
+      }
+      try {
+        setSuppressions(await emailApi.listSuppressions())
+      } catch {
+        setSuppressions([])
       }
       setError(null)
     } catch (err) {
@@ -185,6 +191,26 @@ export function EmailPage() {
           )}
         </div>
       )}
+      <section className="editor-section" aria-labelledby="suppression-heading">
+        <h2 id="suppression-heading">Suppression list</h2>
+        <p className="muted">Addresses from bounce and complaint webhooks are blocked from outbound mail.</p>
+        {suppressions.length === 0 ? (
+          <p className="muted">No suppressed addresses.</p>
+        ) : (
+          <ul className="audit-list">
+            {suppressions.map((row) => (
+              <li key={row.address}>
+                <strong>{row.address}</strong>
+                <span className="muted">
+                  {' '}
+                  {row.reason}
+                  {row.source ? ` · ${row.source}` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <ToastStack toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))} />
     </div>
   )

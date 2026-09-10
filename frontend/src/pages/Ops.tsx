@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AppNav } from '../components/AppNav'
-import { json, request } from '../api/live'
+import { json, request, setUserId } from '../api/live'
 
 type Slo = { route: string; budgetMs: number; p95Ms: number | null; samples: number; ok: boolean }
 type Trace = { traceId: string; name: string; elapsedMs: number; ok: boolean }
@@ -12,6 +12,7 @@ export function OpsPage() {
   const [traces, setTraces] = useState<Trace[]>([])
   const [drift, setDrift] = useState<Drift | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [traceError, setTraceError] = useState<string | null>(null)
 
   useEffect(() => {
     void (async () => {
@@ -23,8 +24,13 @@ export function OpsPage() {
         const driftBody = await json<Drift>(await request('/api/v1/learning/drift'))
         setDrift(driftBody)
         if (me.role === 'admin') {
-          const traceBody = await json<{ items: Trace[] }>(await request('/api/v1/ops/traces'))
-          setTraces(traceBody.items)
+          try {
+            const traceBody = await json<{ items: Trace[] }>(await request('/api/v1/ops/traces'))
+            setTraces(traceBody.items)
+            setTraceError(null)
+          } catch (err) {
+            setTraceError(err instanceof Error ? err.message : 'Could not load traces')
+          }
         }
         setError(null)
       } catch (err) {
@@ -34,21 +40,33 @@ export function OpsPage() {
   }, [])
 
   return (
-    <div className="page library-page">
+    <div className="page library-page ops-page">
       <AppNav />
       <header className="library-header">
         <div>
           <h1>Operations</h1>
-          <p className="tagline">SLO budgets, traces, and learning drift. Admin traces require X-Role: admin.</p>
+          <p className="tagline">Live SLO samples, traces, and learning drift.</p>
         </div>
       </header>
       {error && <p className="inline-error">{error}</p>}
       <section className="editor-section">
         <h2>Role</h2>
         <p>{role || '…'}</p>
+        {role && role !== 'admin' && (
+          <p className="muted">
+            Traces are limited to admins. In Settings, set the user id to <code>local-admin</code> and reload this
+            page.
+            <button type="button" className="link-btn" onClick={() => { setUserId('local-admin'); window.location.reload() }}>
+              Use local-admin
+            </button>
+          </p>
+        )}
       </section>
-      <section className="editor-section">
+      <section className="editor-section ops-slo">
         <h2>SLOs</h2>
+        {slo.length === 0 || slo.every((row) => row.samples === 0) ? (
+          <p className="muted">No live samples yet. Open Review or the Job Feed, then reload Ops.</p>
+        ) : null}
         <ul>
           {slo.map((row) => (
             <li key={row.route}>
@@ -65,16 +83,22 @@ export function OpsPage() {
           </p>
         </section>
       )}
-      {traces.length > 0 && (
-        <section className="editor-section">
+      {role === 'admin' && (
+        <section className="editor-section ops-traces">
           <h2>Recent traces</h2>
-          <ul>
-            {traces.map((row) => (
-              <li key={row.traceId + row.name}>
-                {row.name} {row.elapsedMs}ms {row.ok ? 'ok' : 'error'}
-              </li>
-            ))}
-          </ul>
+          {traceError && <p className="inline-error">{traceError}</p>}
+          {!traceError && traces.length === 0 && (
+            <p className="muted">No traces yet. Rank a job or open Review to record spans.</p>
+          )}
+          {traces.length > 0 && (
+            <ul>
+              {traces.map((row) => (
+                <li key={row.traceId + row.name}>
+                  {row.name} {row.elapsedMs}ms {row.ok ? 'ok' : 'error'}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
     </div>

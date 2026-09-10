@@ -173,4 +173,7 @@ export const mockEmailApi: EmailApi = {
     row.jobCompany = null
     return row
   },
+  async listSuppressions() {
+    return [{ address: 'bounced@example.com', reason: 'bounce', source: 'webhook' }]
+  },
 }

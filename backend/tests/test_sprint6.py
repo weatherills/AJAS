@@ -105,7 +105,7 @@ def test_email_preview_theme_and_bounce_suppression():
         _req(
             "POST",
             "http://localhost/api/v1/email/webhooks/bounce",
-            headers={},
+            headers={"X-Webhook-Secret": "dev-bounce-secret"},
             body={"email": "bad@example.com", "type": "complaint"},
         )
     )

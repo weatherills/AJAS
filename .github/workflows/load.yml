@@ -6,14 +6,31 @@ on:
       base_url:
         description: Functions base URL
         required: true
+  schedule:
+    - cron: '0 6 * * 1'
 
 jobs:
   k6:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: grafana/k6-action@v0.3.1
+      - name: Resolve base URL
+        id: url
         env:
-          AJAS_BASE_URL: ${{ inputs.base_url }}
+          DISPATCH_URL: ${{ github.event.inputs.base_url }}
+          SECRET_URL: ${{ secrets.AJAS_BASE_URL }}
+        run: |
+          URL="${DISPATCH_URL:-$SECRET_URL}"
+          if [ -z "$URL" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No AJAS_BASE_URL; skipping scheduled k6"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "base_url=$URL" >> "$GITHUB_OUTPUT"
+      - uses: grafana/k6-action@v0.3.1
+        if: steps.url.outputs.skip != 'true'
+        env:
+          AJAS_BASE_URL: ${{ steps.url.outputs.base_url }}
         with:
           filename: scripts/load/matching.js

@@ -47,4 +47,10 @@ export const mockLearningApi: LearningApi = {
     }
     return row
   },
+  async validatePipeline(events) {
+    return { accepted: events.length, rejected: 0, errors: [] }
+  },
+  async backfill(events) {
+    return { applied: events.length }
+  },
 }

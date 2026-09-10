@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getUserId, jobsApi, learningApi, setUserId, settingsApi, USE_MOCK } from '../api'
-import { json, request } from '../api/live'
+import { json, request, fetchAuthConfig, type AuthConfig } from '../api/live'
 import type { SettingsAuditItem, SettingsDoc } from '../api/settingsTypes'
 import type { JobSourceName, SourceStatus } from '../api/jobsTypes'
 import { AppNav } from '../components/AppNav'
@@ -92,6 +92,7 @@ export function SettingsPage() {
   const [auditItems, setAuditItems] = useState<SettingsAuditItem[]>([])
   const [devices, setDevices] = useState<{ id: string; label: string; createdAt: string; lastSeenAt: string }[]>([])
   const [sessionBusy, setSessionBusy] = useState(false)
+  const [authConfig, setAuthConfig] = useState<AuthConfig | null>(null)
   const toastId = useRef(1)
   const saveGen = useRef(0)
   const oauthState = useRef<string | null>(null)
@@ -132,6 +133,11 @@ export function SettingsPage() {
         setDevices(page.items)
       } catch {
         setDevices([])
+      }
+      try {
+        setAuthConfig(await fetchAuthConfig())
+      } catch {
+        setAuthConfig(null)
       }
       setLoadError(null)
     } catch (err) {
@@ -861,7 +867,20 @@ export function SettingsPage() {
 
       <section className="editor-section" aria-labelledby="session-heading">
         <h2 id="session-heading">Devices and sessions</h2>
-        <p className="muted">Short-lived access tokens with rotating refresh. Dev Bearer user ids still work.</p>
+        <p className="muted">Short-lived access tokens with rotating refresh. Dev Bearer user ids still work. Cookie sessions send an HttpOnly `ajas_sess` cookie; writes also send the CSRF token.</p>
+        {authConfig?.mode === 'aad' && (
+          <p className="banner">
+            This host expects an Azure AD JWT.
+            {authConfig.loginUrl ? (
+              <>
+                {' '}
+                <a href={authConfig.loginUrl}>Sign in with Microsoft</a>
+              </>
+            ) : (
+              ' Set MICROSOFT_CLIENT_ID and AUTH_JWT_SECRET or AUTH_JWT_JWKS_URL, then reload.'
+            )}
+          </p>
+        )}
         <button
           type="button"
           className="secondary"
@@ -873,7 +892,7 @@ export function SettingsPage() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ label: 'Cursor desktop' }),
             })
-              .then((resp) => json<{ deviceId: string }>(resp))
+              .then((resp) => json<{ deviceId: string; csrfToken?: string }>(resp))
               .then((issued) =>
                 request('/api/v1/auth/devices')
                   .then((resp) => json<{ items: { id: string; label: string; createdAt: string; lastSeenAt: string }[] }>(resp))

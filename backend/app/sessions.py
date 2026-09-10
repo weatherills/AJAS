@@ -48,6 +48,7 @@ class DeviceSession:
 
 
 _devices: dict[str, DeviceSession] = {}
+_csrf: dict[str, str] = {}
 
 
 def _sign(payload: str) -> str:
@@ -105,9 +106,14 @@ def create_session(
         ip=ip,
     )
     _devices[device.id] = device
+    from app.cookies import new_csrf_token
+
+    csrf = new_csrf_token()
+    _csrf[user_id] = csrf
     return {
         "accessToken": access,
         "refreshToken": refresh,
+        "csrfToken": csrf,
         "tokenType": "Bearer",
         "expiresIn": expires_in,
         "deviceId": device.id,
@@ -152,6 +158,10 @@ def list_devices(user_id: str) -> list[dict[str, Any]]:
         }
         for row in rows
     ]
+
+
+def csrf_for(user_id: str) -> str | None:
+    return _csrf.get(user_id)
 
 
 def revoke_device(user_id: str, device_id: str) -> None:

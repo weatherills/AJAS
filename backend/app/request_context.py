@@ -12,6 +12,9 @@ _user_id: ContextVar[str | None] = ContextVar("ajas_user_id", default=None)
 
 
 def bind_request(req: func.HttpRequest, *, user_id: str | None = None) -> str:
+    from app.http import bind_http_request
+
+    bind_http_request(req)
     incoming = (
         req.headers.get("X-Request-Id")
         or req.headers.get("x-request-id")

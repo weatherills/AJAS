@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Callable
 
 import azure.functions as func
@@ -10,6 +11,7 @@ import azure.functions as func
 from app.auth import AuthError, ForbiddenError, get_principal, require_scopes
 from app.http import error_response, json_response
 from app.observability import log_exception, log_request
+from app.slo import record_latency
 from app.review.constants import READ_SCOPE, WRITE_SCOPE
 from app.review.errors import (
     ReviewConflictError,
@@ -53,6 +55,13 @@ def _map_error(exc: Exception) -> func.HttpResponse:
     raise exc
 
 
+def _record_route_latency(route: str, started: float) -> None:
+    elapsed = (time.perf_counter() - started) * 1000
+    record_latency(route, elapsed)
+    if route == "GET /v1/matches":
+        record_latency("GET /v1/review", elapsed)
+
+
 def _run(
     req: func.HttpRequest,
     route: str,
@@ -60,6 +69,7 @@ def _run(
     handler: Callable,
 ) -> func.HttpResponse:
     user_id: str | None = None
+    started = time.perf_counter()
     try:
         principal = _auth(req, *scopes)
         user_id = principal.user_id
@@ -73,6 +83,7 @@ def _run(
             status=resp.status_code,
             user_id=user_id,
         )
+        _record_route_latency(route, started)
         return resp
     except Exception as exc:
         log_exception(FEATURE, route, exc)
@@ -85,6 +96,7 @@ def _run(
             user_id=user_id,
             error=str(exc),
         )
+        _record_route_latency(route, started)
         return resp
 
 

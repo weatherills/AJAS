@@ -105,6 +105,13 @@ class Settings(BaseSettings):
     learning_min_shown_per_week: int = 10
     learning_decision_rate_per_second: int = 10
 
+    cors_allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    mail_bounce_webhook_secret: str = "dev-bounce-secret"
+    key_vault_uri: str = ""
+    ingestion_alert_webhook: str = ""
+    auth_session_cookies: bool = True
+    applicationinsights_connection_string: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

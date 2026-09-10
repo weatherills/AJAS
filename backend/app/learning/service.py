@@ -258,7 +258,7 @@ class LearningService:
         delta = round(precision - baseline, 4)
         threshold = 0.1
         alert = body.get("decisions", 0) >= 5 and abs(delta) >= threshold
-        return {
+        record = {
             "period": period,
             "precision": precision,
             "baseline": baseline,
@@ -267,6 +267,8 @@ class LearningService:
             "alert": alert,
             "liftVsBaseline": body.get("liftVsBaseline"),
         }
+        self.store.put_blob(f"drift/{user_id}/{period}.json", record)
+        return record
 
     def validate_pipeline(self, events: list) -> dict:
         errors: list[dict] = []

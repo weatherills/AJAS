@@ -4,6 +4,10 @@ Registers health, Review, Auto-Apply, Settings, Resume Management, Job
 Source Integration, Matching & Ranking, Email Ingestion, and Learning Loop
 HTTP plus queue workers.
 """
+from app.secrets import hydrate_from_key_vault
+
+hydrate_from_key_vault()
+
 import azure.functions as func
 
 from app.features.auth_session import bp as auth_session_bp

@@ -5,6 +5,7 @@ from __future__ import annotations
 import azure.functions as func
 
 from app.auth import AuthError, get_principal
+from app.cookies import cookie_headers, unpack_session_cookie
 from app.http import error_response, json_response
 from app.rbac import role_for_principal
 from app.sessions import create_session, list_devices, rotate_refresh, revoke_device
@@ -47,7 +48,7 @@ def create_auth_session(req: func.HttpRequest) -> func.HttpResponse:
             user_agent=agent,
             ip=ip,
         )
-        return json_response(issued, status_code=201)
+        return json_response(issued, status_code=201, headers=cookie_headers(issued, csrf=issued["csrfToken"]))
     except Exception as exc:
         return _handle(exc)
 
@@ -60,8 +61,12 @@ def refresh_auth_session(req: func.HttpRequest) -> func.HttpResponse:
         except ValueError:
             body = {}
         token = str(body.get("refreshToken") or body.get("refresh_token") or "")
+        if not token:
+            packed = unpack_session_cookie(req)
+            token = (packed or {}).get("rt") or ""
         agent, ip = _client_meta(req)
-        return json_response(rotate_refresh(token, user_agent=agent, ip=ip))
+        issued = rotate_refresh(token, user_agent=agent, ip=ip)
+        return json_response(issued, headers=cookie_headers(issued, csrf=issued["csrfToken"]))
     except Exception as exc:
         return _handle(exc)
 

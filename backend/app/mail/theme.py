@@ -24,6 +24,11 @@ def render_html(body_text: str, *, name: str = "Message") -> str:
 <head>
   <meta charset="utf-8"/>
   <meta name="color-scheme" content="light dark"/>
+  <style>
+    @media (prefers-color-scheme: light) {{
+      body, table {{ background:#f8fafc !important; color:#1e293b !important; }}
+    }}
+  </style>
   <title>{name}</title>
 </head>
 <body style="margin:0;background:{THEME['bg']};color:{THEME['text']};font-family:Georgia,serif;">

@@ -38,6 +38,12 @@ def finish_span(span: dict[str, Any], *, ok: bool = True, error: str | None = No
         "attrs": span.get("attrs") or {},
     }
     _traces.append(record)
+    try:
+        from app.monitor import export_span
+
+        export_span(record)
+    except Exception:
+        pass
     return record
 
 

@@ -31,6 +31,7 @@ from app.matching.queues import InMemoryJobQueue, JobQueue
 from app.matching.scoring import KEYWORD_WEIGHTS_VERSION, cosine_similarity, keyword_score, score_1dp
 from app.matching.store import MatchingStore, get_matching_store
 from app.matching.texts import NotFoundTextLoader, TextLoader
+from app.mail.pii import redact_pii
 
 IDEMPOTENCY_TTL_SEC = 24 * 60 * 60
 PRINTABLE_EXTRA = {"\n", "\r", "\t"}
@@ -406,7 +407,7 @@ class MatchingService:
                     "job_id": pair.get("job_id"),
                     "score": score,
                     "breakdown": body["breakdown"],
-                    "why": explanation,
+                    "why": redact_pii(explanation or ""),
                 },
                 default=str,
             ),

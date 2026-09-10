@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 
 import azure.functions as func
 
@@ -15,6 +16,7 @@ from app.job_sources.errors import (
 )
 from app.job_sources.feed import parse_sources_query
 from app.job_sources.runtime import get_service
+from app.slo import record_latency
 
 bp = func.Blueprint()
 
@@ -59,13 +61,16 @@ def _json_body(req: func.HttpRequest) -> dict:
 
 @bp.route(route="v1/sources/{id}/crawl", methods=["POST"])
 def start_crawl(req: func.HttpRequest) -> func.HttpResponse:
+    started = time.perf_counter()
     try:
         _auth(req)
         service = get_service()
         body = service.enqueue_crawl(req.route_params["id"])
         service.drain()
+        record_latency("POST /v1/sources/crawl", (time.perf_counter() - started) * 1000)
         return json_response(body, status_code=202)
     except Exception as exc:
+        record_latency("POST /v1/sources/crawl", (time.perf_counter() - started) * 1000)
         return _handle(exc)
 
 
@@ -112,6 +117,7 @@ def delete_source_tenant(req: func.HttpRequest) -> func.HttpResponse:
 
 @bp.route(route="v1/jobs", methods=["GET"])
 def list_jobs(req: func.HttpRequest) -> func.HttpResponse:
+    started = time.perf_counter()
     try:
         _auth(req)
         sources = parse_sources_query(req.params.get("sources"), req.url)
@@ -124,8 +130,10 @@ def list_jobs(req: func.HttpRequest) -> func.HttpResponse:
             limit=int(req.params.get("limit") or 25),
             since=req.params.get("since"),
         )
+        record_latency("GET /v1/jobs", (time.perf_counter() - started) * 1000)
         return json_response(body)
     except Exception as exc:
+        record_latency("GET /v1/jobs", (time.perf_counter() - started) * 1000)
         return _handle(exc)
 
 
