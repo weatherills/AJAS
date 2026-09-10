@@ -78,6 +78,26 @@ class Settings(BaseSettings):
     match_max_rank_pairs: int = 1000
     match_rank_async_after: int = 10
 
+    mail_ingest_queue: str = "mail-ingest"
+    mail_webhook_client_state: str = "dev-mail-webhook"
+    mail_suggestion_limit_per_day: int = 10
+    mail_attachment_max_file_bytes: int = 10 * 1024 * 1024
+    mail_attachment_max_message_bytes: int = 25 * 1024 * 1024
+    mail_link_auto_threshold: float = 0.85
+    mail_reply_idempotency_hours: int = 24
+    mail_blob_container: str = "mail-attachments"
+
+    learning_tune_queue: str = "tuning-tasks"
+    learning_min_samples: int = 20
+    learning_tune_after: int = 10
+    learning_window_days: int = 30
+    learning_max_weight_delta: float = 0.2
+    learning_max_threshold_delta: float = 0.05
+    learning_comment_max: int = 1000
+    learning_stale_days: int = 90
+    learning_min_shown_per_week: int = 10
+    learning_decision_rate_per_second: int = 10
+
 
 @lru_cache
 def get_settings() -> Settings:

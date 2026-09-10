@@ -97,6 +97,10 @@ def get_service() -> ReviewService:
     return _service
 
 
+def try_get_service() -> ReviewService | None:
+    return _service
+
+
 def set_service(service: ReviewService | None) -> None:
     global _service
     _service = service

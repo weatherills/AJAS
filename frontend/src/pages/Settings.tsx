@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getUserId, setUserId, settingsApi, USE_MOCK } from '../api'
+import { getUserId, learningApi, setUserId, settingsApi, USE_MOCK } from '../api'
 import type { SettingsDoc } from '../api/settingsTypes'
+import { AppNav } from '../components/AppNav'
 import { Modal } from '../components/Modal'
 import { ToastStack } from '../components/Toast'
+import {
+  asStrictness,
+  STRICTNESS_HELP,
+  STRICTNESS_LABEL,
+} from '../lib/learning'
 import {
   apiToPercent,
   clampPercent,
@@ -14,6 +20,7 @@ import {
   SLIDER_MIN,
   SLIDER_STEP,
 } from '../lib/settings'
+import { LearningPanel } from './Learning'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -50,6 +57,12 @@ export function SettingsPage() {
   const [pendingAuthUrl, setPendingAuthUrl] = useState<string | null>(null)
   const [confirmDisconnect, setConfirmDisconnect] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [tuningMode, setTuningMode] = useState<'auto' | 'manual'>('auto')
+  const [strictness, setStrictness] = useState<0 | 1 | 2>(1)
+  const [learningError, setLearningError] = useState<string | null>(null)
+  const [learningSample, setLearningSample] = useState(0)
+  const [learningStatus, setLearningStatus] = useState<SaveStatus>('idle')
+  const [learningTick, setLearningTick] = useState(0)
   const toastId = useRef(1)
   const saveGen = useRef(0)
   const oauthState = useRef<string | null>(null)
@@ -79,6 +92,20 @@ export function SettingsPage() {
   useEffect(() => {
     void load()
   }, [load, userId])
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const params = await learningApi.params()
+        setTuningMode(params.tuningMode)
+        setStrictness(asStrictness(params.strictness))
+        setLearningSample(params.sample_size)
+        setLearningError(null)
+      } catch (err) {
+        setLearningError(err instanceof Error ? err.message : 'Could not load matching preferences')
+      }
+    })()
+  }, [userId])
 
   const failedPercent = useRef<number | null>(null)
 
@@ -112,6 +139,23 @@ export function SettingsPage() {
     }, 600)
     return () => window.clearTimeout(handle)
   }, [percent, savedPercent, doc, saveThreshold])
+
+  async function saveLearning(body: { tuningMode?: 'auto' | 'manual'; strictness?: number }) {
+    setLearningStatus('saving')
+    setLearningError(null)
+    try {
+      const patched = await learningApi.patchParams(body)
+      setTuningMode(patched.tuningMode)
+      setStrictness(asStrictness(patched.strictness))
+      setLearningSample(patched.sample_size)
+      setLearningStatus('saved')
+      setLearningTick((tick) => tick + 1)
+      toast('Preferences updated. Takes effect on new suggestions.')
+    } catch {
+      setLearningStatus('error')
+      setLearningError('Couldn’t save matching preferences. Try again.')
+    }
+  }
 
   async function saveSource(key: 'greenhouseEnabled' | 'leverEnabled', value: boolean) {
     if (!doc) return
@@ -225,13 +269,11 @@ export function SettingsPage() {
 
   return (
     <div className="page library-page">
+      <AppNav />
       <header className="library-header">
         <div>
-          <a href="#/" className="back-link">
-            Home
-          </a>
           <h1>Settings</h1>
-          <p className="tagline">Match threshold, Microsoft 365 email, and job sources.</p>
+          <p className="tagline">Match threshold, learning, Microsoft 365 email, and job sources.</p>
         </div>
         <label className="user-field">
           Signed in as
@@ -317,6 +359,75 @@ export function SettingsPage() {
             </button>
           </div>
         )}
+      </section>
+
+      <section className="editor-section" aria-labelledby="learning-prefs-heading">
+        <h2 id="learning-prefs-heading">Matching preferences</h2>
+        <p className="muted">Auto-tune ranking from Review decisions, or set match strictness yourself.</p>
+        {learningError && learningStatus === 'idle' && <p className="inline-error">{learningError}</p>}
+        <div className="segmented" role="group" aria-label="Tuning mode">
+          {(['auto', 'manual'] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              className={tuningMode === mode ? 'is-selected' : ''}
+              onClick={() => {
+                if (tuningMode === mode) return
+                void saveLearning({ tuningMode: mode, strictness: mode === 'manual' ? strictness : undefined })
+              }}
+            >
+              {mode === 'auto' ? 'Auto' : 'Manual'}
+            </button>
+          ))}
+        </div>
+        {tuningMode === 'auto' && learningSample < 5 && (
+          <p className="banner">We’ll adapt after your first few choices.</p>
+        )}
+        {tuningMode === 'auto' && learningSample >= 5 && (
+          <p className="muted">Adjusted from your last {Math.min(learningSample, 30)} decisions.</p>
+        )}
+        <div className="slider-row">
+          <span className="muted">Conservative</span>
+          <input
+            id="match-strictness"
+            type="range"
+            min={0}
+            max={2}
+            step={1}
+            value={strictness}
+            disabled={tuningMode === 'auto'}
+            aria-valuemin={0}
+            aria-valuemax={2}
+            aria-valuenow={strictness}
+            aria-valuetext={STRICTNESS_LABEL[strictness]}
+            aria-label="Match strictness"
+            onChange={(event) => {
+              const next = asStrictness(Number(event.target.value))
+              if (next === strictness) return
+              setStrictness(next)
+              void saveLearning({ tuningMode: 'manual', strictness: next })
+            }}
+          />
+          <span className="muted">Adventurous</span>
+        </div>
+        <p className="threshold-value">
+          <strong>{STRICTNESS_LABEL[strictness]}</strong> — {STRICTNESS_HELP[strictness]}
+        </p>
+        <p className="save-status" aria-live="polite">
+          {learningStatus === 'saving' && 'Saving…'}
+          {learningStatus === 'saved' && 'Saved'}
+          {learningStatus === 'error' && learningError}
+        </p>
+        {learningStatus === 'error' && (
+          <button
+            type="button"
+            className="primary"
+            onClick={() => void saveLearning({ tuningMode, strictness: tuningMode === 'manual' ? strictness : undefined })}
+          >
+            Retry
+          </button>
+        )}
+        <LearningPanel compact key={learningTick} />
       </section>
 
       <section className="editor-section" aria-labelledby="email-heading">

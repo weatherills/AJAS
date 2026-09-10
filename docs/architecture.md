@@ -47,20 +47,25 @@ infrastructure lives in `backend/app/`; each feature is a blueprint registered i
 | `matching` | 3, 11 | `PRDs/matching-ranking/backend` | Cosmos, OpenAI, Queue |
 | `review_decision` | 4 | (see overview) | Cosmos |
 | `auto_apply` | 5 | (see overview) | Queue, Container Apps |
-| `email` | 6, 12 | (see overview) | Microsoft Graph |
-| `learning_loop` | 7, 13 | (see overview) | Cosmos |
-| `settings` | 8 | (see overview) | Cosmos |
+| `email` | 7, 12 | `PRDs/email-ingestion-reply` | Microsoft Graph, Cosmos, Queue, Blob |
+| `learning_loop` | 8, 13 | `PRDs/learning-loop/{backend,database,frontend}` | Cosmos, Queue |
+| `settings` | 6 | (see overview) | Cosmos |
 
-Each feature module is currently an empty `func.Blueprint()` placeholder; its
-routes, queue workers, and timers are added during its phase.
+Feature blueprints are registered in `function_app.py`. Live modules expose HTTP
+routes, queue workers, and timers; local development without Cosmos uses
+in-memory stores.
 
-## Async pipelines (planned)
+## Async pipelines
 
 The PRDs describe queue-driven pipelines, e.g.:
 
 - Resume parse: `POST /resumes` → enqueue → parse worker → Cosmos update.
 - Source ingestion: timer → `crawl-runs` queue → `job-fetch` queue → dedupe/upsert.
 - Matching (batch): `POST /v1/matches/rank` (N>10) → enqueue → per-pair workers.
+- Learning: Review approve/reject → `learning-decisions` queue → optional `tuning-tasks`.
+- Settings: threshold PATCH → `match-recalc` (syncs Matching prefs); source enable → `source-discovery` (tenant enabled flags).
+- Matching persist (score ≥ threshold, or `persist: true`) upserts a Review queue row.
+- Job Feed `sources` omitted defaults to Greenhouse + Lever; an explicit empty list, blank `sources=`, or `sources=none` matches nothing. Azure Functions drops empty query values, so the route also reads the raw URL.
 
 Queue names and message schemas are defined within each feature as it is built.
 
@@ -70,5 +75,5 @@ Queue names and message schemas are defined within each feature as it is built.
 landing page enumerating the planned phases. The Vite dev server listens on
 port 3000 (per `.codespring/CURSOR_RUNBOOK.md`) and proxies `/api` to the
 Azure Functions host at `http://127.0.0.1:7071`. Feature screens (resume
-library/editor, review & decision, settings, email reply) are added per phase
+library/editor, review & decision, settings, email reply, learning metrics) are added per phase
 and call the Functions HTTP API.

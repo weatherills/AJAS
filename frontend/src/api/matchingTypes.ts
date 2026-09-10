@@ -25,6 +25,7 @@ export type MatchScoreQuery = {
   jobs: { id: string; text: string }[]
   threshold: number
   explanation?: boolean
+  persist?: boolean
 }
 
 export type MatchingApi = {

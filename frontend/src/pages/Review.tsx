@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { reviewApi, USE_MOCK } from '../api'
 import type { DecisionValue, ReviewDetail, ReviewFilters, ReviewMatch, ReviewTab } from '../api/reviewTypes'
+import { AppNav } from '../components/AppNav'
 import { ApplyModal } from '../components/ApplyModal'
 import { ToastStack } from '../components/Toast'
 import {
@@ -19,7 +20,13 @@ import {
 } from '../lib/review'
 import { scoreBand } from '../lib/matching'
 
-type Toast = { id: number; text: string; tone?: 'info' | 'error' }
+type Toast = {
+  id: number
+  text: string
+  tone?: 'info' | 'error'
+  actionLabel?: string
+  onAction?: () => void
+}
 
 function scoreClass(score: number | null) {
   if (score == null) return 'review-score-empty'
@@ -50,9 +57,9 @@ export function ReviewPage() {
   const commentRef = useRef<HTMLTextAreaElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
 
-  const toast = (text: string, tone: Toast['tone'] = 'info') => {
+  const toast = (text: string, tone: Toast['tone'] = 'info', extra?: Pick<Toast, 'actionLabel' | 'onAction'>) => {
     const id = toastId.current++
-    setToasts((prev) => [...prev, { id, text, tone }])
+    setToasts((prev) => [...prev, { id, text, tone, ...extra }])
     window.setTimeout(() => setToasts((prev) => prev.filter((item) => item.id !== id)), 5000)
   }
 
@@ -115,6 +122,31 @@ export function ReviewPage() {
     }
   }, [items, selectedId])
 
+  const reopenMatch = useCallback(async (matchId: string) => {
+    setSaving(true)
+    setPaneError(null)
+    try {
+      const updated = await reviewApi.reopen(matchId)
+      toast('Moved back to awaiting decision')
+      setLiveMessage(`Reopened ${updated.jobTitle}`)
+      await load()
+      setTab(updated.source === 'saved' ? 'saved' : 'matches')
+      setFilters((prev) => ({ ...prev, status: 'awaiting' }))
+      await openRow(updated.matchId)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not reopen this decision.'
+      setPaneError(message)
+      toast(message, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }, [load, openRow])
+
+  const reopen = useCallback(async () => {
+    if (!detail) return
+    await reopenMatch(detail.match.matchId)
+  }, [detail, reopenMatch])
+
   const decide = useCallback(
     async (decision: DecisionValue) => {
       if (!detail || historyMode) return
@@ -132,7 +164,10 @@ export function ReviewPage() {
           { decision, comment: parsed.value.trim() || undefined },
           { etag: detail.match.etag, idempotencyKey: crypto.randomUUID() },
         )
-        toast('Decision saved')
+        toast('Recorded.', 'info', {
+          actionLabel: 'Undo',
+          onAction: () => void reopenMatch(currentId),
+        })
         setLiveMessage(`${statusLabel(decision === 'approve' ? 'approved' : 'rejected')} — ${detail.match.jobTitle}`)
         const remaining = items.filter((item) => item.matchId !== currentId).map((item) => item.matchId)
         const nextId = nextAfterRemove(
@@ -157,29 +192,8 @@ export function ReviewPage() {
         setSaving(false)
       }
     },
-    [comment, detail, historyMode, items, load, narrow, openRow, shown],
+    [comment, detail, historyMode, items, load, narrow, openRow, reopenMatch, shown],
   )
-
-  const reopen = useCallback(async () => {
-    if (!detail) return
-    setSaving(true)
-    setPaneError(null)
-    try {
-      const updated = await reviewApi.reopen(detail.match.matchId)
-      toast('Moved back to awaiting decision')
-      setLiveMessage(`Reopened ${updated.jobTitle}`)
-      await load()
-      setTab(updated.source === 'saved' ? 'saved' : 'matches')
-      setFilters((prev) => ({ ...prev, status: 'awaiting' }))
-      await openRow(updated.matchId)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not reopen this decision.'
-      setPaneError(message)
-      toast(message, 'error')
-    } finally {
-      setSaving(false)
-    }
-  }, [detail, load, openRow])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -221,11 +235,9 @@ export function ReviewPage() {
       <div className="sr-only" aria-live="polite">
         {liveMessage}
       </div>
+      <AppNav />
       <header className="library-header">
         <div>
-          <a href="#/" className="back-link">
-            Home
-          </a>
           <h1>Review &amp; Decision</h1>
           <p className="tagline">Approve or reject matches and saved jobs. Shortcuts: A approve · R reject · ⌘/Ctrl+Enter save with comment.</p>
         </div>

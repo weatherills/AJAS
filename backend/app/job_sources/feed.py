@@ -2,10 +2,29 @@
 
 from __future__ import annotations
 
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from app.job_sources.models import JobPostingCanonical, JobPostingRaw, SourceTenant
 from app.job_sources.store import JobSourceStore
+
+
+def parse_sources_query(raw: str | None, url: str = "") -> list[str] | None:
+    """Omitted ``sources`` defaults later; an explicit blank (or ``none``) matches nothing.
+
+    Azure Functions drops empty query values from ``req.params``, so callers may
+    pass the request URL as a fallback when ``raw`` is ``None``.
+    """
+    if raw is None and url:
+        query = parse_qs(urlparse(url).query, keep_blank_values=True)
+        if "sources" in query:
+            raw = ",".join(query.get("sources") or [])
+    if raw is None:
+        return None
+    return [
+        part.strip()
+        for part in raw.split(",")
+        if part.strip() and part.strip().lower() != "none"
+    ]
 
 
 def source_domain(url: str) -> str:
@@ -23,12 +42,12 @@ def seed_demo_feed(store: JobSourceStore) -> None:
     greenhouse = store.upsert_tenant(
         "greenhouse",
         "acme",
-        config={"board_token": "acme", "company": "Acme", "namespace": "acme"},
+        config={"board_token": "acme", "company": "Acme", "namespace": "acme", "demo_seed": True},
     )
     lever = store.upsert_tenant(
         "lever",
         "acme",
-        config={"site": "acme", "company": "Acme", "namespace": "acme"},
+        config={"site": "acme", "company": "Acme", "namespace": "acme", "demo_seed": True},
     )
     samples = [
         (greenhouse, "1", "Staff Engineer", "Remote", "Acme", "greenhouse"),
@@ -141,19 +160,19 @@ def feed_cards(store: JobSourceStore) -> list[dict]:
 def filter_cards(
     cards: list[dict],
     *,
-    sources: list[str],
+    sources: list[str] | None,
     q: str,
     location: str,
     status: str,
     since: str | None,
 ) -> list[dict]:
-    wanted = set(sources or ["greenhouse", "lever"])
+    wanted = {"greenhouse", "lever"} if sources is None else set(sources)
     query = (q or "").strip().lower()
     loc = (location or "").strip().lower()
     out: list[dict] = []
     for card in cards:
         card_sources = {item["source"] for item in card["sources"]}
-        if wanted and not (card_sources & wanted):
+        if not (card_sources & wanted):
             continue
         if query:
             blob = f"{card['title']} {card['company']} {card['location']}".lower()

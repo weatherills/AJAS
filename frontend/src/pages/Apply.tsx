@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { autoApplyApi, USE_MOCK } from '../api'
 import type { ApplyDetail, ApplySummary } from '../api/autoApplyTypes'
+import { AppNav } from '../components/AppNav'
 import { ToastStack } from '../components/Toast'
 import { canCancel, stateLabel } from '../lib/autoApply'
 
@@ -58,11 +59,9 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
 
   return (
     <div className="page library-page apply-page">
+      <AppNav />
       <header className="library-header">
         <div>
-          <a href="#/" className="back-link">
-            Home
-          </a>
           <h1>Auto-Apply</h1>
           <p className="tagline">Track programmatic submissions and manual packages from Review.</p>
         </div>

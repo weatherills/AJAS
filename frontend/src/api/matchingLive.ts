@@ -91,6 +91,7 @@ export const liveMatchingApi: MatchingApi = {
         jobTexts: query.jobs.map((job) => job.text),
         threshold: query.threshold,
         explanation: query.explanation !== false,
+        persist: query.persist === true,
       }),
     })
     if (resp.status === 202) {
