@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AppNav } from '../components/AppNav'
-import { learningApi, USE_MOCK } from '../api'
+import { learningApi, reviewApi, USE_MOCK } from '../api'
 import type { LearningMetrics, LearningParams } from '../api/learningTypes'
+import type { ReviewMatch } from '../api/reviewTypes'
 import { asStrictness, loadPeriod, percent, savePeriod, STRICTNESS_HELP, STRICTNESS_LABEL } from '../lib/learning'
+import { filtersForTab, formatWhen, statusLabel } from '../lib/review'
+import { reviewHref } from '../lib/routes'
 
 export function LearningPanel({ compact = false }: { compact?: boolean }) {
   const [metrics, setMetrics] = useState<LearningMetrics | null>(null)
@@ -47,6 +50,7 @@ export function LearningPanel({ compact = false }: { compact?: boolean }) {
   }
   if (!metrics || !params) return null
   const strictness = asStrictness(params.strictness)
+  const historyHref = reviewHref({ tab: 'history' })
   return (
     <section className={`learning-panel ${compact ? 'is-compact' : ''}`} aria-labelledby="learning-metrics-heading">
       <div className="learning-panel-head">
@@ -63,29 +67,35 @@ export function LearningPanel({ compact = false }: { compact?: boolean }) {
       {metrics.empty ? (
         <p>
           No learning signals yet. Start by reviewing matches.{' '}
-          <a href="#/review">Open Review</a>
+          <a href={reviewHref()}>Open Review</a>
         </p>
       ) : (
         <ul className="metric-grid">
           <li>
-            <strong>{percent(metrics.precision_proxy)}</strong>
-            <span className="muted">Approve rate ({period})</span>
-            {metrics.approveRateDeltaPct != null && (
+            <a href={historyHref}>
+              <strong>{percent(metrics.precision_proxy)}</strong>
+              <span className="muted">Approve rate ({period})</span>
+              {metrics.approveRateDeltaPct != null && (
+                <span className="muted">
+                  {metrics.approveRateDeltaPct >= 0 ? '+' : ''}
+                  {metrics.approveRateDeltaPct}% vs prior {period}
+                </span>
+              )}
+            </a>
+          </li>
+          <li>
+            <a href={historyHref}>
+              <strong>{metrics.decisions}</strong>
+              <span className="muted">Decisions ({period})</span>
+            </a>
+          </li>
+          <li>
+            <a href="#/settings">
+              <strong>{STRICTNESS_LABEL[strictness]}</strong>
               <span className="muted">
-                {metrics.approveRateDeltaPct >= 0 ? '+' : ''}
-                {metrics.approveRateDeltaPct}% vs prior {period}
+                {params.tuningMode === 'auto' ? 'Auto' : 'Manual'} · {percent(params.score_threshold)} threshold
               </span>
-            )}
-          </li>
-          <li>
-            <strong>{metrics.decisions}</strong>
-            <span className="muted">Decisions ({period})</span>
-          </li>
-          <li>
-            <strong>{STRICTNESS_LABEL[strictness]}</strong>
-            <span className="muted">
-              {params.tuningMode === 'auto' ? 'Auto' : 'Manual'} · {percent(params.score_threshold)} threshold
-            </span>
+            </a>
           </li>
         </ul>
       )}
@@ -101,6 +111,21 @@ export function LearningPanel({ compact = false }: { compact?: boolean }) {
 }
 
 export function LearningPage() {
+  const [recent, setRecent] = useState<ReviewMatch[]>([])
+  const [recentError, setRecentError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void reviewApi
+      .list('history', filtersForTab('history'))
+      .then((page) => {
+        setRecent(page.items.slice(0, 5))
+        setRecentError(null)
+      })
+      .catch((err) => {
+        setRecentError(err instanceof Error ? err.message : 'Could not load recent decisions')
+      })
+  }, [])
+
   return (
     <div className="page library-page">
       <AppNav />
@@ -109,11 +134,38 @@ export function LearningPage() {
           <h1>Learning Loop</h1>
           <p className="tagline">Approve and reject matches to tune ranking. Metrics stay per-user.</p>
         </div>
+        <a className="secondary" href={reviewHref({ tab: 'history' })}>
+          Decision history
+        </a>
       </header>
       {USE_MOCK && <p className="banner">Demo data (mock API).</p>}
       <LearningPanel />
+      <section className="learning-recent" aria-labelledby="learning-recent-heading">
+        <h2 id="learning-recent-heading">Recent decisions</h2>
+        {recentError && <p className="inline-error">{recentError}</p>}
+        {!recentError && recent.length === 0 && (
+          <p className="muted">
+            No decisions yet.{' '}
+            <a href={reviewHref()}>Open Review</a>
+          </p>
+        )}
+        {recent.length > 0 && (
+          <ul className="learning-recent-list">
+            {recent.map((item) => (
+              <li key={item.matchId}>
+                <a href={reviewHref({ matchId: item.matchId, tab: 'history', jobId: item.jobId })}>
+                  <strong>{item.jobTitle}</strong>
+                  <span className="muted">
+                    {item.company} · {statusLabel(item.status)} · {formatWhen(item.decidedAt)}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <p>
-        Decisions are recorded from <a href="#/review">Review</a>. Tuning mode lives in <a href="#/settings">Settings</a>.
+        Decisions are recorded from <a href={reviewHref()}>Review</a>. Tuning mode lives in <a href="#/settings">Settings</a>.
       </p>
     </div>
   )

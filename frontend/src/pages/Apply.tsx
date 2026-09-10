@@ -2,12 +2,17 @@ import { useCallback, useEffect, useState } from 'react'
 import { autoApplyApi, USE_MOCK } from '../api'
 import type { ApplyDetail, ApplySummary } from '../api/autoApplyTypes'
 import { AppNav } from '../components/AppNav'
+import { JobCrossLinks } from '../components/JobCrossLinks'
+import { JobEmailsTab } from '../components/JobEmailsTab'
 import { ToastStack } from '../components/Toast'
 import { canCancel, stateLabel } from '../lib/autoApply'
+import { applyHref, reviewHref, useHashSearch } from '../lib/routes'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
 
 export function ApplyPage({ requestId }: { requestId: string | null }) {
+  const search = useHashSearch()
+  const jobFilter = search.get('job')
   const [items, setItems] = useState<ApplySummary[]>([])
   const [detail, setDetail] = useState<ApplyDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -43,6 +48,17 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
     void load()
   }, [load])
 
+  const jobId = detail?.source.job_posting_id || jobFilter
+  const listed = jobFilter ? items.filter((row) => row.job_id === jobFilter) : items
+
+  useEffect(() => {
+    if (requestId || loading || !jobFilter) return
+    const match = items.find((row) => row.job_id === jobFilter)
+    if (!match) return
+    const href = applyHref(match.request_id, jobFilter)
+    if (window.location.hash !== href) window.location.hash = href
+  }, [requestId, loading, jobFilter, items])
+
   const cancel = async () => {
     if (!detail || !canCancel(detail.state)) return
     setBusy(true)
@@ -64,8 +80,9 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
         <div>
           <h1>Auto-Apply</h1>
           <p className="tagline">Track programmatic submissions and manual packages from Review.</p>
+          {jobId && <JobCrossLinks jobId={jobId} current="apply" />}
         </div>
-        <a className="secondary" href="#/review">
+        <a className="secondary" href={reviewHref({ jobId })}>
           Review queue
         </a>
       </header>
@@ -75,17 +92,20 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
       <div className="apply-layout">
         <section>
           <h2>Applications</h2>
-          {!loading && items.length === 0 && (
+          {!loading && listed.length === 0 && (
             <p className="muted">
-              No applications yet. Open a match in <a href="#/review">Review</a> and choose Auto-Apply.
+              {jobFilter
+                ? 'No applications for this job yet. Open Review and choose Auto-Apply.'
+                : 'No applications yet. Open a match in Review and choose Auto-Apply.'}{' '}
+              <a href={reviewHref({ jobId: jobFilter })}>Review</a>
             </p>
           )}
           <ul className="apply-list">
-            {items.map((row) => (
+            {listed.map((row) => (
               <li key={row.request_id}>
                 <a
                   className={row.request_id === requestId ? 'apply-row is-active' : 'apply-row'}
-                  href={`#/apply/${row.request_id}`}
+                  href={applyHref(row.request_id, row.job_id)}
                 >
                   <div>
                     <strong>{row.job_id || row.request_id}</strong>
@@ -153,6 +173,7 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
                   {busy ? 'Cancelling…' : 'Cancel request'}
                 </button>
               )}
+              {jobId && <JobEmailsTab jobId={jobId} />}
             </>
           )}
         </aside>

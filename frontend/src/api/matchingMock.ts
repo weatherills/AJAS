@@ -25,7 +25,13 @@ function titleSignals(text: string): { keyword: number; semantic: number } {
   return { keyword: 28, semantic: 34 }
 }
 
-function scoreOne(resumeText: string, resumeId: string | null, job: { id: string; text: string }, threshold: number): MatchView {
+function scoreOne(
+  resumeText: string,
+  resumeId: string | null,
+  job: { id: string; text: string },
+  threshold: number,
+  persist = false,
+): MatchView {
   if (!resumeId) {
     return {
       jobId: job.id,
@@ -73,18 +79,18 @@ function scoreOne(resumeText: string, resumeId: string | null, job: { id: string
     explanation: explanationFor(score, terms, gaps),
     versions: outdated ? { ...CURRENT_VERSIONS, algorithm: 'weighted-legacy' } : CURRENT_VERSIONS,
     computedAt: now(),
-    persisted: score >= threshold,
-    matchId: score >= threshold ? `match-${job.id}` : undefined,
+    persisted: score >= threshold || persist,
+    matchId: score >= threshold || persist ? `match-${job.id}` : undefined,
   }
 }
 
 export const mockMatchingApi: MatchingApi = {
   async scoreMany(query) {
     await new Promise((resolve) => setTimeout(resolve, 40))
-    return query.jobs.map((job) => scoreOne(query.resumeText, query.resumeId, job, query.threshold))
+    return query.jobs.map((job) => scoreOne(query.resumeText, query.resumeId, job, query.threshold, query.persist === true))
   },
   async scoreOne(query) {
     await new Promise((resolve) => setTimeout(resolve, 40))
-    return scoreOne(query.resumeText, query.resumeId, query.job, query.threshold)
+    return scoreOne(query.resumeText, query.resumeId, query.job, query.threshold, query.persist === true)
   },
 }

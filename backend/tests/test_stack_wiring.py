@@ -104,6 +104,52 @@ def test_persisted_score_creates_review_row(wiring):
     )
     assert again.status_code == 200
     assert len(wiring["review"].list_matches(USER)) == 1
+    assert wiring["review"].list_matches(USER)[0].source == "ai"
+
+
+def test_save_match_below_threshold_lands_on_review_saved(wiring):
+    low_job = "Title: Baker\nCompany: Cakes\nSkills: frosting pastry whisk\nBake cakes daily with fondant"
+    resp = matching_routes.compute_match(
+        _req(
+            "POST",
+            "http://localhost/api/v1/matches/compute",
+            json_body={
+                "resumeId": "resume-1",
+                "resumeText": RESUME,
+                "jobId": "job-baker",
+                "jobText": low_job,
+                "persist": True,
+            },
+        )
+    )
+    assert resp.status_code == 200
+    body = _body(resp)
+    assert body["persisted"] is True
+    assert body["score"] < 70
+    rows = wiring["review"].list_matches(USER)
+    assert len(rows) == 1
+    assert rows[0].job_id == "job-baker"
+    assert rows[0].source == "saved"
+    assert rows[0].status == "PENDING"
+    assert rows[0].ai_score == body["score"]
+    again = matching_routes.compute_match(
+        _req(
+            "POST",
+            "http://localhost/api/v1/matches/compute",
+            json_body={
+                "resumeId": "resume-1",
+                "resumeText": RESUME,
+                "jobId": "job-baker",
+                "jobText": low_job,
+                "persist": True,
+            },
+        )
+    )
+    assert again.status_code == 200
+    updated = wiring["review"].list_matches(USER)
+    assert len(updated) == 1
+    assert updated[0].source == "saved"
+    assert updated[0].ai_score == _body(again)["score"]
 
 
 def test_settings_threshold_updates_matching_prefs(wiring):
@@ -128,3 +174,73 @@ def test_settings_source_toggle_disables_tenants(wiring):
     lv = wiring["jobs"].store.list_tenants("lever")
     assert gh and all(not item.enabled for item in gh)
     assert lv and all(item.enabled for item in lv)
+
+
+def test_demo_review_seed_uses_feed_job_ids(monkeypatch):
+    from app.job_sources.feed import feed_cards, seed_demo_feed
+    from app.job_sources.memory import InMemoryJobSourceStore
+    from app.review.memory import InMemoryReviewStore
+    from app.review import runtime
+
+    jobs = InMemoryJobSourceStore()
+    seed_demo_feed(jobs)
+    cards = feed_cards(jobs)
+    monkeypatch.setattr(runtime, "_feed_cards", lambda: cards)
+    review = InMemoryReviewStore()
+    runtime._seed_demo_matches(review)
+    ids = {card["id"] for card in cards}
+    matches = review.list_matches("local-user")
+    assert matches
+    staff = next(item for item in matches if "staff" in item.job_title.lower())
+    analyst = next(item for item in matches if "analyst" in item.job_title.lower())
+    assert staff.job_id in ids
+    assert analyst.job_id in ids
+    assert staff.company == "Acme"
+
+
+def test_demo_resume_seed_matches_review_id():
+    from app.resumes.demo import DEMO_RESUME_ID, DEMO_USER, seed_demo_resume
+    from app.resumes.memory import InMemoryResumeStore
+
+    store = InMemoryResumeStore()
+    seed_demo_resume(store)
+    row = store.get_resume(DEMO_USER, DEMO_RESUME_ID)
+    assert row.id == "resume-1"
+    assert row.validated is True
+    assert row.processing_status == "parsed"
+    seed_demo_resume(store)
+    assert len(store.list_resumes(DEMO_USER)) == 1
+
+
+def test_demo_review_seed_resume_id_is_resume_1(monkeypatch):
+    from app.job_sources.feed import feed_cards, seed_demo_feed
+    from app.job_sources.memory import InMemoryJobSourceStore
+    from app.review.memory import InMemoryReviewStore
+    from app.review import runtime
+
+    jobs = InMemoryJobSourceStore()
+    seed_demo_feed(jobs)
+    cards = feed_cards(jobs)
+    monkeypatch.setattr(runtime, "_feed_cards", lambda: cards)
+    review = InMemoryReviewStore()
+    runtime._seed_demo_matches(review)
+    matches = review.list_matches("local-user")
+    assert matches
+    assert {item.resume_id for item in matches} == {"resume-1"}
+
+
+def test_learning_demo_jobs_align_with_feed(monkeypatch):
+    from app.job_sources.feed import feed_cards, seed_demo_feed
+    from app.job_sources.memory import InMemoryJobSourceStore
+    from app.learning.memory import InMemoryLearningStore
+
+    jobs = InMemoryJobSourceStore()
+    seed_demo_feed(jobs)
+    ids = {card["id"] for card in feed_cards(jobs)}
+    monkeypatch.setattr("app.job_sources.store.get_job_source_store", lambda: jobs)
+    store = InMemoryLearningStore(seed=False)
+    store.seed_demo("local-user", align_feed=True)
+    named = [row.job_id for row in store.list_recommendations("local-user") if not row.job_id.startswith("job-extra-")]
+    assert named
+    assert any(job_id in ids for job_id in named)
+    assert all(row.resume_id == "resume-1" for row in store.list_recommendations("local-user"))

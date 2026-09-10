@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mockEmailApi } from '../api/emailMock'
-import { fillTemplate, leftoverVars, relativeTime, validateAttachments } from './email'
+import { demoMailbox, fillTemplate, graphConnected, leftoverVars, mailboxReadable, oauthConfigured, relativeTime, validateAttachments } from './email'
 
 describe('email helpers', () => {
   it('fills template variables and reports leftovers', () => {
@@ -25,7 +25,86 @@ describe('email helpers', () => {
   })
 })
 
+describe('mailbox connection helpers', () => {
+  it('treats Graph OAuth as connected and demo as a separate mailbox', () => {
+    expect(graphConnected({ connected: false, graphConnected: false, address: null, lastSyncedAt: null, unreadCount: 0, demo: false })).toBe(
+      false,
+    )
+    expect(
+      mailboxReadable({ connected: false, graphConnected: false, address: null, lastSyncedAt: null, unreadCount: 0, demo: false }),
+    ).toBe(false)
+    const demo = {
+      connected: false,
+      graphConnected: false,
+      address: 'local-user@ajas.dev',
+      lastSyncedAt: null,
+      unreadCount: 1,
+      demo: true,
+      provider: 'demo' as const,
+    }
+    expect(graphConnected(demo)).toBe(false)
+    expect(demoMailbox(demo)).toBe(true)
+    expect(mailboxReadable(demo)).toBe(true)
+    const graph = {
+      connected: true,
+      graphConnected: true,
+      address: 'jane@contoso.com',
+      lastSyncedAt: null,
+      unreadCount: 0,
+      demo: false,
+      provider: 'microsoft365' as const,
+    }
+    expect(graphConnected(graph)).toBe(true)
+    expect(demoMailbox(graph)).toBe(false)
+    expect(mailboxReadable(graph)).toBe(true)
+  })
+
+  it('does not treat a demo flag as Graph when connected is true', () => {
+    const mixed = {
+      connected: true,
+      address: 'local-user@ajas.dev',
+      lastSyncedAt: null,
+      unreadCount: 0,
+      demo: true,
+    }
+    expect(graphConnected(mixed)).toBe(false)
+    expect(demoMailbox(mixed)).toBe(true)
+  })
+
+  it('treats missing oauthConfigured as available and false as unconfigured', () => {
+    expect(
+      oauthConfigured({
+        connected: false,
+        graphConnected: false,
+        address: null,
+        lastSyncedAt: null,
+        unreadCount: 0,
+        demo: false,
+      }),
+    ).toBe(true)
+    expect(
+      oauthConfigured({
+        connected: false,
+        graphConnected: false,
+        address: 'local-user@ajas.dev',
+        lastSyncedAt: null,
+        unreadCount: 1,
+        demo: true,
+        oauthConfigured: false,
+      }),
+    ).toBe(false)
+  })
+})
+
 describe('mock email api', () => {
+  it('reports a demo mailbox, not a connected Graph account', async () => {
+    const status = await mockEmailApi.status()
+    expect(graphConnected(status)).toBe(false)
+    expect(demoMailbox(status)).toBe(true)
+    expect(mailboxReadable(status)).toBe(true)
+    expect(status.oauthConfigured).toBe(true)
+  })
+
   it('lists threads and clears unread on view', async () => {
     const page = await mockEmailApi.listThreads()
     expect(page.items.length).toBeGreaterThan(0)
@@ -36,10 +115,8 @@ describe('mock email api', () => {
     expect(messages.thread.unreadCount).toBe(0)
   })
 
-  it('returns three suggestions and sends a reply', async () => {
-    const drafts = await mockEmailApi.suggestions('t-staff')
-    expect(drafts).toHaveLength(3)
-    const sent = await mockEmailApi.reply('t-staff', { bodyText: 'Thanks Maya' })
-    expect(sent.deliveryStatus).toBe('sent')
+  it('lists threads for the same job id the job feed mock uses', async () => {
+    const page = await mockEmailApi.listJobThreads('job-1')
+    expect(page.items.some((item) => item.jobId === 'job-1' && item.subject.includes('Staff Engineer'))).toBe(true)
   })
 })

@@ -40,3 +40,14 @@ def set_service(service: CrawlService | None) -> None:
 
 def try_get_service() -> CrawlService | None:
     return _service
+
+
+def tenant_counts_or_none() -> dict[str, int] | None:
+    """Greenhouse/Lever tenant counts when crawl is wired; None if not."""
+    service = try_get_service()
+    if service is None:
+        return None
+    return {
+        "greenhouse": len(service.store.list_tenants("greenhouse")),
+        "lever": len(service.store.list_tenants("lever")),
+    }

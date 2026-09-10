@@ -164,6 +164,7 @@ class InMemoryMatchingStore:
         error_message: str | None = None,
         source: str = "sync",
         idempotency_key_value: str | None = None,
+        force_save: bool = False,
     ) -> MatchRun:
         if not user_id:
             raise MatchingValidationError("user_id is required", path="user_id")
@@ -214,7 +215,7 @@ class InMemoryMatchingStore:
         now = utc_now()
         is_error = run_status == "error"
         meets = (not is_error) and score >= threshold_used
-        saved = False if is_error else (meets or prefs.save_all_matches)
+        saved = False if is_error else (meets or prefs.save_all_matches or force_save)
         run = MatchRun(
             user_id=user_id,
             resume_id=resume_id,

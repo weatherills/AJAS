@@ -3,11 +3,15 @@ import { reviewApi, USE_MOCK } from '../api'
 import type { DecisionValue, ReviewDetail, ReviewFilters, ReviewMatch, ReviewTab } from '../api/reviewTypes'
 import { AppNav } from '../components/AppNav'
 import { ApplyModal } from '../components/ApplyModal'
+import { JobCrossLinks } from '../components/JobCrossLinks'
+import { JobEmailsTab } from '../components/JobEmailsTab'
 import { ToastStack } from '../components/Toast'
+import { applyHref, parseHash, parseReviewTab, resumeHref, reviewHref, useHashSearch } from '../lib/routes'
 import {
   COMMENT_MAX,
   companiesFrom,
-  DEFAULT_FILTERS,
+  filtersForTab,
+  findReviewRow,
   formatDay,
   formatWhen,
   nextAfterRemove,
@@ -34,8 +38,13 @@ function scoreClass(score: number | null) {
 }
 
 export function ReviewPage() {
-  const [tab, setTab] = useState<ReviewTab>('matches')
-  const [filters, setFilters] = useState<ReviewFilters>(DEFAULT_FILTERS)
+  const search = useHashSearch()
+  const hashTab = parseReviewTab(search.get('tab'))
+  const resumeFilter = search.get('resume')
+  const [tab, setTab] = useState<ReviewTab>(() => parseReviewTab(parseHash(window.location.hash).params.get('tab')))
+  const [filters, setFilters] = useState<ReviewFilters>(() =>
+    filtersForTab(parseReviewTab(parseHash(window.location.hash).params.get('tab'))),
+  )
   const [items, setItems] = useState<ReviewMatch[]>([])
   const [total, setTotal] = useState(0)
   const [visible, setVisible] = useState(PAGE_SIZE)
@@ -53,9 +62,11 @@ export function ReviewPage() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 1023px)').matches)
   const [applyOpen, setApplyOpen] = useState(false)
+  const [pane, setPane] = useState<'details' | 'emails'>('details')
   const toastId = useRef(1)
   const commentRef = useRef<HTMLTextAreaElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
+  const locating = useRef(false)
 
   const toast = (text: string, tone: Toast['tone'] = 'info', extra?: Pick<Toast, 'actionLabel' | 'onAction'>) => {
     const id = toastId.current++
@@ -63,10 +74,15 @@ export function ReviewPage() {
     window.setTimeout(() => setToasts((prev) => prev.filter((item) => item.id !== id)), 5000)
   }
 
-  const shown = items.slice(0, visible)
+  const scoped = useMemo(
+    () => (resumeFilter ? items.filter((item) => item.resumeId === resumeFilter) : items),
+    [items, resumeFilter],
+  )
+  const shown = scoped.slice(0, visible)
   const companies = useMemo(() => companiesFrom(items), [items])
   const historyMode = tab === 'history'
   const checked = validateComment(comment)
+  const listTotal = resumeFilter ? scoped.length : total
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -94,8 +110,9 @@ export function ReviewPage() {
     return () => media.removeEventListener('change', onChange)
   }, [])
 
-  const openRow = useCallback(async (matchId: string, decisionId?: string) => {
+  const openRow = useCallback(async (matchId: string, decisionId?: string, nextPane: 'details' | 'emails' = 'details') => {
     setSelectedId(matchId)
+    setPane(nextPane)
     setDetailLoading(true)
     setPaneError(null)
     try {
@@ -103,13 +120,75 @@ export function ReviewPage() {
       setDetail(next)
       setComment('')
       setCommentError(null)
+      const href = reviewHref({
+        matchId,
+        pane: nextPane,
+        tab,
+        resumeId: resumeFilter,
+      })
+      if (window.location.hash !== href) window.location.hash = href
     } catch (err) {
       setPaneError(err instanceof Error ? err.message : 'Could not load details')
       setDetail(null)
     } finally {
       setDetailLoading(false)
     }
-  }, [])
+  }, [resumeFilter, tab])
+
+  useEffect(() => {
+    if (hashTab === tab) return
+    setTab(hashTab)
+    setFilters(filtersForTab(hashTab))
+    if (!search.get('match') && !search.get('job')) {
+      setSelectedId(null)
+      setDetail(null)
+    }
+  }, [hashTab, tab, search])
+
+  useEffect(() => {
+    if (loading) return
+    const matchId = search.get('match')
+    const jobId = search.get('job')
+    const nextPane = search.get('pane') === 'emails' ? 'emails' : 'details'
+    if (matchId) {
+      if (selectedId !== matchId || pane !== nextPane) {
+        const row = items.find((item) => item.matchId === matchId)
+        void openRow(matchId, historyMode ? row?.latestDecisionId || undefined : undefined, nextPane)
+      }
+      if (!items.some((item) => item.matchId === matchId) && !locating.current) {
+        locating.current = true
+        void findReviewRow(reviewApi, { matchId }).then((located) => {
+          locating.current = false
+          if (!located || located.tab === tab) return
+          const href = reviewHref({ matchId, pane: nextPane, tab: located.tab, resumeId: resumeFilter })
+          if (window.location.hash !== href) window.location.hash = href
+        })
+      }
+      return
+    }
+    if (jobId) {
+      const found = items.find((item) => item.jobId === jobId)
+      if (found) {
+        if (selectedId !== found.matchId || pane !== nextPane) {
+          void openRow(found.matchId, historyMode ? found.latestDecisionId || undefined : undefined, nextPane)
+        }
+        return
+      }
+      if (locating.current) return
+      locating.current = true
+      void findReviewRow(reviewApi, { jobId }).then((located) => {
+        locating.current = false
+        if (!located) return
+        const href = reviewHref({
+          matchId: located.match.matchId,
+          pane: nextPane,
+          tab: located.tab,
+          resumeId: resumeFilter,
+        })
+        if (window.location.hash !== href) window.location.hash = href
+      })
+    }
+  }, [loading, items, search, selectedId, pane, openRow, historyMode, tab, resumeFilter])
 
   useEffect(() => {
     if (!selectedId) {
@@ -117,10 +196,11 @@ export function ReviewPage() {
       return
     }
     if (!items.some((item) => item.matchId === selectedId)) {
+      if (search.get('match') === selectedId) return
       setSelectedId(null)
       setDetail(null)
     }
-  }, [items, selectedId])
+  }, [items, selectedId, search])
 
   const reopenMatch = useCallback(async (matchId: string) => {
     setSaving(true)
@@ -131,7 +211,7 @@ export function ReviewPage() {
       setLiveMessage(`Reopened ${updated.jobTitle}`)
       await load()
       setTab(updated.source === 'saved' ? 'saved' : 'matches')
-      setFilters((prev) => ({ ...prev, status: 'awaiting' }))
+      setFilters(filtersForTab(updated.source === 'saved' ? 'saved' : 'matches'))
       await openRow(updated.matchId)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not reopen this decision.'
@@ -220,11 +300,15 @@ export function ReviewPage() {
   }, [decide, detail, historyMode, saving])
 
   const emptyCopy =
-    tab === 'history'
-      ? 'No decisions yet. Approve or reject matches and they will show up here.'
-      : tab === 'saved'
-        ? 'No saved jobs waiting. Save a posting from the job feed, then decide here.'
-        : 'No matches waiting. Scan the job feed or lower the score filter.'
+    resumeFilter && shown.length === 0
+      ? tab === 'history'
+        ? 'No decisions for this resume yet.'
+        : 'No matches for this resume in this queue.'
+      : tab === 'history'
+        ? 'No decisions yet. Approve or reject matches and they will show up here.'
+        : tab === 'saved'
+          ? 'No saved jobs waiting. Save a posting from the job feed, then decide here.'
+          : 'No matches waiting. Scan the job feed or lower the score filter.'
 
   const paneOpen = Boolean(selectedId)
   const why = truncateText(detail?.match.why, WHY_MAX)
@@ -248,6 +332,9 @@ export function ReviewPage() {
           <a className="secondary" href="#/apply">
             Applications
           </a>
+          <a className="secondary" href="#/email">
+            Email
+          </a>
           <button type="button" className="secondary feed-filters-toggle" onClick={() => setFiltersOpen(true)}>
             Filters
           </button>
@@ -265,14 +352,8 @@ export function ReviewPage() {
             aria-selected={tab === name}
             className={tab === name ? 'review-tab is-active' : 'review-tab'}
             onClick={() => {
-              setTab(name)
-              setSelectedId(null)
-              setDetail(null)
-              setFilters({
-                ...DEFAULT_FILTERS,
-                status: name === 'history' ? 'all' : 'awaiting',
-                source: name === 'saved' ? 'saved' : name === 'matches' ? 'ai' : 'all',
-              })
+              const href = reviewHref({ tab: name, resumeId: resumeFilter })
+              if (window.location.hash !== href) window.location.hash = href
             }}
           >
             {name === 'matches' ? 'Matches' : name === 'saved' ? 'Saved' : 'History'}
@@ -384,19 +465,41 @@ export function ReviewPage() {
             </p>
           )}
           {loading && <p className="skeleton">Loading queue…</p>}
+          {resumeFilter && (
+            <p className="resume-filter-banner">
+              Showing matches for this resume.{' '}
+              <a className="primary-link" href={resumeHref(resumeFilter)}>
+                Open resume
+              </a>
+              {' · '}
+              <a className="primary-link" href={reviewHref({ tab })}>
+                Clear filter
+              </a>
+            </p>
+          )}
           {!loading && shown.length === 0 && (
             <div className="empty-state">
               <h2>Nothing here</h2>
               <p className="muted">{emptyCopy}</p>
-              <a className="primary" href="#/">
-                Back to home
-              </a>
+              {resumeFilter && tab !== 'history' ? (
+                <a className="primary" href={reviewHref({ tab: 'history', resumeId: resumeFilter })}>
+                  Check history
+                </a>
+              ) : resumeFilter ? (
+                <a className="primary" href={resumeHref(resumeFilter)}>
+                  Open resume
+                </a>
+              ) : (
+                <a className="primary" href="#/">
+                  Back to home
+                </a>
+              )}
             </div>
           )}
           {!loading && shown.length > 0 && (
             <>
               <p className="muted review-count">
-                {total} {total === 1 ? 'item' : 'items'}
+                {listTotal} {listTotal === 1 ? 'item' : 'items'}
               </p>
               <div className="review-table-wrap">
                 <table className="review-table" aria-label={tab === 'history' ? 'Decision history' : 'Review queue'}>
@@ -489,12 +592,14 @@ export function ReviewPage() {
                 onClick={() => {
                   setSelectedId(null)
                   setDetail(null)
+                  const href = reviewHref({ tab, resumeId: resumeFilter })
+                  if (window.location.hash !== href) window.location.hash = href
                 }}
               >
                 Back
               </button>
             </div>
-            {detailLoading && <p className="skeleton">Loading details…</p>}
+            {detailLoading && pane === 'details' && <p className="skeleton">Loading details…</p>}
             {paneError && <p className="inline-error">{paneError}</p>}
             {detail && (
               <>
@@ -512,7 +617,47 @@ export function ReviewPage() {
                       </a>
                     )}
                   </div>
+                  {detail.match.jobId && (
+                    <JobCrossLinks
+                      jobId={detail.match.jobId}
+                      matchId={detail.match.matchId}
+                      resumeId={detail.match.resumeId}
+                      current="review"
+                    />
+                  )}
                 </header>
+                <div className="drawer-tabs" role="tablist" aria-label="Match details">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={pane === 'details'}
+                    className={pane === 'details' ? 'is-selected' : ''}
+                    onClick={() => {
+                      setPane('details')
+                      const href = reviewHref({ matchId: detail.match.matchId, pane: 'details', tab, resumeId: resumeFilter })
+                      if (window.location.hash !== href) window.location.hash = href
+                    }}
+                  >
+                    Details
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={pane === 'emails'}
+                    className={pane === 'emails' ? 'is-selected' : ''}
+                    onClick={() => {
+                      setPane('emails')
+                      const href = reviewHref({ matchId: detail.match.matchId, pane: 'emails', tab, resumeId: resumeFilter })
+                      if (window.location.hash !== href) window.location.hash = href
+                    }}
+                    disabled={!detail.match.jobId}
+                  >
+                    Emails
+                  </button>
+                </div>
+                {pane === 'emails' && detail.match.jobId && <JobEmailsTab jobId={detail.match.jobId} />}
+                {pane === 'details' && (
+              <>
                 {detail.snapshotUnavailable && <p className="warn-text">Snapshot unavailable — showing current data.</p>}
                 <section>
                   <h3>Summary</h3>
@@ -542,21 +687,36 @@ export function ReviewPage() {
                 </section>
                 <section>
                   <h3>Resume highlights</h3>
-                  {!detail.match.resumeId || !detail.match.resumeHighlights ? (
+                  {!detail.match.resumeId ? (
                     <p className="muted">Resume not found</p>
                   ) : (
                     <>
+                      {detail.match.resumeHighlights ? (
+                        <>
+                          <p>
+                            <strong>Matched:</strong> {detail.match.resumeHighlights.matched.join(', ') || '—'}
+                          </p>
+                          <p>
+                            <strong>Missing:</strong> {detail.match.resumeHighlights.missing.join(', ') || '—'}
+                          </p>
+                          <p>
+                            <strong>Experience:</strong> {detail.match.resumeHighlights.years || '—'}
+                          </p>
+                          <p>
+                            <strong>Keywords:</strong> {detail.match.resumeHighlights.keywords.join(', ') || '—'}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="muted">Highlights are not available for this match.</p>
+                      )}
                       <p>
-                        <strong>Matched:</strong> {detail.match.resumeHighlights.matched.join(', ') || '—'}
-                      </p>
-                      <p>
-                        <strong>Missing:</strong> {detail.match.resumeHighlights.missing.join(', ') || '—'}
-                      </p>
-                      <p>
-                        <strong>Experience:</strong> {detail.match.resumeHighlights.years || '—'}
-                      </p>
-                      <p>
-                        <strong>Keywords:</strong> {detail.match.resumeHighlights.keywords.join(', ') || '—'}
+                        <a className="primary-link" href={resumeHref(detail.match.resumeId)}>
+                          Open resume
+                        </a>
+                        {' · '}
+                        <a className="primary-link" href={reviewHref({ resumeId: detail.match.resumeId, tab })}>
+                          All matches for this resume
+                        </a>
                       </p>
                     </>
                   )}
@@ -633,6 +793,8 @@ export function ReviewPage() {
                   </div>
                 )}
               </>
+                )}
+              </>
             )}
           </aside>
         )}
@@ -649,7 +811,7 @@ export function ReviewPage() {
           onSubmitted={(requestId, state) => {
             setApplyOpen(false)
             toast(`Application ${state}`)
-            window.location.hash = `#/apply/${requestId}`
+            window.location.hash = applyHref(requestId, detail.match.jobId)
           }}
         />
       )}

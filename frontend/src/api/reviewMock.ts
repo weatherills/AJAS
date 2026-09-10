@@ -57,6 +57,7 @@ function seed() {
   if (rows.size) return
   seedRow({
     matchId: 'match-staff',
+    jobId: 'job-1',
     jobTitle: 'Staff Platform Engineer',
     company: 'Acme',
     location: 'Remote',
@@ -67,6 +68,7 @@ function seed() {
   })
   seedRow({
     matchId: 'match-data',
+    jobId: 'job-13',
     jobTitle: 'Data Engineer',
     company: 'Globex',
     location: 'Austin, TX',

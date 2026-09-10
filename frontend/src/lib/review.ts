@@ -1,4 +1,4 @@
-import type { ReviewFilters, ReviewMatch, ReviewStatus, ReviewTab, Suggestion } from '../api/reviewTypes'
+import type { ReviewApi, ReviewFilters, ReviewMatch, ReviewStatus, ReviewTab, Suggestion } from '../api/reviewTypes'
 
 export const COMMENT_MAX = 1000
 export const WHY_MAX = 400
@@ -118,4 +118,43 @@ export function nextAfterRemove(ids: string[], currentId: string): string | null
 
 export function companiesFrom(items: ReviewMatch[]): string[] {
   return [...new Set(items.map((item) => item.company).filter(Boolean))].sort()
+}
+
+export function filtersForTab(tab: ReviewTab): ReviewFilters {
+  return {
+    ...DEFAULT_FILTERS,
+    status: tab === 'history' ? 'all' : 'awaiting',
+    source: tab === 'saved' ? 'saved' : tab === 'matches' ? 'ai' : 'all',
+  }
+}
+
+export function tabForMatch(match: Pick<ReviewMatch, 'status' | 'source'>): ReviewTab {
+  if (match.status === 'approved' || match.status === 'rejected') return 'history'
+  if (match.source === 'saved') return 'saved'
+  return 'matches'
+}
+
+export async function findReviewRow(
+  api: ReviewApi,
+  opts: { matchId?: string | null; jobId?: string | null; resumeId?: string | null },
+): Promise<{ tab: ReviewTab; match: ReviewMatch } | null> {
+  if (opts.matchId) {
+    try {
+      const detail = await api.get(opts.matchId)
+      return { tab: tabForMatch(detail.match), match: detail.match }
+    } catch {
+      return null
+    }
+  }
+  const tabs: ReviewTab[] = ['matches', 'saved', 'history']
+  for (const tab of tabs) {
+    const result = await api.list(tab, filtersForTab(tab))
+    const match = result.items.find((item) => {
+      if (opts.jobId && item.jobId === opts.jobId) return true
+      if (opts.resumeId && item.resumeId === opts.resumeId) return true
+      return false
+    })
+    if (match) return { tab, match }
+  }
+  return null
 }

@@ -25,6 +25,49 @@ Authorization: Bearer {{token}}
 GET {{base}}/api/v1/sources/status
 Authorization: Bearer {{token}}
 
+### Add a Greenhouse board token (201; flips configured)
+POST {{base}}/api/v1/sources/greenhouse/tenants
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "boardToken": "acme"
+}
+
+### Add a Greenhouse board URL
+POST {{base}}/api/v1/sources/greenhouse/tenants
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "boardUrl": "https://boards.greenhouse.io/acme"
+}
+
+### Add a Lever company URL
+POST {{base}}/api/v1/sources/lever/tenants
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "companyUrl": "https://jobs.lever.co/acme"
+}
+
+### List Greenhouse tenants
+GET {{base}}/api/v1/sources/greenhouse/tenants
+Authorization: Bearer {{token}}
+
+### Remove a Greenhouse board (last tenant returns unconfigured)
+DELETE {{base}}/api/v1/sources/greenhouse/tenants/no-such-board
+Authorization: Bearer {{token}}
+
+### Remove a Lever board
+DELETE {{base}}/api/v1/sources/lever/tenants/acme
+Authorization: Bearer {{token}}
+
+### Recrawl one Greenhouse board (202)
+POST {{base}}/api/v1/sources/greenhouse/tenants/no-such-board/crawl
+Authorization: Bearer {{token}}
+
 ### Start a Greenhouse crawl (202)
 POST {{base}}/api/v1/sources/greenhouse/crawl
 Authorization: Bearer {{token}}

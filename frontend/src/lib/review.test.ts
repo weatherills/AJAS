@@ -4,8 +4,10 @@ import {
   applyFilters,
   COMMENT_MAX,
   DEFAULT_FILTERS,
+  findReviewRow,
   nextAfterRemove,
   suggestionLabel,
+  tabForMatch,
   truncateText,
   validateComment,
 } from './review'
@@ -39,6 +41,7 @@ describe('mock review api', () => {
     const result = await mockReviewApi.list('matches', { ...DEFAULT_FILTERS, source: 'ai', status: 'awaiting' })
     expect(result.items.every((item) => item.source === 'ai' && item.status === 'pending')).toBe(true)
     expect(result.items[0].jobTitle).toBe('Staff Platform Engineer')
+    expect(result.items[0].jobId).toBe('job-1')
     expect(result.items[0].score).toBe(88)
   })
 
@@ -89,5 +92,24 @@ describe('mock review api', () => {
     expect(history.items.every((item) => (item.scoreAtDecision ?? 0) >= 80)).toBe(true)
     const acme = applyFilters(history.items, 'history', { ...DEFAULT_FILTERS, status: 'all', source: 'all', company: 'Acme' })
     expect(acme.every((item) => item.company === 'Acme')).toBe(true)
+  })
+})
+
+describe('review deep-links', () => {
+  it('maps decided matches to history and saved pending to saved', () => {
+    expect(tabForMatch({ status: 'approved', source: 'ai' })).toBe('history')
+    expect(tabForMatch({ status: 'pending', source: 'saved' })).toBe('saved')
+    expect(tabForMatch({ status: 'pending', source: 'ai' })).toBe('matches')
+  })
+
+  it('finds a match by id and a job that only exists in history', async () => {
+    resetReviewMock()
+    const byId = await findReviewRow(mockReviewApi, { matchId: 'match-approved' })
+    expect(byId?.tab).toBe('history')
+    expect(byId?.match.jobTitle).toBe('Platform Engineer')
+    const byJob = await findReviewRow(mockReviewApi, { jobId: 'job-1' })
+    expect(byJob?.match.matchId).toBe('match-staff')
+    const byResume = await findReviewRow(mockReviewApi, { resumeId: 'seed-ready' })
+    expect(byResume?.match.resumeId).toBe('seed-ready')
   })
 })

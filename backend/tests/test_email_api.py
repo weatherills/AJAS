@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 
 import azure.functions as func
 import pytest
@@ -15,6 +16,8 @@ from app.mail.memory import InMemoryEmailStore
 from app.mail.queues import InMemoryJobQueue
 from app.mail.runtime import set_service
 from app.mail.service import EmailService
+from app.settings.memory import InMemorySettingsStore
+from app.settings.models import EmailConnection
 
 USER = "user-1"
 
@@ -35,15 +38,42 @@ def graph():
 
 
 @pytest.fixture
-def svc(monkeypatch, store, queue, graph):
+def settings_store():
+    return InMemorySettingsStore()
+
+
+@pytest.fixture
+def svc(monkeypatch, store, queue, graph, settings_store):
     monkeypatch.setenv("AUTH_MODE", "dev")
     monkeypatch.delenv("COSMOS_CONNECTION_STRING", raising=False)
+    monkeypatch.delenv("MICROSOFT_CLIENT_ID", raising=False)
+    monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
     get_settings.cache_clear()
-    service = EmailService(store=store, queue=queue, graph=graph, local_mode=True)
+    service = EmailService(
+        store=store, queue=queue, graph=graph, local_mode=True, settings_store=settings_store
+    )
     set_service(service)
     yield service
     set_service(None)
     get_settings.cache_clear()
+
+
+def _graph_connection(user_id: str = USER, **overrides) -> EmailConnection:
+    now = utc_now()
+    expires = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat().replace("+00:00", "Z")
+    payload = {
+        "user_id": user_id,
+        "provider": "microsoft_365",
+        "status": "active",
+        "account_email": "jane@contoso.com",
+        "access_token_enc": "enc:access",
+        "refresh_token_enc": "enc:refresh",
+        "expires_at": expires,
+        "created_at": now,
+        "updated_at": now,
+    }
+    payload.update(overrides)
+    return EmailConnection.model_validate(payload)
 
 
 def _req(
@@ -99,6 +129,82 @@ def test_unauthenticated_is_401(svc):
     resp = routes.email_status(_req("GET", "http://localhost/api/v1/email/status", user=None))
     assert resp.status_code == 401
     assert _body(resp)["error"]["code"] == "UNAUTHENTICATED"
+
+
+def test_local_status_without_oauth_is_demo_not_graph(svc):
+    resp = routes.email_status(_req("GET", "http://localhost/api/v1/email/status"))
+    assert resp.status_code == 200
+    body = _body(resp)
+    assert body["connected"] is False
+    assert body["graphConnected"] is False
+    assert body["demo"] is True
+    assert body["provider"] == "demo"
+    assert body["address"]
+    assert body["oauthConfigured"] is False
+    threads = routes.list_email_threads(_req("GET", "http://localhost/api/v1/email/threads"))
+    assert threads.status_code == 200
+    assert _body(threads)["total"] > 0
+
+
+def test_status_with_graph_oauth_is_connected(svc, settings_store):
+    settings_store.get_or_create_settings(USER, actor_id=USER)
+    settings_store.upsert_connection(USER, _graph_connection(), actor_id=USER)
+    resp = routes.email_status(_req("GET", "http://localhost/api/v1/email/status"))
+    assert resp.status_code == 200
+    body = _body(resp)
+    assert body["connected"] is True
+    assert body["graphConnected"] is True
+    assert body["demo"] is False
+    assert body["provider"] == "microsoft365"
+    assert body["address"] == "jane@contoso.com"
+    assert body["oauthConfigured"] is False
+
+
+def test_status_reports_oauth_configured_when_env_present(store, queue, graph, settings_store, monkeypatch):
+    monkeypatch.setenv("AUTH_MODE", "dev")
+    monkeypatch.setenv("MICROSOFT_CLIENT_ID", "client-1")
+    monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "secret-1")
+    monkeypatch.delenv("COSMOS_CONNECTION_STRING", raising=False)
+    get_settings.cache_clear()
+    service = EmailService(
+        store=store, queue=queue, graph=graph, local_mode=True, settings_store=settings_store
+    )
+    set_service(service)
+    try:
+        body = _body(routes.email_status(_req("GET", "http://localhost/api/v1/email/status")))
+        assert body["oauthConfigured"] is True
+        assert body["graphConnected"] is False
+        assert body["demo"] is True
+    finally:
+        set_service(None)
+        get_settings.cache_clear()
+
+
+def test_status_without_graph_outside_local_mode(store, queue, graph, settings_store, monkeypatch):
+    monkeypatch.setenv("AUTH_MODE", "dev")
+    monkeypatch.delenv("COSMOS_CONNECTION_STRING", raising=False)
+    monkeypatch.delenv("MICROSOFT_CLIENT_ID", raising=False)
+    monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
+    get_settings.cache_clear()
+    service = EmailService(
+        store=store, queue=queue, graph=graph, local_mode=False, settings_store=settings_store
+    )
+    set_service(service)
+    try:
+        resp = routes.email_status(_req("GET", "http://localhost/api/v1/email/status"))
+        assert resp.status_code == 200
+        body = _body(resp)
+        assert body["connected"] is False
+        assert body["graphConnected"] is False
+        assert body["demo"] is False
+        assert body["provider"] is None
+        assert body["address"] is None
+        assert body["oauthConfigured"] is False
+        listed = routes.list_email_threads(_req("GET", "http://localhost/api/v1/email/threads"))
+        assert listed.status_code == 401
+    finally:
+        set_service(None)
+        get_settings.cache_clear()
 
 
 def test_webhook_validation_token_echoed(svc):

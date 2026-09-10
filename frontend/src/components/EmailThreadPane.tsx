@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { emailApi, jobsApi } from '../api'
 import type { EmailMessage, EmailSuggestion, EmailTemplate, EmailThread } from '../api/emailTypes'
 import type { JobCard } from '../api/jobsTypes'
+import { JobCrossLinks } from './JobCrossLinks'
 import { Modal } from './Modal'
 import { ToastStack } from './Toast'
 import {
@@ -143,6 +144,7 @@ export function EmailThreadPane({
             From: {toLine}
             {thread.linked ? ` · ${thread.jobTitle} at ${thread.jobCompany}` : ''}
           </p>
+          {thread.jobId && <JobCrossLinks jobId={thread.jobId} current="email" />}
         </div>
         <div className="email-pane-actions">
           {!thread.linked && (
