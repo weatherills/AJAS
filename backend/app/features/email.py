@@ -8,6 +8,7 @@ import azure.functions as func
 
 from app.auth import AuthError, get_principal
 from app.http import error_response, json_response
+from app.request_context import bind_request
 from app.mail.errors import (
     MailConflictError,
     MailForbiddenError,
@@ -199,6 +200,7 @@ def preview_email_template(req: func.HttpRequest) -> func.HttpResponse:
 @bp.route(route="v1/email/webhooks/bounce", methods=["POST"])
 def email_bounce_webhook(req: func.HttpRequest) -> func.HttpResponse:
     try:
+        bind_request(req)
         from app.mail.bounce import classify_delivery
         from app.mail import suppression
 

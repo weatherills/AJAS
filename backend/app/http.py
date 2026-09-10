@@ -9,14 +9,12 @@ from typing import Any
 import azure.functions as func
 
 from app.errors import error_meta
-from app.request_context import current_request_id
+from app.request_context import ensure_request_id
 
 
 def _base_headers(extra: dict[str, str] | None = None) -> dict[str, str]:
     headers = {"Content-Type": "application/json"}
-    request_id = current_request_id()
-    if request_id:
-        headers["X-Request-Id"] = request_id
+    headers["X-Request-Id"] = ensure_request_id()
     if extra:
         headers.update({key: str(value) for key, value in extra.items() if value is not None})
     return headers

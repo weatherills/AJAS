@@ -33,5 +33,15 @@ def current_request_id() -> str | None:
     return _request_id.get()
 
 
+def ensure_request_id() -> str:
+    """Return the bound request id, or mint one for unauthenticated routes."""
+    request_id = _request_id.get()
+    if request_id:
+        return request_id
+    request_id = str(uuid4())
+    _request_id.set(request_id)
+    return request_id
+
+
 def current_user_id() -> str | None:
     return _user_id.get()

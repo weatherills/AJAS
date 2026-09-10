@@ -168,7 +168,10 @@ def get_learning_drift(req: func.HttpRequest) -> func.HttpResponse:
 def validate_learning_pipeline(req: func.HttpRequest) -> func.HttpResponse:
     try:
         principal = _auth(req)
-        payload = _json_body(req)
+        try:
+            payload = _json_body(req)
+        except LearningValidationError:
+            payload = {}
         events = payload.get("events") if isinstance(payload.get("events"), list) else payload if isinstance(payload, list) else []
         if not isinstance(payload.get("events"), list) and not isinstance(payload, list) and payload:
             events = [payload]

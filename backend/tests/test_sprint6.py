@@ -110,6 +110,7 @@ def test_email_preview_theme_and_bounce_suppression():
         )
     )
     assert bounce.status_code == 202
+    assert bounce.headers.get("X-Request-Id")
     from app.mail.suppression import is_suppressed
 
     assert is_suppressed("bad@example.com")
@@ -118,6 +119,9 @@ def test_email_preview_theme_and_bounce_suppression():
 def test_learning_pipeline_and_drift():
     from app.features.learning_loop import backfill_learning_pipeline, get_learning_drift, validate_learning_pipeline
 
+    empty = validate_learning_pipeline(_req("POST", "http://localhost/api/v1/learning/pipeline/validate"))
+    assert empty.status_code == 200
+    assert _body(empty)["accepted"] == 0
     bad = validate_learning_pipeline(_req("POST", "http://localhost/api/v1/learning/pipeline/validate", body={"events": [{}]}))
     assert _body(bad)["rejected"] == 1
     good_event = {
@@ -157,7 +161,7 @@ def test_review_bulk_archive_and_pagination_alias():
     assert created
     match_id = created["matchId"]
     listed = routes.list_matches(
-        _req("GET", "http://localhost/api/v1/matches", params={"limit": "10", "status": "pending"})
+        _req("GET", "http://localhost/api/v1/matches", params={"limit": "5", "status": "pending"})
     )
     listed_body = _body(listed)
     assert "items" in listed_body
