@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Callable
 from uuid import uuid4
 
@@ -22,6 +23,8 @@ from app.auto_apply.store import AutoApplyStore, get_auto_apply_store
 from app.auto_apply.submitters import HttpPoster, map_vendor_fields, submit_to_vendor
 from app.auto_apply.validation import retry_backoff_seconds, validate_apply_fields
 from app.config import get_settings
+
+logger = logging.getLogger("ajas")
 
 Clock = Callable[[], str]
 
@@ -111,8 +114,9 @@ class AutoApplyService:
         consent = bool(body.get("consent_approved") if "consent_approved" in body else True)
         if not consent:
             raise AutoApplyValidationError("consent_approved must be true", path="consent_approved")
-        validate_apply_fields(body, PROFILE)
         answers = body.get("answers") if isinstance(body.get("answers"), dict) else {}
+        profile = self._profile_for(user_id, str(resume_id), answers)
+        validate_apply_fields(body, profile)
         mode = "manual_package" if vendor == "manual" or _needs_manual_package(vendor, posting_url if isinstance(posting_url, str) else None) else "api"
         key = idempotency_key or (body.get("idempotency_key") if isinstance(body.get("idempotency_key"), str) else None)
 
@@ -145,7 +149,7 @@ class AutoApplyService:
         )
         cover = None
         if cover_mode == "generate":
-            letter = generate_cover_letter(attempt, PROFILE)
+            letter = generate_cover_letter(attempt, profile)
             cover_path = f"cover_letters/{user_id}/{attempt.id}.txt"
             self.blobs.put(cover_path, letter.encode("utf-8"))
             cover = self.store.create_cover_letter(
@@ -298,11 +302,14 @@ class AutoApplyService:
             request_blob_uri=payload_uri,
         )
         mappings = self.store.list_vendor_mappings(attempt.vendor)
+        autofill = self.store.list_autofill(user_id, attempt.id)
+        answers = {row.field_key: row.value for row in autofill}
+        profile = self._profile_for(user_id, attempt.resume_id or "", answers)
         fields = map_vendor_fields(
             attempt.vendor,
-            profile=PROFILE,
+            profile=profile,
             answers={},
-            autofill=self.store.list_autofill(user_id, attempt.id),
+            autofill=autofill,
             mappings=mappings,
         )
         cover_text = self._cover_text(user_id, attempt.id)
@@ -367,11 +374,47 @@ class AutoApplyService:
         self.store.transition(user_id, attempt.id, "submitted", payload={"vendor_application_id": vendor_app})
         self.store.transition(user_id, attempt.id, "succeeded", payload={"vendor_application_id": vendor_app})
 
+    def _profile_for(self, user_id: str, resume_id: str, answers: dict[str, Any] | None = None) -> dict[str, str]:
+        """Merge PROFILE → selected resume contact → apply-form answers."""
+        profile = dict(PROFILE)
+        from app.resumes.runtime import try_get_service as try_resume
+
+        resume_svc = try_resume()
+        if resume_svc is not None and resume_id:
+            try:
+                record = resume_svc.get(user_id, resume_id)
+                contact = record.contact
+                if contact is not None:
+                    name = (contact.full_name or "").strip()
+                    email = (contact.email or "").strip()
+                    phone = (contact.phone or "").strip()
+                    location = (contact.location or "").strip()
+                    if name:
+                        profile["full_name"] = name
+                        profile["name"] = name
+                    if email:
+                        profile["email"] = email
+                    if phone:
+                        profile["phone"] = phone
+                    if location:
+                        profile["location"] = location
+            except Exception:
+                logger.debug("resume contact lookup failed for %s/%s", user_id, resume_id, exc_info=True)
+        for key in ("full_name", "name", "email", "phone", "work_authorization", "location"):
+            override = (answers or {}).get(key)
+            if override:
+                profile[key] = str(override)
+                if key == "full_name":
+                    profile["name"] = str(override)
+        return profile
+
     def _seed_autofill(self, user_id: str, attempt: AutoApplyAttempt, vendor: str, answers: dict[str, Any]) -> None:
+        profile = self._profile_for(user_id, attempt.resume_id or "", answers)
         mappings = self.store.list_vendor_mappings(vendor)
         required_keys = [row.normalized_key for row in mappings if row.required] or ["full_name", "email"]
         for key in required_keys:
-            value = answers.get(key) or answers.get(key.replace("_", "")) or PROFILE.get(key) or PROFILE.get("full_name")
+            answered = answers.get(key) or answers.get(key.replace("_", ""))
+            value = answered or profile.get(key) or profile.get("full_name")
             self.store.put_autofill(
                 user_id,
                 attempt.id,
@@ -379,7 +422,7 @@ class AutoApplyService:
                 field_key=key,
                 value=str(value),
                 required=True,
-                source="profile" if key in PROFILE else "user_input",
+                source="user_input" if answered else "profile",
             )
 
     def _cover_text(self, user_id: str, attempt_id: str) -> str | None:

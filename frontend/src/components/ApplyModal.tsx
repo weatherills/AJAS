@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { autoApplyApi } from '../api'
+import { autoApplyApi, resumeApi } from '../api'
 import type { CoverLetterMode, JobSource } from '../api/autoApplyTypes'
 import { defaultPostingUrl, inferJobSource } from '../lib/autoApply'
+
+const FALLBACK_CONTACT = {
+  full_name: 'Alex Jobseeker',
+  email: 'alex@example.com',
+  phone: '+15555550100',
+}
 
 type Props = {
   jobTitle: string
@@ -22,11 +28,26 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
   const [fallback, setFallback] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [contact, setContact] = useState(FALLBACK_CONTACT)
   const firstRef = useRef<HTMLSelectElement | null>(null)
 
   useEffect(() => {
     firstRef.current?.focus()
   }, [])
+
+  useEffect(() => {
+    if (!resumeId) return
+    void resumeApi
+      .get(resumeId)
+      .then((detail) => {
+        setContact({
+          full_name: detail.contact?.fullName?.trim() || FALLBACK_CONTACT.full_name,
+          email: detail.contact?.email?.trim() || FALLBACK_CONTACT.email,
+          phone: detail.contact?.phone?.trim() || FALLBACK_CONTACT.phone,
+        })
+      })
+      .catch(() => setContact(FALLBACK_CONTACT))
+  }, [resumeId])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -55,9 +76,9 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
         cover_letter_mode: coverMode,
         consent_approved: true,
         answers: {
-          full_name: 'Alex Jobseeker',
-          email: 'alex@example.com',
-          phone: '+15555550100',
+          full_name: contact.full_name,
+          email: contact.email,
+          phone: contact.phone,
         },
       })
       onSubmitted(created.request_id, created.state)
@@ -114,13 +135,13 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
         <section className="apply-preview" aria-label="Autofill preview">
           <h3>Mapped fields</h3>
           <p>
-            <strong>Name</strong> Alex Jobseeker
+            <strong>Name</strong> {contact.full_name}
           </p>
           <p>
-            <strong>Email</strong> alex@example.com
+            <strong>Email</strong> {contact.email}
           </p>
           <p>
-            <strong>Phone</strong> +15555550100
+            <strong>Phone</strong> {contact.phone}
           </p>
           <p>
             <strong>Resume</strong> {resumeId || 'resume-active'}

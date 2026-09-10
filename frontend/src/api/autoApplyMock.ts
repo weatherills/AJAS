@@ -54,12 +54,22 @@ export const mockAutoApplyApi: AutoApplyApi = {
         deep_link_url: body.posting_url || null,
       },
       autofill: [
-        { field_key: 'full_name', value: 'Alex Jobseeker', required: true, source: 'profile' },
-        { field_key: 'email', value: 'alex@example.com', required: true, source: 'profile' },
+        {
+          field_key: 'full_name',
+          value: body.answers?.full_name || 'Alex Jobseeker',
+          required: true,
+          source: body.answers?.full_name ? 'user_input' : 'profile',
+        },
+        {
+          field_key: 'email',
+          value: body.answers?.email || 'alex@example.com',
+          required: true,
+          source: body.answers?.email ? 'user_input' : 'profile',
+        },
       ],
       cover_letter_text:
         body.cover_letter_mode === 'generate'
-          ? 'Dear hiring team,\n\nI am writing to apply. Sincerely,\nAlex Jobseeker\n'
+          ? `Dear hiring team,\n\nI am writing to apply. Sincerely,\n${body.answers?.full_name || 'Alex Jobseeker'}\n`
           : null,
       cover_letter_source: body.cover_letter_mode === 'generate' ? 'ai' : null,
       validation_errors: null,

@@ -39,6 +39,11 @@ describe('mock auto-apply api', () => {
     expect(packaged.state).toBe('packaged')
     const listed = await mockAutoApplyApi.list()
     expect(listed.items).toHaveLength(2)
+    expect(listed.items[0].created_at).toBeTruthy()
+    expect(listed.items[0].updated_at).toBeTruthy()
+    const detail = await mockAutoApplyApi.get(submitted.request_id)
+    expect(detail.created_at).toBeTruthy()
+    expect(detail.updated_at).toBeTruthy()
   })
 
   it('stores a generated cover letter on the request', async () => {
@@ -54,5 +59,20 @@ describe('mock auto-apply api', () => {
     expect(detail.cover_letter_source).toBe('ai')
     expect(detail.cover_letter_text).toMatch(/Alex Jobseeker/)
     expect(detail.artifacts.cover_letter_blob_sas).toBeTruthy()
+  })
+
+  it('uses apply-form answers for contact and generated cover letters', async () => {
+    resetAutoApplyMock()
+    const created = await mockAutoApplyApi.create({
+      job_source: 'greenhouse',
+      job_posting_id: 'job-staff',
+      posting_url: 'https://boards.greenhouse.io/demo/jobs/job-staff',
+      cover_letter_mode: 'generate',
+      consent_approved: true,
+      answers: { full_name: 'Jane Doe', email: 'jane@example.com' },
+    })
+    const detail = await mockAutoApplyApi.get(created.request_id)
+    expect(detail.autofill.find((row) => row.field_key === 'full_name')?.value).toBe('Jane Doe')
+    expect(detail.cover_letter_text).toMatch(/Jane Doe/)
   })
 })
