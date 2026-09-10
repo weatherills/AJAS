@@ -128,4 +128,20 @@ export const liveMatchingApi: MatchingApi = {
     const [row] = await liveMatchingApi.scoreMany({ ...query, jobs: [query.job] })
     return row
   },
+  async listResults(query) {
+    const params = new URLSearchParams({ resumeId: query.resumeId, limit: '100' })
+    const resp = await request(`/api/v1/match-results?${params.toString()}`)
+    const body = await json<{ items: ComputeBody[] }>(resp)
+    const wanted = query.jobIds ? new Set(query.jobIds) : null
+    return (body.items || [])
+      .filter((row) => {
+        const jobId = row.jobId || row.input?.jobId
+        if (!jobId) return false
+        return wanted ? wanted.has(jobId) : true
+      })
+      .map((row) => {
+        const jobId = row.jobId || row.input?.jobId || ''
+        return mapResult(jobId, query.resumeId, { ...row, persisted: true })
+      })
+  },
 }
