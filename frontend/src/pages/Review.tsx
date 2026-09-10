@@ -76,6 +76,7 @@ export function ReviewPage() {
   const listRef = useRef<HTMLDivElement | null>(null)
   const searchRef = useRef<HTMLInputElement | null>(null)
   const locating = useRef(false)
+  const loadGen = useRef(0)
 
   const toast = (text: string, tone: Toast['tone'] = 'info', extra?: Pick<Toast, 'actionLabel' | 'onAction'>) => {
     const id = toastId.current++
@@ -94,17 +95,20 @@ export function ReviewPage() {
   const listTotal = resumeFilter ? scoped.length : total
 
   const load = useCallback(async () => {
+    const gen = ++loadGen.current
     setLoading(true)
     try {
       const result = await reviewApi.list(tab, filters)
+      if (gen !== loadGen.current) return
       setItems(result.items)
       setTotal(result.total)
       setLoadError(null)
       setVisible(PAGE_SIZE)
     } catch (err) {
+      if (gen !== loadGen.current) return
       setLoadError(err instanceof Error ? err.message : 'Could not load the review queue')
     } finally {
-      setLoading(false)
+      if (gen === loadGen.current) setLoading(false)
     }
   }, [tab, filters])
 
@@ -348,9 +352,6 @@ export function ReviewPage() {
       const previous = items
       try {
         await reviewApi.bulk({ action, matchIds: selectedIds })
-        if (action === 'archive') {
-          setItems((current) => current.filter((item) => !selectedIds.includes(item.matchId)))
-        }
         toast(
           action === 'archive'
             ? `Archived ${selectedIds.length}`
@@ -359,7 +360,7 @@ export function ReviewPage() {
               : `Assigned ${selectedIds.length}`,
         )
         setSelectedIds([])
-        if (action !== 'archive') await load()
+        await load()
       } catch (err) {
         setItems(previous)
         toast(err instanceof Error ? err.message : 'Bulk update failed', 'error')
