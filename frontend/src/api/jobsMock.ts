@@ -222,10 +222,14 @@ function syncSourceFromBoards(row: SourceStatus): SourceStatus {
       errorMessage: failed.errorMessage || row.errorMessage,
     }
   }
-  if (row.status === 'error') {
-    return { ...row, configured: true, tenantCount: boards.length, status: 'ok', errorMessage: null }
+  const clearError = row.status === 'error' || row.status === 'unconfigured'
+  return {
+    ...row,
+    configured: true,
+    tenantCount: boards.length,
+    status: clearError ? 'ok' : row.status,
+    errorMessage: clearError ? null : row.errorMessage,
   }
-  return { ...row, configured: true, tenantCount: boards.length }
 }
 
 export function simulateLeverRateLimit(seconds = 12) {
