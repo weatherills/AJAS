@@ -24,13 +24,16 @@ import {
   addBoardToast,
   boardErrorCopy,
   feedErrorLines,
+  jobsListMayHaveChanged,
+  nextSourcePollMs,
   sourceBoardErrors,
   sourceIsConfiguredStatus,
+  sourceListFingerprint,
   sourceUnconfiguredCopy,
   sourcesOffCopy,
   statusLabel,
 } from './jobs'
-import type { JobCard } from '../api/jobsTypes'
+import type { JobCard, SourceStatus } from '../api/jobsTypes'
 
 function sample(id: string, source: 'greenhouse' | 'lever', key = 'staff-engineer|remote|acme'): JobCard {
   return {
@@ -143,6 +146,42 @@ describe('job feed helpers', () => {
     const stillOff = await mockSettingsApi.get()
     expect(feedSourcesFromSettings(stillOff.sources)).toEqual([])
     expect(await persistFeedSourceChip(mockSettingsApi, 'greenhouse', true)).toEqual(['greenhouse'])
+  })
+
+  it('detects job-list refetch when source lastSyncAt or board status changes, not progress text', () => {
+    const row = (overrides: Partial<SourceStatus> = {}): SourceStatus => ({
+      source: 'greenhouse',
+      status: 'ok',
+      lastSyncAt: '2026-09-10T12:00:00.000Z',
+      backoffUntil: null,
+      errorMessage: null,
+      progress: null,
+      configured: true,
+      tenantCount: 1,
+      boards: [{ tenantKey: 'stripe', enabled: true, status: 'ok', lastSyncAt: '2026-09-10T12:00:00.000Z' }],
+      ...overrides,
+    })
+    const idle = sourceListFingerprint([row()])
+    expect(sourceListFingerprint([row({ progress: '2/4' })])).toBe(idle)
+    expect(jobsListMayHaveChanged(null, idle)).toBe(false)
+    expect(jobsListMayHaveChanged(idle, idle)).toBe(false)
+    expect(jobsListMayHaveChanged(idle, sourceListFingerprint([row({ lastSyncAt: '2026-09-10T12:01:00.000Z' })]))).toBe(true)
+    expect(
+      jobsListMayHaveChanged(
+        idle,
+        sourceListFingerprint([
+          row({
+            status: 'ok',
+            boards: [{ tenantKey: 'stripe', enabled: true, status: 'syncing', lastSyncAt: null }],
+          }),
+        ]),
+      ),
+    ).toBe(true)
+    expect(jobsListMayHaveChanged(idle, sourceListFingerprint([row({ status: 'syncing', progress: '1/4' })]))).toBe(true)
+    expect(nextSourcePollMs(true, 15_000)).toBe(5_000)
+    expect(nextSourcePollMs(false, 5_000)).toBe(15_000)
+    expect(nextSourcePollMs(false, 15_000)).toBe(22_500)
+    expect(nextSourcePollMs(false, 50_000)).toBe(60_000)
   })
 
   it('keeps SOURCE_NOT_CONFIGURED when a Job Feed chip turns on a source with zero tenants', async () => {
@@ -274,12 +313,14 @@ describe('mock jobs api', () => {
   it('crawls a healthy first add so the feed is not empty until Refresh', async () => {
     resetMockJobs()
     simulateUnconfigured('greenhouse')
+    const before = sourceListFingerprint(await mockJobsApi.sourceStatus())
     const created = await mockJobsApi.addTenant('greenhouse', { boardToken: 'stripe' })
     expect(addBoardToast('greenhouse', created).tone).toBe('info')
     const board = created.status?.boards?.find((item) => item.tenantKey === 'stripe')
     expect(board?.status).toBe('ok')
     expect(board?.lastSyncAt).toBeTruthy()
     expect(created.status?.lastSyncAt).toBeTruthy()
+    expect(jobsListMayHaveChanged(before, sourceListFingerprint(await mockJobsApi.sourceStatus()))).toBe(true)
     const retried = await mockJobsApi.refreshTenant('greenhouse', created.tenantKey)
     const greenhouse = retried.find((item) => item.source === 'greenhouse')
     expect(greenhouse?.status).not.toBe('unconfigured')
