@@ -251,6 +251,67 @@ class LearningService:
             "summary": self._summary_text(snap, period),
         }
 
+    def drift(self, user_id: str, *, period: str = "7d") -> dict:
+        body = self.metrics(user_id, period=period)
+        baseline = 0.5
+        precision = float(body.get("precision_proxy") or 0)
+        delta = round(precision - baseline, 4)
+        threshold = 0.1
+        alert = body.get("decisions", 0) >= 5 and abs(delta) >= threshold
+        return {
+            "period": period,
+            "precision": precision,
+            "baseline": baseline,
+            "delta": delta,
+            "threshold": threshold,
+            "alert": alert,
+            "liftVsBaseline": body.get("liftVsBaseline"),
+        }
+
+    def validate_pipeline(self, events: list) -> dict:
+        errors: list[dict] = []
+        accepted = 0
+        required = {
+            "userId": ("userId", "user_id"),
+            "matchId": ("matchId", "recommendation_id", "recommendationId"),
+            "jobId": ("jobId", "job_id"),
+            "decision": ("decision", "outcome"),
+            "idempotencyKey": ("idempotencyKey", "idempotency_key"),
+        }
+        if not isinstance(events, list):
+            raise LearningValidationError("events must be a list", path="events")
+        for index, event in enumerate(events):
+            if not isinstance(event, dict):
+                errors.append({"index": index, "error": "object required"})
+                continue
+            missing = [name for name, keys in required.items() if not any(event.get(key) for key in keys)]
+            if missing:
+                errors.append({"index": index, "error": f"missing {', '.join(missing)}"})
+                continue
+            accepted += 1
+        return {"accepted": accepted, "rejected": len(errors), "errors": errors}
+
+    def backfill(self, user_id: str, events: list) -> dict:
+        check = self.validate_pipeline(events)
+        applied = 0
+        for event in events:
+            if not isinstance(event, dict):
+                continue
+            payload = {
+                "userId": event.get("userId") or event.get("user_id") or user_id,
+                "matchId": event.get("matchId") or event.get("recommendation_id"),
+                "jobId": event.get("jobId") or event.get("job_id"),
+                "outcome": event.get("decision") or event.get("outcome"),
+                "score": event.get("score") or event.get("score_at_decision"),
+                "decisionId": event.get("idempotencyKey") or event.get("idempotency_key"),
+                "eventType": "LearningDecisionLogged",
+            }
+            if not payload["matchId"] or not payload["jobId"]:
+                continue
+            self.ingest_event(payload)
+            applied += 1
+        return {"validated": check, "applied": applied}
+
     def tune(
         self,
         user_id: str | None,

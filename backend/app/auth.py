@@ -14,7 +14,9 @@ import azure.functions as func
 
 from app.config import get_settings
 from app.auto_apply.constants import READ_SCOPE as AUTO_APPLY_READ, WRITE_SCOPE as AUTO_APPLY_WRITE
+from app.request_context import bind_request, set_user_id
 from app.review.constants import READ_SCOPE, WRITE_SCOPE
+from app.sessions import PREFIX as SESSION_PREFIX, parse_access_token
 
 DEV_SCOPES = frozenset({READ_SCOPE, WRITE_SCOPE, AUTO_APPLY_READ, AUTO_APPLY_WRITE})
 
@@ -43,6 +45,7 @@ class Principal:
 
 def get_principal(req: func.HttpRequest) -> Principal:
     """Resolve the authenticated principal from a request."""
+    bind_request(req)
     settings = get_settings()
     header = req.headers.get("Authorization") or req.headers.get("authorization") or ""
     token = ""
@@ -51,11 +54,24 @@ def get_principal(req: func.HttpRequest) -> Principal:
 
     mode = (settings.auth_mode or "dev").lower()
     if mode == "dev":
-        user_id = token or (req.headers.get("X-User-Id") or req.headers.get("x-user-id") or "").strip()
+        if token.startswith(SESSION_PREFIX):
+            session = parse_access_token(token)
+            if not session:
+                raise AuthError("Session expired")
+            user_id, role = session
+        else:
+            user_id = token or (req.headers.get("X-User-Id") or req.headers.get("x-user-id") or "").strip()
+            role = (req.headers.get("X-Role") or req.headers.get("x-role") or "").strip().lower()
         if not user_id:
             raise AuthError("Authentication required")
         raw_scopes = (req.headers.get("X-Scopes") or req.headers.get("x-scopes") or "").strip()
-        scopes = frozenset(raw_scopes.split()) if raw_scopes else DEV_SCOPES
+        if raw_scopes:
+            scopes = frozenset(raw_scopes.split())
+        elif role == "admin" or user_id in {"admin", "local-admin"}:
+            scopes = DEV_SCOPES | frozenset({"admin", "read:ops", "write:ops"})
+        else:
+            scopes = DEV_SCOPES
+        set_user_id(user_id)
         return Principal(user_id=user_id, scopes=scopes)
 
     if mode == "aad":
@@ -93,4 +109,5 @@ def _principal_from_aad_jwt(token: str, settings) -> Principal:
         raise AuthError("Token is missing oid/sub")
     scp = payload.get("scp") or payload.get("scope") or ""
     scopes = frozenset(str(scp).split()) if scp else frozenset()
+    set_user_id(str(user_id))
     return Principal(user_id=str(user_id), scopes=scopes)

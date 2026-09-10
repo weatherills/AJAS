@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
+
+from app.request_context import current_request_id
 
 log = logging.getLogger("ajas")
 
@@ -24,14 +27,15 @@ def log_request(
         "method": method,
         "status": status,
         "user_id": user_id or "-",
+        "request_id": current_request_id() or "-",
     }
     if extra:
         payload.update(extra)
     if error:
         payload["error"] = error
-        log.warning("ajas.request %s", payload)
+        log.warning("ajas.request %s", json.dumps(payload, default=str))
         return
-    log.info("ajas.request %s", payload)
+    log.info("ajas.request %s", json.dumps(payload, default=str))
 
 
 def log_exception(feature: str, route: str, exc: Exception) -> None:

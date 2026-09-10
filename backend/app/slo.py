@@ -10,6 +10,8 @@ BUDGETS_MS: dict[str, int] = {
     "GET /v1/matches": 400,
     "GET /v1/jobs": 600,
     "POST /v1/matches/warmup": 400,
+    "POST /v1/sources/crawl": 8000,
+    "GET /v1/review": 400,
 }
 
 MAX_SAMPLES = 500

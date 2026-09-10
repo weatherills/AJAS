@@ -3,6 +3,7 @@ import azure.functions as func
 
 from app.config import get_settings
 from app.http import json_response
+from app.request_context import bind_request
 
 bp = func.Blueprint()
 
@@ -11,6 +12,7 @@ LIVE_FEATURES = ["health", "review", "auto-apply", "settings", "resume", "jobs",
 
 @bp.route(route="health", methods=["GET"])
 def health(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
     settings = get_settings()
     storage = "cosmos" if settings.cosmos_connection_string else "memory"
     return json_response(

@@ -47,6 +47,9 @@ function seedRow(partial: Partial<Row> & Pick<Row, 'matchId' | 'jobTitle' | 'com
     comment: partial.comment || null,
     decision: partial.decision || null,
     scoreAtDecision: partial.scoreAtDecision ?? null,
+    archived: partial.archived ?? false,
+    priority: partial.priority ?? 0,
+    assigneeId: partial.assigneeId ?? null,
     decisions: partial.decisions || [],
   }
   rows.set(row.matchId, row)
@@ -285,6 +288,18 @@ export const mockReviewApi: ReviewApi = {
     row.updatedAt = stamp(0)
     row.etag = String(Number(row.etag || '1') + 1)
     return cloneMatch(row)
+  },
+  async bulk(body) {
+    seed()
+    for (const id of body.matchIds) {
+      const row = rows.get(id)
+      if (!row) continue
+      if (body.action === 'archive') row.archived = true
+      if (body.action === 'unarchive') row.archived = false
+      if (body.action === 'prioritize') row.priority = 1
+      if (body.action === 'assign') row.assigneeId = body.assigneeId || 'local-user'
+    }
+    return { action: body.action, updated: body.matchIds, count: body.matchIds.length }
   },
 }
 

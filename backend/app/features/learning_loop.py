@@ -152,6 +152,46 @@ def get_learning_metrics(req: func.HttpRequest) -> func.HttpResponse:
         return _handle(exc, route="v1/metrics", method="GET")
 
 
+@bp.route(route="v1/learning/drift", methods=["GET"])
+def get_learning_drift(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = _auth(req)
+        period = (req.params.get("period") or "7d").lower()
+        body = get_service().drift(principal.user_id, period=period)
+        log_request(feature="learning", route="v1/learning/drift", method="GET", status=200, user_id=principal.user_id)
+        return json_response(body)
+    except Exception as exc:
+        return _handle(exc, route="v1/learning/drift", method="GET")
+
+
+@bp.route(route="v1/learning/pipeline/validate", methods=["POST"])
+def validate_learning_pipeline(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = _auth(req)
+        payload = _json_body(req)
+        events = payload.get("events") if isinstance(payload.get("events"), list) else payload if isinstance(payload, list) else []
+        if not isinstance(payload.get("events"), list) and not isinstance(payload, list) and payload:
+            events = [payload]
+        body = get_service().validate_pipeline(events if isinstance(events, list) else [])
+        log_request(feature="learning", route="v1/learning/pipeline/validate", method="POST", status=200, user_id=principal.user_id)
+        return json_response(body)
+    except Exception as exc:
+        return _handle(exc, route="v1/learning/pipeline/validate", method="POST")
+
+
+@bp.route(route="v1/learning/pipeline/backfill", methods=["POST"])
+def backfill_learning_pipeline(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = _auth(req)
+        payload = _json_body(req)
+        events = payload.get("events") if isinstance(payload.get("events"), list) else []
+        body = get_service().backfill(principal.user_id, events)
+        log_request(feature="learning", route="v1/learning/pipeline/backfill", method="POST", status=200, user_id=principal.user_id)
+        return json_response(body)
+    except Exception as exc:
+        return _handle(exc, route="v1/learning/pipeline/backfill", method="POST")
+
+
 @bp.queue_trigger(arg_name="msg", queue_name="learning-decisions", connection="AzureWebJobsStorage")
 def learning_decisions_job(msg: func.QueueMessage) -> None:
     get_service().process_decision(_json_payload(msg), dequeue_count=msg.dequeue_count or 1)

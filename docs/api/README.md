@@ -16,6 +16,7 @@ The examples use `local-user`, which matches the frontend default.
 | [matching.http](matching.http) | Compute/rank scores, warmup, A/B variant, SLO snapshot, list persisted results |
 | [email.http](email.http) | Graph webhook, mailbox status, threads, reply, suggestions, link |
 | [learning.http](learning.http) | Decision log, params, admin tune, metrics |
+| [pagination.md](pagination.md) | Shared `limit`/`cursor` contract |
 
 Health (no auth):
 

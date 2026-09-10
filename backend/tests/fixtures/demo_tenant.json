@@ -1,0 +1,17 @@
+{
+  "userId": "local-user",
+  "resume": {
+    "fullName": "Jane Doe",
+    "headline": "Staff engineer",
+    "skills": ["Python", "Azure", "TypeScript"]
+  },
+  "jobs": [
+    {
+      "id": "job-acme-staff",
+      "title": "Staff Engineer",
+      "company": "Acme",
+      "location": "Remote",
+      "source": "greenhouse"
+    }
+  ]
+}

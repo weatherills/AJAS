@@ -74,7 +74,7 @@ export function LearningPanel({ compact = false }: { compact?: boolean }) {
           <li>
             <a href={historyHref}>
               <strong>{percent(metrics.precision_proxy)}</strong>
-              <span className="muted">Approve rate ({period})</span>
+              <span className="muted" title="Share of Review decisions that were approvals in this window.">Approve rate ({period})</span>
               {metrics.approveRateDeltaPct != null && (
                 <span className="muted">
                   {metrics.approveRateDeltaPct >= 0 ? '+' : ''}
@@ -82,7 +82,7 @@ export function LearningPanel({ compact = false }: { compact?: boolean }) {
                 </span>
               )}
               {metrics.liftVsBaseline != null && (
-                <span className="muted">
+                <span className="muted" title="Approve rate minus a 50% coin-flip baseline. Positive means ranking is beating chance.">
                   {metrics.liftVsBaseline >= 0 ? '+' : ''}
                   {metrics.liftVsBaseline} pts vs 50% baseline
                 </span>

@@ -148,6 +148,11 @@ export const mockEmailApi: EmailApi = {
   async templates() {
     return templates
   },
+  async previewTemplate(id) {
+    const found = templates.find((item) => item.id === id)
+    if (!found) throw new Error('Template not found')
+    return { id: found.id, name: found.name, text: found.body, html: `<p>${found.body}</p>` }
+  },
   async link(threadId, jobId) {
     const row = threads.find((item) => item.id === threadId)
     if (!row) throw new Error('Thread not found')

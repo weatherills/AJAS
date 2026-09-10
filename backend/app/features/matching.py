@@ -17,7 +17,9 @@ from app.matching.errors import (
     MatchingValidationError,
 )
 from app.matching.runtime import get_service
+from app.ratelimit import rate_limit_headers
 from app.slo import record_latency, snapshot as slo_snapshot
+from app.tracing import finish_span, start_span
 
 bp = func.Blueprint()
 
@@ -42,7 +44,14 @@ def _handle(exc: Exception) -> func.HttpResponse:
     if isinstance(exc, MatchingConflictError):
         return error_response("CONFLICT", str(exc), 409)
     if isinstance(exc, MatchingRateLimitedError):
-        return error_response("RATE_LIMITED", str(exc), 429)
+        retry_after = int(getattr(exc, "retry_after", 1) or 1)
+        return error_response(
+            "RATE_LIMITED",
+            str(exc),
+            429,
+            retry_after=retry_after,
+            headers=rate_limit_headers(limit=60, remaining=0, retry_after=retry_after),
+        )
     if isinstance(exc, MatchingPayloadTooLargeError):
         return error_response("PAYLOAD_TOO_LARGE", str(exc), 413)
     raise exc
@@ -93,6 +102,7 @@ def _json_payload(msg: func.QueueMessage) -> dict:
 @bp.route(route="v1/matches/compute", methods=["POST"])
 def compute_match(req: func.HttpRequest) -> func.HttpResponse:
     started = time.perf_counter()
+    span = start_span("matching.compute")
     try:
         principal = _auth(req)
         status, body = get_service().compute(
@@ -101,14 +111,17 @@ def compute_match(req: func.HttpRequest) -> func.HttpResponse:
             idempotency_key_header=_idempotency_key(req),
         )
         record_latency("POST /v1/matches/compute", (time.perf_counter() - started) * 1000)
+        finish_span(span, ok=True)
         return json_response(body, status_code=status)
     except Exception as exc:
+        finish_span(span, ok=False, error=str(exc))
         return _handle(exc)
 
 
 @bp.route(route="v1/matches/rank", methods=["POST"])
 def rank_matches(req: func.HttpRequest) -> func.HttpResponse:
     started = time.perf_counter()
+    span = start_span("matching.rank")
     try:
         principal = _auth(req)
         status, body = get_service().rank(
@@ -117,8 +130,10 @@ def rank_matches(req: func.HttpRequest) -> func.HttpResponse:
             idempotency_key_header=_idempotency_key(req),
         )
         record_latency("POST /v1/matches/rank", (time.perf_counter() - started) * 1000)
+        finish_span(span, ok=True)
         return json_response(body, status_code=status)
     except Exception as exc:
+        finish_span(span, ok=False, error=str(exc))
         return _handle(exc)
 
 

@@ -6,6 +6,7 @@ import base64
 import concurrent.futures
 import hashlib
 import json
+import logging
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -35,6 +36,7 @@ IDEMPOTENCY_TTL_SEC = 24 * 60 * 60
 PRINTABLE_EXTRA = {"\n", "\r", "\t"}
 Clock = Callable[[], float]
 _EMBED_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="embed")
+log = logging.getLogger("ajas")
 
 
 def _now() -> float:
@@ -94,6 +96,7 @@ class MatchingService:
         self._sync_hits: dict[str, list[float]] = {}
         self._idem: dict[tuple[str, str], dict[str, Any]] = {}
         self._operations: dict[str, Operation] = {}
+        self._list_cache: dict[tuple, tuple[float, dict]] = {}
 
     def compute(self, user_id: str, body: dict, *, idempotency_key_header: str | None = None) -> tuple[int, dict]:
         pair = self._single_pair(user_id, body)
@@ -109,6 +112,7 @@ class MatchingService:
             result = self._score_pair(user_id, pair, options, source="sync")
             status, payload = 200, result
         self._remember(user_id, idempotency_key_header, fingerprint, status, payload)
+        self.invalidate_list_cache(user_id)
         return status, payload
 
     def rank(self, user_id: str, body: dict, *, idempotency_key_header: str | None = None) -> tuple[int, dict]:
@@ -127,6 +131,7 @@ class MatchingService:
             results = [self._score_pair(user_id, pair, options, source="batch") for pair in pairs]
             status, payload = 200, self._rank_payload(results, options)
         self._remember(user_id, idempotency_key_header, fingerprint, status, payload)
+        self.invalidate_list_cache(user_id)
         return status, payload
 
     def list_matches(
@@ -141,6 +146,13 @@ class MatchingService:
     ) -> dict:
         if limit < 1 or limit > 100:
             raise MatchingValidationError("limit must be 1–100", path="limit")
+        cache_key = (user_id, job_id, resume_id, min_score, limit, cursor)
+        hit = self._list_cache.get(cache_key)
+        now = self.clock()
+        if hit and hit[0] > now:
+            body = dict(hit[1])
+            body["cache"] = "hit"
+            return body
         offset = self._decode_cursor(cursor)
         model = self.store.get_model(DEFAULT_MODEL_ID)
         rows = self.store.list_runs(
@@ -159,7 +171,9 @@ class MatchingService:
         next_cursor = None
         if offset + limit < len(items):
             next_cursor = self._encode_cursor(offset + limit)
-        return {"items": page, "nextCursor": next_cursor}
+        body = {"items": page, "nextCursor": next_cursor, "cache": "miss"}
+        self._list_cache[cache_key] = (now + 30, {"items": page, "nextCursor": next_cursor})
+        return body
 
     def get_operation(self, user_id: str, operation_id: str) -> dict:
         op = self._operations.get(operation_id)
@@ -384,6 +398,19 @@ class MatchingService:
             "input": {"resumeId": pair.get("resume_id"), "jobId": pair.get("job_id")},
             "idx": pair.get("idx"),
         }
+        log.info(
+            "ajas.match.explain %s",
+            json.dumps(
+                {
+                    "user_id": user_id,
+                    "job_id": pair.get("job_id"),
+                    "score": score,
+                    "breakdown": body["breakdown"],
+                    "why": explanation,
+                },
+                default=str,
+            ),
+        )
         if pair.get("job_id"):
             body["jobId"] = pair["job_id"]
         if match_id:
@@ -731,6 +758,9 @@ class MatchingService:
         }
         encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+    def invalidate_list_cache(self, user_id: str) -> None:
+        self._list_cache = {key: value for key, value in self._list_cache.items() if key[0] != user_id}
 
     def _cached(self, user_id: str, header: str | None, fingerprint: str) -> tuple[int, dict] | None:
         if not header:

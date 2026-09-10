@@ -18,6 +18,7 @@ from app.review.errors import (
     ReviewValidationError,
 )
 from app.review.runtime import get_service
+from app.tracing import finish_span, start_span
 
 bp = func.Blueprint()
 FEATURE = "review"
@@ -62,7 +63,9 @@ def _run(
     try:
         principal = _auth(req, *scopes)
         user_id = principal.user_id
+        span = start_span("review", route=route, method=req.method)
         resp = handler(principal)
+        finish_span(span, ok=resp.status_code < 400)
         log_request(
             feature=FEATURE,
             route=route,
@@ -161,12 +164,21 @@ def list_matches(req: func.HttpRequest) -> func.HttpResponse:
             location=req.params.get("location") or None,
             source=req.params.get("source") or None,
             created_after=req.params.get("createdAfter") or None,
-            page_size=_query_int(req.params.get("pageSize"), "pageSize"),
-            continuation=req.params.get("continuation") or None,
+            page_size=_query_int(req.params.get("limit") or req.params.get("pageSize"), "pageSize"),
+            continuation=req.params.get("cursor") or req.params.get("continuation") or None,
+            include_archived=(req.params.get("includeArchived") or "").lower() in {"1", "true", "yes"},
         )
         return json_response(body)
 
     return _run(req, "GET /v1/matches", READ_SCOPE, handler=handle)
+
+
+@bp.route(route="v1/matches/bulk", methods=["POST"])
+def bulk_update_matches(req: func.HttpRequest) -> func.HttpResponse:
+    def handle(principal):
+        return json_response(get_service().bulk_update(principal.user_id, _json_body(req)))
+
+    return _run(req, "POST /v1/matches/bulk", WRITE_SCOPE, handler=handle)
 
 
 @bp.route(route="v1/matches/{matchId}", methods=["GET"])

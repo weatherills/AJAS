@@ -12,7 +12,7 @@ const ResumeLibrary = lazy(() => import('./pages/ResumeLibrary').then((mod) => (
 const ResumeEditor = lazy(() => import('./pages/ResumeEditor').then((mod) => ({ default: mod.ResumeEditor })))
 const JobFeedPage = lazy(() => import('./pages/JobFeed').then((mod) => ({ default: mod.JobFeedPage })))
 const EmailPage = lazy(() => import('./pages/Email').then((mod) => ({ default: mod.EmailPage })))
-const LearningPage = lazy(() => import('./pages/Learning').then((mod) => ({ default: mod.LearningPage })))
+const OpsPage = lazy(() => import('./pages/Ops').then((mod) => ({ default: mod.OpsPage })))
 
 const phases = [
   {
@@ -70,6 +70,7 @@ type Route =
   | { name: 'jobs' }
   | { name: 'email' }
   | { name: 'learning' }
+  | { name: 'ops' }
 
 function parseRoute(hash: string): Route {
   const raw = (hash.replace(/^#/, '') || '/').split('?')[0]
@@ -80,6 +81,7 @@ function parseRoute(hash: string): Route {
   if (path === '/jobs') return { name: 'jobs' }
   if (path === '/email') return { name: 'email' }
   if (path === '/learning') return { name: 'learning' }
+  if (path === '/ops') return { name: 'ops' }
   const edit = path.match(/^\/resumes\/([^/]+)\/edit$/)
   if (edit) return { name: 'edit', id: decodeURIComponent(edit[1]) }
   if (path === '/apply' || path.startsWith('/apply/')) {
@@ -217,6 +219,7 @@ function App() {
   else if (route.name === 'jobs') page = <JobFeedPage />
   else if (route.name === 'email') page = <EmailPage />
   else if (route.name === 'learning') page = <LearningPage />
+  else if (route.name === 'ops') page = <OpsPage />
   else if (route.name === 'edit') {
     page = (
       <ResumeEditor

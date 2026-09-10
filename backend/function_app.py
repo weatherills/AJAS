@@ -6,11 +6,13 @@ HTTP plus queue workers.
 """
 import azure.functions as func
 
+from app.features.auth_session import bp as auth_session_bp
 from app.features.auto_apply import bp as auto_apply_bp
 from app.features.email import bp as email_bp
 from app.features.health import bp as health_bp
 from app.features.learning_loop import bp as learning_bp
 from app.features.matching import bp as matching_bp
+from app.features.ops import bp as ops_bp
 from app.features.resume_management import bp as resume_bp
 from app.features.review_decision import bp as review_bp
 from app.features.settings import bp as settings_bp
@@ -27,3 +29,5 @@ app.register_blueprint(job_source_bp)
 app.register_blueprint(matching_bp)
 app.register_blueprint(email_bp)
 app.register_blueprint(learning_bp)
+app.register_blueprint(ops_bp)
+app.register_blueprint(auth_session_bp)

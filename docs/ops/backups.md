@@ -27,5 +27,7 @@ soft-delete (7+ days) and versioning on `resumes`, `mail-attachments`, and `job-
 5. Confirm Review queue loads and a resume preview URL still opens.
 6. Tear down the drill account. Log date, operator, and duration in the runbook notes.
 
-Local (no Cosmos): data lives in-process. Restarting Functions is a full wipe — use
-`scripts/seed_demo.py` after restart.
+Local (no Cosmos): data lives in-process. Restarting Functions is a full wipe — run
+`python scripts/seed_demo.py` after restart (`POST /api/v1/ops/seed`).
+
+Log a drill: `python scripts/backup_drill.py` (appends `docs/ops/restore-drills.log`).

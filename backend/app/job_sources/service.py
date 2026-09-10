@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import random
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any, Callable
@@ -15,6 +16,7 @@ from app.job_sources.errors import (
     JobSourceValidationError,
 )
 from app.job_sources.events import CrawlEventLog
+from app.job_sources.global_limit import consume_global
 from app.job_sources.feed import feed_cards, filter_cards
 from app.job_sources.http import FetchResponse, HttpFetcher, UrllibFetcher
 from app.job_sources.keys import parse_ts, utc_now
@@ -838,6 +840,7 @@ class CrawlService:
         rate_limited = False
         while retries <= MAX_GET_RETRIES_TRANSIENT:
             try:
+                consume_global()
                 self.store.consume_rate_limit(tenant.id)
             except JobSourceRateLimitedError as exc:
                 until = (datetime.now(timezone.utc) + timedelta(seconds=1)).isoformat().replace("+00:00", "Z")
@@ -945,7 +948,7 @@ class CrawlService:
                     return min(60.0, max(0.0, delay))
                 except (TypeError, ValueError, OverflowError):
                     pass
-        return min(60.0, float(2 ** (attempt - 1)))
+        return min(60.0, float(2 ** (attempt - 1)) * (0.5 + random.random()))
 
     def _list_url(self, tenant: SourceTenant, *, cursor: str | None, skip: int) -> str:
         base = tenant.config.get("base_url")

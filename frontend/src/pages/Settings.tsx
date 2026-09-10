@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getUserId, jobsApi, learningApi, setUserId, settingsApi, USE_MOCK } from '../api'
+import { json, request } from '../api/live'
 import type { SettingsAuditItem, SettingsDoc } from '../api/settingsTypes'
 import type { JobSourceName, SourceStatus } from '../api/jobsTypes'
 import { AppNav } from '../components/AppNav'
@@ -89,6 +90,8 @@ export function SettingsPage() {
   const [autoApplyEnabled, setAutoApplyEnabled] = useState(true)
   const [autoApplyStatus, setAutoApplyStatus] = useState<SaveStatus>('idle')
   const [auditItems, setAuditItems] = useState<SettingsAuditItem[]>([])
+  const [devices, setDevices] = useState<{ id: string; label: string; createdAt: string; lastSeenAt: string }[]>([])
+  const [sessionBusy, setSessionBusy] = useState(false)
   const toastId = useRef(1)
   const saveGen = useRef(0)
   const oauthState = useRef<string | null>(null)
@@ -121,6 +124,14 @@ export function SettingsPage() {
         setAuditItems((await settingsApi.listAudit()).items)
       } catch {
         setAuditItems([])
+      }
+      try {
+        const page = await json<{ items: { id: string; label: string; createdAt: string; lastSeenAt: string }[] }>(
+          await request('/api/v1/auth/devices'),
+        )
+        setDevices(page.items)
+      } catch {
+        setDevices([])
       }
       setLoadError(null)
     } catch (err) {
@@ -431,6 +442,13 @@ export function SettingsPage() {
           <h1>Settings</h1>
           <p className="tagline">Match threshold, learning, Microsoft 365 email, and job sources.</p>
         </div>
+        {!doc && !loadError && (
+          <section className="editor-section" aria-busy="true" aria-label="Loading settings">
+            <div className="skeleton settings-skel" />
+            <div className="skeleton settings-skel" />
+            <div className="skeleton settings-skel" />
+          </section>
+        )}
         <label className="user-field">
           Signed in as
           <input
@@ -838,6 +856,63 @@ export function SettingsPage() {
               </button>
             )}
           </div>
+        )}
+      </section>
+
+      <section className="editor-section" aria-labelledby="session-heading">
+        <h2 id="session-heading">Devices and sessions</h2>
+        <p className="muted">Short-lived access tokens with rotating refresh. Dev Bearer user ids still work.</p>
+        <button
+          type="button"
+          className="secondary"
+          disabled={sessionBusy}
+          onClick={() => {
+            setSessionBusy(true)
+            void request('/api/v1/auth/session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ label: 'Cursor desktop' }),
+            })
+              .then((resp) => json<{ deviceId: string }>(resp))
+              .then((issued) =>
+                request('/api/v1/auth/devices')
+                  .then((resp) => json<{ items: { id: string; label: string; createdAt: string; lastSeenAt: string }[] }>(resp))
+                  .then((page) => {
+                    setDevices(page.items)
+                    toast(`Session device ${issued.deviceId.slice(0, 8)}…`)
+                  }),
+              )
+              .catch((err) => toast(err instanceof Error ? err.message : 'Could not issue session', 'error'))
+              .finally(() => setSessionBusy(false))
+          }}
+        >
+          Issue session
+        </button>
+        {devices.length === 0 ? (
+          <p className="muted">No session devices yet.</p>
+        ) : (
+          <ul className="audit-list">
+            {devices.map((item) => (
+              <li key={item.id}>
+                <strong>{item.label}</strong>
+                <span className="muted">
+                  {' '}
+                  {formatWhen(item.lastSeenAt)} · created {formatWhen(item.createdAt)}
+                </span>
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => {
+                    void request(`/api/v1/auth/devices/${encodeURIComponent(item.id)}`, { method: 'DELETE' }).then(() =>
+                      setDevices((prev) => prev.filter((row) => row.id !== item.id)),
+                    )
+                  }}
+                >
+                  Revoke
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

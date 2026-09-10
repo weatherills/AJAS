@@ -67,6 +67,7 @@ export function ReviewPage() {
   const [applyOpen, setApplyOpen] = useState(false)
   const [pane, setPane] = useState<'details' | 'emails'>('details')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [helpOpen, setHelpOpen] = useState(false)
   const [presets, setPresets] = useState(() => loadReviewPresets())
   const [slow, setSlow] = useState(false)
   const [autoApplyEnabled, setAutoApplyEnabled] = useState(true)
@@ -340,11 +341,44 @@ export function ReviewPage() {
     [comment, historyMode, items, load, selectedIds],
   )
 
+  const bulkTriage = useCallback(
+    async (action: 'archive' | 'prioritize' | 'assign') => {
+      if (historyMode || selectedIds.length === 0) return
+      setSaving(true)
+      const previous = items
+      try {
+        await reviewApi.bulk({ action, matchIds: selectedIds })
+        if (action === 'archive') {
+          setItems((current) => current.filter((item) => !selectedIds.includes(item.matchId)))
+        }
+        toast(
+          action === 'archive'
+            ? `Archived ${selectedIds.length}`
+            : action === 'prioritize'
+              ? `Prioritized ${selectedIds.length}`
+              : `Assigned ${selectedIds.length}`,
+        )
+        setSelectedIds([])
+        if (action !== 'archive') await load()
+      } catch (err) {
+        setItems(previous)
+        toast(err instanceof Error ? err.message : 'Bulk update failed', 'error')
+      } finally {
+        setSaving(false)
+      }
+    },
+    [historyMode, items, load, selectedIds],
+  )
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null
       const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')
-      if (event.key === '/' && !typing) {
+      if (event.key === '?' && !typing) {
+        event.preventDefault()
+        setHelpOpen((open) => !open)
+        return
+      }
         event.preventDefault()
         searchRef.current?.focus()
         return
@@ -405,7 +439,7 @@ export function ReviewPage() {
         <div>
           <h1>Review &amp; Decision</h1>
           <p className="tagline">
-            Approve or reject matches. Shortcuts: A approve · R reject · J/K move · / search · ⌘/Ctrl+Enter save with
+            Approve or reject matches. Shortcuts: A approve · R reject · J/K move · / search · ? help · ⌘/Ctrl+Enter save with
             comment.
           </p>
         </div>
@@ -640,6 +674,15 @@ export function ReviewPage() {
                   <button type="button" className="danger" disabled={saving} onClick={() => void decideBulk('reject')}>
                     Reject selected
                   </button>
+                  <button type="button" className="secondary" disabled={saving} onClick={() => void bulkTriage('archive')}>
+                    Archive
+                  </button>
+                  <button type="button" className="secondary" disabled={saving} onClick={() => void bulkTriage('prioritize')}>
+                    Prioritize
+                  </button>
+                  <button type="button" className="secondary" disabled={saving} onClick={() => void bulkTriage('assign')}>
+                    Assign to me
+                  </button>
                 </div>
               )}
               <div className="review-table-wrap">
@@ -768,6 +811,12 @@ export function ReviewPage() {
               </button>
             </div>
             {detailLoading && pane === 'details' && <p className="skeleton">Loading details…</p>}
+            {!detailLoading && !detail && !paneError && (
+              <div className="empty-state">
+                <h2>Select a match</h2>
+                <p className="muted">Open a row to see why it scored, then approve, reject, or archive.</p>
+              </div>
+            )}
             {paneError && <p className="inline-error">{paneError}</p>}
             {detail && (
               <>
@@ -994,6 +1043,23 @@ export function ReviewPage() {
             window.location.hash = applyHref(requestId, detail.match.jobId)
           }}
         />
+      )}
+      {helpOpen && (
+        <div className="modal-backdrop" role="dialog" aria-labelledby="review-help-title" onClick={() => setHelpOpen(false)}>
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <h2 id="review-help-title">Review keyboard shortcuts</h2>
+            <ul>
+              <li><kbd>J</kbd> / <kbd>K</kbd> — next / previous match</li>
+              <li><kbd>A</kbd> approve · <kbd>R</kbd> reject</li>
+              <li><kbd>/</kbd> focus search</li>
+              <li><kbd>?</kbd> this help</li>
+              <li><kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> save with comment</li>
+            </ul>
+            <button type="button" className="primary" onClick={() => setHelpOpen(false)}>
+              Close
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )

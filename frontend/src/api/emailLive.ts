@@ -46,6 +46,9 @@ export const liveEmailApi: EmailApi = {
     const result = await json<{ items: EmailTemplate[] }>(await request('/api/v1/email/templates'))
     return result.items
   },
+  async previewTemplate(id) {
+    return json(await request(`/api/v1/email/templates/${encodeURIComponent(id)}/preview`))
+  },
   async link(threadId, jobId) {
     return json(
       await request(`/api/v1/threads/${encodeURIComponent(threadId)}/link`, {

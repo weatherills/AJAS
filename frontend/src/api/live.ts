@@ -20,12 +20,16 @@ export async function request(path: string, init: RequestInit = {}): Promise<Res
 export class ApiError extends Error {
   readonly status: number
   readonly code: string | null
+  readonly retryable: boolean
+  readonly retryAfter: number | null
 
-  constructor(message: string, status: number, code: string | null = null) {
+  constructor(message: string, status: number, code: string | null = null, retryable = false, retryAfter: number | null = null) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
+    this.retryable = retryable
+    this.retryAfter = retryAfter
   }
 }
 
@@ -34,7 +38,16 @@ export async function json<T>(resp: Response): Promise<T> {
   const body = await resp.json().catch(() => ({}))
   if (!resp.ok) {
     const message = body?.error?.message || `Request failed (${resp.status})`
-    throw new ApiError(message, resp.status, body?.error?.code ?? null)
+    const retryAfterHeader = resp.headers.get('Retry-After')
+    const retryAfter =
+      body?.error?.details?.retryAfter ?? (retryAfterHeader ? Number(retryAfterHeader) : null)
+    throw new ApiError(
+      message,
+      resp.status,
+      body?.error?.code ?? null,
+      Boolean(body?.error?.retryable) || resp.status === 429 || resp.status >= 500,
+      Number.isFinite(retryAfter) ? Number(retryAfter) : null,
+    )
   }
   return body as T
 }

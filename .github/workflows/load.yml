@@ -1,0 +1,19 @@
+name: Matching load
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Functions base URL
+        required: true
+
+jobs:
+  k6:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/k6-action@v0.3.1
+        env:
+          AJAS_BASE_URL: ${{ inputs.base_url }}
+        with:
+          filename: scripts/load/matching.js

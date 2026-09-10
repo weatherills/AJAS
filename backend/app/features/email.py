@@ -57,13 +57,13 @@ def _handle(exc: Exception, *, route: str, method: str, user_id: str | None = No
         return error_response("CONFLICT", str(exc), 409)
     if isinstance(exc, MailRateLimitedError):
         log_request(feature="email", route=route, method=method, status=429, user_id=user_id, error=str(exc))
-        retry_after = str(getattr(exc, "retry_after", 86400))
-        resp = error_response("RATE_LIMITED", str(exc), 429, details={"retryAfter": int(retry_after)})
-        return func.HttpResponse(
-            resp.get_body(),
-            status_code=429,
-            mimetype="application/json",
-            headers={"Retry-After": retry_after},
+        retry_after = int(getattr(exc, "retry_after", 86400) or 86400)
+        return error_response(
+            "RATE_LIMITED",
+            str(exc),
+            429,
+            details={"retryAfter": retry_after},
+            retry_after=retry_after,
         )
     log_exception("email", route, exc)
     raise exc
@@ -167,6 +167,73 @@ def list_email_templates(req: func.HttpRequest) -> func.HttpResponse:
         return json_response(body)
     except Exception as exc:
         return _handle(exc, route="v1/email/templates", method="GET")
+
+
+@bp.route(route="v1/email/templates/{templateId}/preview", methods=["GET"])
+def preview_email_template(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = _auth(req)
+        from app.mail.keys import apply_template
+        from app.mail.theme import THEME, render_html
+
+        template_id = req.route_params["templateId"]
+        template = next((item for item in get_service().templates()["items"] if item["id"] == template_id), None)
+        if template is None:
+            from app.mail.errors import MailNotFoundError
+
+            raise MailNotFoundError(template_id)
+        variables = {
+            "firstName": req.params.get("firstName") or "Alex",
+            "company": req.params.get("company") or "Acme",
+            "role": req.params.get("role") or "Engineer",
+            "jobRef": req.params.get("jobRef") or "JOB-1",
+        }
+        text = apply_template(template["body"], variables)
+        html = render_html(text, name=template["name"])
+        log_request(feature="email", route="v1/email/templates/preview", method="GET", status=200, user_id=principal.user_id)
+        return json_response({"id": template_id, "name": template["name"], "text": text, "html": html, "theme": THEME})
+    except Exception as exc:
+        return _handle(exc, route="v1/email/templates/preview", method="GET")
+
+
+@bp.route(route="v1/email/webhooks/bounce", methods=["POST"])
+def email_bounce_webhook(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        from app.mail.bounce import classify_delivery
+        from app.mail import suppression
+
+        payload = {}
+        try:
+            payload = req.get_json() or {}
+        except ValueError:
+            payload = {}
+        address = str(payload.get("email") or payload.get("address") or payload.get("recipient") or "")
+        reason = str(payload.get("type") or payload.get("reason") or "bounce").lower()
+        if reason not in {"bounce", "bounced", "complaint", "complained"}:
+            kind = classify_delivery(payload.get("from") or "", payload.get("subject") or "", payload.get("body") or "")
+            reason = kind or "bounce"
+        if reason in {"complaint", "complained"}:
+            reason = "complaint"
+        else:
+            reason = "bounce"
+        row = suppression.suppress(address, reason=reason, source="webhook")
+        return json_response({"suppressed": True, **row}, status_code=202)
+    except ValueError as exc:
+        return error_response("INVALID_INPUT", str(exc), 400)
+    except Exception as exc:
+        return _handle(exc, route="v1/email/webhooks/bounce", method="POST")
+
+
+@bp.route(route="v1/email/suppressions", methods=["GET"])
+def list_email_suppressions(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = _auth(req)
+        from app.mail import suppression
+
+        log_request(feature="email", route="v1/email/suppressions", method="GET", status=200, user_id=principal.user_id)
+        return json_response({"items": suppression.list_all()})
+    except Exception as exc:
+        return _handle(exc, route="v1/email/suppressions", method="GET")
 
 
 @bp.route(route="v1/jobs/{jobId}/threads", methods=["GET"])

@@ -58,6 +58,9 @@ function mapMatch(row: ApiMatch, extra: Partial<ReviewMatch> = {}): ReviewMatch 
     comment: extra.comment ?? null,
     decision: extra.decision ?? null,
     scoreAtDecision: extra.scoreAtDecision ?? null,
+    archived: Boolean((row as ApiMatch & { archived?: boolean }).archived),
+    priority: Number((row as ApiMatch & { priority?: number }).priority || 0),
+    assigneeId: (row as ApiMatch & { assigneeId?: string | null }).assigneeId ?? null,
   }
 }
 
@@ -159,5 +162,14 @@ export const liveReviewApi: ReviewApi = {
       await request(`/api/v1/matches/${encodeURIComponent(matchId)}/reopen`, { method: 'POST' }),
     )
     return mapMatch(row)
+  },
+  async bulk(body) {
+    return json(
+      await request('/api/v1/matches/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    )
   },
 }

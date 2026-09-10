@@ -23,6 +23,18 @@ jobs:
       - name: Test
         run: pytest -n auto --cov=app --cov-report=term --cov-fail-under=40
 
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Secret scan
+        run: python scripts/secret_scan.py
+      - name: Migration safety
+        run: python scripts/migration_check.py
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
