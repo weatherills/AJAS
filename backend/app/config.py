@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     auto_apply_poison_dequeue: int = 5
     auto_apply_sas_minutes: int = 10
     auto_apply_webhook_secret: str = "dev-webhook-secret"
+    auto_apply_live_submit: bool = False
+    greenhouse_submit_api_key: str = ""
+    lever_submit_api_key: str = ""
 
     microsoft_tenant: str = "common"
     microsoft_client_id: str = ""

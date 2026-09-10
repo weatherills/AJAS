@@ -11,11 +11,24 @@ from app.auto_apply.constants import SAS_TTL_MINUTES
 class AutoApplyBlobStore(Protocol):
     def sas_url(self, blob_path: str, *, minutes: int = SAS_TTL_MINUTES) -> str: ...
 
+    def put(self, blob_path: str, data: bytes) -> None: ...
+
+    def get(self, blob_path: str) -> bytes | None: ...
+
 
 class InMemoryBlobStore:
+    def __init__(self) -> None:
+        self.files: dict[str, bytes] = {}
+
     def sas_url(self, blob_path: str, *, minutes: int = SAS_TTL_MINUTES) -> str:
         expiry = datetime.now(timezone.utc) + timedelta(minutes=minutes)
         return f"https://blob.local/{blob_path}?se={expiry.strftime('%Y-%m-%dT%H:%M:%SZ')}&sp=r&sig=test"
+
+    def put(self, blob_path: str, data: bytes) -> None:
+        self.files[blob_path] = data
+
+    def get(self, blob_path: str) -> bytes | None:
+        return self.files.get(blob_path)
 
 
 def default_blobs() -> AutoApplyBlobStore:

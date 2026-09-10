@@ -57,6 +57,11 @@ export const mockAutoApplyApi: AutoApplyApi = {
         { field_key: 'full_name', value: 'Alex Jobseeker', required: true, source: 'profile' },
         { field_key: 'email', value: 'alex@example.com', required: true, source: 'profile' },
       ],
+      cover_letter_text:
+        body.cover_letter_mode === 'generate'
+          ? 'Dear hiring team,\n\nI am writing to apply. Sincerely,\nAlex Jobseeker\n'
+          : null,
+      cover_letter_source: body.cover_letter_mode === 'generate' ? 'ai' : null,
       validation_errors: null,
       failure_reason: null,
       submitted_at: packaged ? null : stamped,
