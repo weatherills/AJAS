@@ -29,6 +29,15 @@ class CosmosReviewStore:
         self._persist_working(working)
         return saved
 
+    def discard_pending_match(self, user_id: str, match_id: str) -> None:
+        working = self._hydrate()
+        working.discard_pending_match(user_id, match_id)
+        try:
+            self._matches.delete_item(item=match_id, partition_key=user_id)
+        except (CosmosResourceNotFoundError, AttributeError, TypeError):
+            pass
+        self._persist_working(working)
+
     def get_match(self, match_id: str, *, user_id: str) -> ReviewMatch:
         return self._hydrate().get_match(match_id, user_id=user_id)
 

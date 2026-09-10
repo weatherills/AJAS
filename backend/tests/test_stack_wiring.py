@@ -54,14 +54,15 @@ def wiring(monkeypatch):
     get_settings.cache_clear()
     review_store = InMemoryReviewStore()
     matching_store = InMemoryMatchingStore()
-    set_review(ReviewService(store=review_store, queue=ReviewQueue(), blobs=InMemoryBlobStore()))
+    review_svc = ReviewService(store=review_store, queue=ReviewQueue(), blobs=InMemoryBlobStore())
+    set_review(review_svc)
     set_matching(MatchingService(store=matching_store, queue=MatchingQueue()))
     set_settings(SettingsService(store=InMemorySettingsStore(), queue=SettingsQueue()))
     jobs = CrawlService(store=InMemoryJobSourceStore(), queue=JobsQueue())
     jobs.store.upsert_tenant("greenhouse", "acme", config={})
     jobs.store.upsert_tenant("lever", "acme", config={})
     set_jobs(jobs)
-    yield {"review": review_store, "matching": matching_store, "jobs": jobs}
+    yield {"review": review_store, "matching": matching_store, "jobs": jobs, "review_svc": review_svc}
     set_review(None)
     set_matching(None)
     set_settings(None)
@@ -150,6 +151,84 @@ def test_save_match_below_threshold_lands_on_review_saved(wiring):
     assert len(updated) == 1
     assert updated[0].source == "saved"
     assert updated[0].ai_score == _body(again)["score"]
+
+
+def test_save_match_replaces_seeded_ai_row_for_same_job(wiring):
+    review = wiring["review"]
+    seeded = review.create_match(
+        USER,
+        job_id="job-staff",
+        resume_id="resume-1",
+        job_title="Staff Engineer",
+        company="Acme",
+        location="Remote",
+        ai_score=88.0,
+        suggestion="approve",
+        source="ai",
+        why="Seeded demo overlap.",
+        summary="Seeded demo overlap.",
+    )
+    low_job = (
+        "Title: Staff Engineer\nCompany: Acme\nSkills: frosting pastry whisk\n"
+        "Bake cakes daily with fondant. Staff Engineer Acme posting."
+    )
+    resp = matching_routes.compute_match(
+        _req(
+            "POST",
+            "http://localhost/api/v1/matches/compute",
+            json_body={
+                "resumeId": "resume-1",
+                "resumeText": RESUME,
+                "jobId": "job-staff",
+                "jobText": low_job,
+                "persist": True,
+            },
+        )
+    )
+    assert resp.status_code == 200
+    body = _body(resp)
+    assert body["persisted"] is True
+    rows = review.list_matches(USER)
+    assert len(rows) == 1
+    assert rows[0].id == seeded.id
+    assert rows[0].source == "saved"
+    assert rows[0].ai_score == body["score"]
+    listed = wiring["review_svc"].list_matches(USER, source="ai")
+    assert listed["items"] == []
+    saved = wiring["review_svc"].list_matches(USER, source="saved")
+    assert len(saved["items"]) == 1
+    assert saved["items"][0]["matchId"] == seeded.id
+    assert saved["items"][0]["score"] == body["score"]
+
+
+def test_list_hides_ai_seed_when_saved_duplicate_exists(wiring):
+    review = wiring["review"]
+    review.create_match(
+        USER,
+        job_id="job-staff",
+        resume_id="resume-1",
+        job_title="Staff Engineer",
+        company="Acme",
+        location="Remote",
+        ai_score=88.0,
+        source="ai",
+    )
+    saved = review.create_match(
+        USER,
+        job_id="job-staff",
+        resume_id="resume-1",
+        job_title="Staff Engineer",
+        company="Acme",
+        location="Remote",
+        ai_score=48.1,
+        source="saved",
+    )
+    svc = wiring["review_svc"]
+    matches = svc.list_matches(USER, source="ai", status="awaiting")
+    assert matches["items"] == []
+    saved_list = svc.list_matches(USER, source="saved", status="awaiting")
+    assert [item["matchId"] for item in saved_list["items"]] == [saved.id]
+    assert saved_list["items"][0]["score"] == 48.1
 
 
 def test_settings_threshold_updates_matching_prefs(wiring):

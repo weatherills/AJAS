@@ -217,6 +217,7 @@ class InMemoryReviewStore:
         job_title: str | None = None,
         company: str | None = None,
         location: str | None = None,
+        source: str | None = None,
     ) -> ReviewMatch:
         match = self._get_owned_match(match_id, user_id)
         if match.status != "PENDING":
@@ -235,9 +236,19 @@ class InMemoryReviewStore:
             match.company = _require_str(company, field_name="company")
         if location:
             match.location = _require_str(location, field_name="location")
+        if source is not None:
+            src = _normalize_source(source)
+            self._assert_unique(user_id, match.job_id, match.resume_id, src, exclude_id=match.id)
+            match.source = src
         match.updated_at = utc_now()
         match.etag = next_etag(match.etag)
         return self._copy_match(match)
+
+    def discard_pending_match(self, user_id: str, match_id: str) -> None:
+        match = self._get_owned_match(match_id, user_id)
+        if match.status != "PENDING":
+            raise ReviewConflictError("cannot discard a decided match")
+        del self._matches[match.id]
 
     def get_match(self, match_id: str, *, user_id: str) -> ReviewMatch:
         return self._copy_match(self._get_owned_match(match_id, user_id))
