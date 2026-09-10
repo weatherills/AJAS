@@ -10,7 +10,7 @@ import { MatchMeter } from '../components/MatchMeter'
 import { WhyThisScore, WhyThisScoreInline } from '../components/MatchWhy'
 import { ToastStack } from '../components/Toast'
 import { apiToPercent, isSourceNotConfiguredError } from '../lib/settings'
-import { jobHaystack, resumeHaystack } from '../lib/matching'
+import { jobHaystack, matchedTerms, resumeHaystack, storedMatchesForJobs } from '../lib/matching'
 import { jobHref, useHashSearch } from '../lib/routes'
 import { preselectReady } from '../lib/status'
 import {
@@ -285,16 +285,32 @@ export function JobFeedPage() {
         return next
       })
       try {
-        const rows = await matchingApi.scoreMany({
-          resumeId,
-          resumeText,
-          threshold,
-          jobs: jobs.map((job) => ({ id: job.id, text: jobHaystack(job) })),
-          explanation: true,
+        const stored =
+          resumeId != null
+            ? await matchingApi.listResults({ resumeId, jobIds: jobs.map((job) => job.id) }).catch(() => [])
+            : []
+        const hydrated = stored.map((row) => {
+          const job = jobs.find((item) => item.id === row.jobId)
+          const terms = job ? matchedTerms(resumeText, jobHaystack(job), 8) : row.terms
+          return { ...row, terms }
         })
+        const { known, missingIds } = storedMatchesForJobs(
+          jobs.map((job) => job.id),
+          hydrated,
+        )
+        const missing = jobs.filter((job) => missingIds.includes(job.id))
+        const ranked = missing.length
+          ? await matchingApi.scoreMany({
+              resumeId,
+              resumeText,
+              threshold,
+              jobs: missing.map((job) => ({ id: job.id, text: jobHaystack(job) })),
+              explanation: true,
+            })
+          : []
         setMatches((prev) => {
           const next = { ...prev }
-          for (const row of rows) next[row.jobId] = row
+          for (const row of [...known, ...ranked]) next[row.jobId] = row
           return next
         })
       } catch (err) {

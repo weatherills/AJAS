@@ -9,6 +9,7 @@ import {
   parseThresholdInput,
   scoreBand,
   scoreLabel,
+  storedMatchesForJobs,
   truncateExplanation,
 } from './matching'
 
@@ -116,5 +117,31 @@ describe('mock matching api', () => {
   it('uses keyword overlap as a 0–100 signal', () => {
     expect(keywordOverlap('python azure', 'python azure cosmos')).toBe(100)
     expect(keywordOverlap('python azure', 'figma branding')).toBe(0)
+  })
+
+  it('splits stored match results from jobs that still need ranking', () => {
+    const split = storedMatchesForJobs(
+      ['a', 'b', 'c'],
+      [
+        { jobId: 'a', score: 88 },
+        { jobId: 'c', score: 41 },
+      ],
+    )
+    expect(split.known.map((row) => row.jobId)).toEqual(['a', 'c'])
+    expect(split.missingIds).toEqual(['b'])
+  })
+
+  it('lists persisted mock results without ranking again', async () => {
+    const row = await mockMatchingApi.scoreOne({
+      resumeId: 'seed-ready',
+      resumeText: 'python azure cosmos matching crawlers ingestion',
+      threshold: 70,
+      persist: true,
+      job: { id: 'keep', text: 'Title: Staff Engineer\nCompany: Acme\nSkills: python azure cosmos matching crawlers' },
+    })
+    expect(row.persisted).toBe(true)
+    const stored = await mockMatchingApi.listResults({ resumeId: 'seed-ready', jobIds: ['keep', 'other'] })
+    expect(stored.map((item) => item.jobId)).toEqual(['keep'])
+    expect(stored[0].score).toBe(row.score)
   })
 })
