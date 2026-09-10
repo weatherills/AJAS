@@ -473,9 +473,16 @@ class EmailService:
                 status = "skipped_oversize"
                 reason = "oversize"
             elif item.content:
-                digest = sha256_text(item.content.hex())
-                blob_path = f"/users/{message.user_id}/messages/{message.id}/{item.name}"
-                self.store.put_blob(blob_path, item.content)
+                from app.mail.scan import scan_attachment
+
+                scan = scan_attachment(item.content, file_name=item.name)
+                if not scan.clean:
+                    status = "skipped_scan"
+                    reason = scan.reason
+                else:
+                    digest = sha256_text(item.content.hex())
+                    blob_path = f"/users/{message.user_id}/messages/{message.id}/{item.name}"
+                    self.store.put_blob(blob_path, item.content)
             self.store.add_attachment(
                 EmailAttachment(
                     email_account_id=message.email_account_id,
@@ -514,6 +521,15 @@ class EmailService:
                 raise MailUnprocessableError(f"{name} exceeds 10 MB", path=f"attachments/{idx}")
             if total > cfg.mail_attachment_max_message_bytes:
                 raise MailUnprocessableError("attachments exceed 25 MB", path="attachments")
+            if content:
+                from app.mail.scan import scan_attachment
+
+                scan = scan_attachment(content, file_name=str(name))
+                if not scan.clean:
+                    raise MailUnprocessableError(
+                        f"{name} failed malware scan ({scan.reason})",
+                        path=f"attachments/{idx}",
+                    )
             out.append(
                 GraphAttachment(
                     name=name,

@@ -101,9 +101,12 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
           Cover letter
           <select value={coverMode} onChange={(event) => setCoverMode(event.target.value as CoverLetterMode)}>
             <option value="none">None</option>
-            <option value="generate">Generate</option>
+            <option value="generate">Generate tailored letter</option>
           </select>
         </label>
+        {coverMode === 'generate' && (
+          <p className="muted">AJAS writes a short letter from the posting. Azure OpenAI is used when configured.</p>
+        )}
         <label className="apply-check">
           <input type="checkbox" checked={fallback} onChange={(event) => setFallback(event.target.checked)} />
           This posting has a CAPTCHA or SSO wall

@@ -451,6 +451,39 @@ def test_oversized_attachment_metadata_only(svc, store, graph):
     assert atts[0].blob_path is None
 
 
+def test_eicar_attachment_is_skipped_not_stored(svc, store, graph):
+    from app.mail.scan import EICAR_SIGNATURE
+
+    account = store.ensure_account(USER, address="user-1@ajas.dev", demo=True)
+    inbound = GraphMessage(
+        id="graph-eicar",
+        internet_message_id="<eicar@x>",
+        conversation_id="conv-eicar",
+        subject="Staff Engineer at Acme (JOB-SE-1)",
+        from_address="maya@acme.test",
+        from_name="Maya",
+        to_addresses=[account.address],
+        body_text="Please see the brief.",
+        received_at=utc_now(),
+        attachments=[
+            GraphAttachment(
+                name="invoice.txt",
+                content_type="text/plain",
+                size=len(EICAR_SIGNATURE),
+                content=EICAR_SIGNATURE,
+            )
+        ],
+    )
+    graph.put(account.id, inbound)
+    svc.process_ingest({"kind": "webhook", "accountId": account.id, "graphMessageId": "graph-eicar"})
+    thread = store.get_thread_by_conversation(account.id, "conv-eicar")
+    message = store.list_messages(thread.id)[0]
+    atts = store.list_attachments(message.id)
+    assert atts[0].status == "skipped_scan"
+    assert atts[0].skip_reason == "eicar_signature"
+    assert atts[0].blob_path is None
+
+
 def test_refresh_seeds_followup(svc, store):
     store.seed_demo_mailbox(USER, jobs=[{"id": "job-staff", "title": "Staff Engineer", "company": "Acme"}])
     before = _body(routes.list_email_threads(_req("GET", "http://localhost/api/v1/email/threads")))["total"]

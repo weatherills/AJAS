@@ -39,6 +39,8 @@ export type ApplyDetail = {
     deep_link_url: string | null
   }
   autofill: { field_key: string; value: string; required: boolean; source: string }[]
+  cover_letter_text?: string | null
+  cover_letter_source?: string | null
   validation_errors: unknown
   failure_reason: string | null
   submitted_at: string | null

@@ -149,7 +149,18 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
                     <a href={detail.artifacts.resume_blob_sas}>Resume</a>
                   </p>
                 )}
+                {detail.artifacts.cover_letter_blob_sas && (
+                  <p>
+                    <a href={detail.artifacts.cover_letter_blob_sas}>Cover letter</a>
+                  </p>
+                )}
               </section>
+              {detail.cover_letter_text && (
+                <section>
+                  <h3>Cover letter{detail.cover_letter_source ? ` (${detail.cover_letter_source})` : ''}</h3>
+                  <pre className="apply-cover">{detail.cover_letter_text}</pre>
+                </section>
+              )}
               <section>
                 <h3>Autofill</h3>
                 {detail.autofill.map((row) => (
