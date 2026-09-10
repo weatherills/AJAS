@@ -27,7 +27,9 @@ import {
   sourceUnconfiguredCopy,
 } from '../lib/settings'
 import {
+  addBoardToast,
   boardAddPayload,
+  boardErrorCopy,
   boardInputHint,
   sourceIsConfiguredStatus,
   sourceTitle,
@@ -69,6 +71,7 @@ export function SettingsPage() {
   const [ghAddStatus, setGhAddStatus] = useState<SaveStatus>('idle')
   const [leverAddStatus, setLeverAddStatus] = useState<SaveStatus>('idle')
   const [removingKey, setRemovingKey] = useState<string | null>(null)
+  const [retryingKey, setRetryingKey] = useState<string | null>(null)
   const [confirmRemove, setConfirmRemove] = useState<{ name: JobSourceName; tenantKey: string } | null>(null)
   const [connecting, setConnecting] = useState(false)
   const [popupBlocked, setPopupBlocked] = useState(false)
@@ -232,19 +235,23 @@ export function SettingsPage() {
       const created = await jobsApi.addTenant(name, boardAddPayload(value))
       const next = await settingsApi.patch({ sources: { [enabledKey]: true } })
       applyDoc(next)
-      setSourceStatus(created.sources?.length ? created.sources : await jobsApi.sourceStatus())
-      if (alreadyOn) {
+      let rows = created.sources?.length ? created.sources : await jobsApi.sourceStatus()
+      const added = addBoardToast(name, created)
+      if (added.tone !== 'error') {
         try {
-          setSourceStatus(await jobsApi.refresh(name))
+          rows = alreadyOn
+            ? await jobsApi.refresh(name)
+            : await jobsApi.refreshTenant(name, created.tenantKey)
         } catch {
           /* tenant is saved; refresh can retry from Job Feed */
         }
       }
+      setSourceStatus(rows)
       if (name === 'greenhouse') setGhBoard('')
       else setLeverBoard('')
       setAddStatus('saved')
       setToggleStatus('saved')
-      toast(`${sourceTitle(name)} board “${created.tenantKey}” added`)
+      toast(added.text, added.tone)
     } catch (err) {
       setAddStatus('error')
       setSourceError(err instanceof Error ? err.message : `Couldn’t add the ${sourceTitle(name)} board.`)
@@ -273,6 +280,26 @@ export function SettingsPage() {
       setSourceError(err instanceof Error ? err.message : `Couldn’t remove the ${sourceTitle(name)} board.`)
     } finally {
       setRemovingKey(null)
+    }
+  }
+
+  async function retryBoard(name: JobSourceName, tenantKey: string) {
+    setRetryingKey(`${name}:${tenantKey}`)
+    setSourceError(null)
+    setSourceRetry(null)
+    try {
+      const rows = await jobsApi.refreshTenant(name, tenantKey)
+      setSourceStatus(rows)
+      const row = rows.find((item) => item.source === name)
+      const boards = row?.boards || []
+      const board = boards.find((item) => item.tenantKey === tenantKey)
+      const err = row && board ? boardErrorCopy(board, row, boards.length) : null
+      if (err) toast(err, 'error')
+      else toast(`${sourceTitle(name)} board “${tenantKey}” refreshed`)
+    } catch (err) {
+      setSourceError(err instanceof Error ? err.message : `Couldn’t retry the ${sourceTitle(name)} board.`)
+    } finally {
+      setRetryingKey(null)
     }
   }
 
@@ -646,7 +673,8 @@ export function SettingsPage() {
           const boardValue = name === 'greenhouse' ? ghBoard : leverBoard
           const setBoard = name === 'greenhouse' ? setGhBoard : setLeverBoard
           const label = name === 'greenhouse' ? 'Greenhouse' : 'Lever'
-          const boards = sourceStatus.find((item) => item.source === name)?.boards || []
+          const sourceRow = sourceStatus.find((item) => item.source === name)
+          const boards = sourceRow?.boards || []
           return (
             <div key={name}>
               <div className={`source-row ${configured ? '' : 'is-unconfigured'}`}>
@@ -672,22 +700,44 @@ export function SettingsPage() {
               {boards.length > 0 && (
                 <ul className="source-board-list">
                   {boards.map((item) => {
-                    const busy = removingKey === `${name}:${item.tenantKey}`
+                    const busyKey = `${name}:${item.tenantKey}`
+                    const busy = removingKey === busyKey || retryingKey === busyKey
+                    const boardError = sourceRow
+                      ? boardErrorCopy(item, sourceRow, boards.length)
+                      : (item.errorMessage || '').trim() || null
                     return (
-                      <li key={item.tenantKey} className="source-board-row">
-                        <span>
-                          <span className="sr-only">{label} board </span>
-                          <code>{item.tenantKey}</code>
-                        </span>
-                        <button
-                          type="button"
-                          className="link-btn danger"
-                          disabled={busy || removingKey !== null}
-                          aria-label={`Remove ${label} board ${item.tenantKey}`}
-                          onClick={() => setConfirmRemove({ name, tenantKey: item.tenantKey })}
-                        >
-                          {busy ? 'Removing…' : 'Remove'}
-                        </button>
+                      <li key={item.tenantKey} className={`source-board-row${boardError ? ' has-error' : ''}`}>
+                        <div className="source-board-copy">
+                          <span>
+                            <span className="sr-only">{label} board </span>
+                            <code>{item.tenantKey}</code>
+                          </span>
+                          {boardError && (
+                            <p className="inline-error" role="alert">
+                              {boardError}
+                            </p>
+                          )}
+                        </div>
+                        <div className="source-board-actions">
+                          <button
+                            type="button"
+                            className="link-btn"
+                            disabled={busy || removingKey !== null || retryingKey !== null}
+                            aria-label={`Retry ${label} board ${item.tenantKey}`}
+                            onClick={() => void retryBoard(name, item.tenantKey)}
+                          >
+                            {retryingKey === busyKey ? 'Retrying…' : 'Retry'}
+                          </button>
+                          <button
+                            type="button"
+                            className="link-btn danger"
+                            disabled={busy || removingKey !== null || retryingKey !== null}
+                            aria-label={`Remove ${label} board ${item.tenantKey}`}
+                            onClick={() => setConfirmRemove({ name, tenantKey: item.tenantKey })}
+                          >
+                            {removingKey === busyKey ? 'Removing…' : 'Remove'}
+                          </button>
+                        </div>
                       </li>
                     )
                   })}
