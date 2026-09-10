@@ -49,6 +49,16 @@ class FakeContainer:
         self.items[key] = dict(body)
         return dict(body)
 
+    def delete_item(self, item: str, partition_key: str | None = None) -> None:
+        item_id = item if isinstance(item, str) else item["id"]
+        keys = [key for key in self.items if key[1] == item_id]
+        if partition_key is not None:
+            keys = [key for key in keys if key[0] == partition_key]
+        if not keys:
+            raise _not_found()
+        for key in keys:
+            del self.items[key]
+
     def query_items(self, query: str, parameters=None, partition_key=None, **_kwargs):
         rows = [dict(v) for v in self.items.values()]
         if partition_key is not None:
@@ -166,6 +176,20 @@ def test_update_pending_match_rewrites_score(store):
     assert updated.etag != created.etag
     loaded = store.get_match(created.id, user_id=USER)
     assert loaded.ai_score == 48.1
+
+
+def test_update_pending_match_can_change_source(store):
+    created = _create(store, source="ai", ai_score=88)
+    updated = store.update_pending_match(USER, created.id, source="saved", ai_score=48.1)
+    assert updated.source == "saved"
+    assert updated.ai_score == 48.1
+    assert store.get_match(created.id, user_id=USER).source == "saved"
+
+
+def test_discard_pending_match_removes_row(store):
+    created = _create(store, source="ai")
+    store.discard_pending_match(USER, created.id)
+    assert store.list_matches(USER) == []
 
 
 def test_list_pending_and_filters(store):

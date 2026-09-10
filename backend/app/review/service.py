@@ -85,6 +85,25 @@ def _paginate(items: list[Any], *, page_size: int, continuation: str | None) -> 
     return page, token
 
 
+def _pending_rank(match: ReviewMatch) -> tuple:
+    saved_boost = 1 if match.source == "saved" else 0
+    stamp = match.updated_at or match.created_at or ""
+    return (saved_boost, stamp)
+
+
+def _collapse_pending_duplicates(rows: list[ReviewMatch]) -> list[ReviewMatch]:
+    groups: dict[tuple[str, str], list[ReviewMatch]] = {}
+    for match in rows:
+        if match.status != "PENDING":
+            continue
+        groups.setdefault((match.job_id, match.resume_id), []).append(match)
+    keep_ids = set()
+    for group in groups.values():
+        winner = max(group, key=_pending_rank)
+        keep_ids.add(winner.id)
+    return [row for row in rows if row.status != "PENDING" or row.id in keep_ids]
+
+
 def _match_row(match: ReviewMatch) -> dict[str, Any]:
     return {
         "matchId": match.id,
@@ -199,6 +218,10 @@ class ReviewService:
                 source=source,
                 created_after=created_after,
             )
+        visible = {
+            row.id for row in _collapse_pending_duplicates(self.store.list_matches(user_id))
+        }
+        rows = [row for row in rows if row.id in visible]
         page, token = _paginate(rows, page_size=size, continuation=continuation)
         filters = {
             key: value
@@ -354,29 +377,41 @@ class ReviewService:
             return None
         existing = [
             row
-            for row in self.store.list_matches(user_id, source=source)
+            for row in self.store.list_matches(user_id)
             if row.job_id == job_id and row.resume_id == resume_id
         ]
         suggestion = "approve" if score >= 75 else "reject" if score < 50 else "review"
-        if existing:
-            pending = next((row for row in existing if row.status == "PENDING"), None)
-            if pending is None:
-                return _match_row(existing[0])
+        pending = [row for row in existing if row.status == "PENDING"]
+        if pending:
+            same_source = next((row for row in pending if row.source == source), None)
+            saved = next((row for row in pending if row.source == "saved"), None)
+            target = same_source or saved or pending[0]
+            next_source = "saved" if source == "saved" or target.source == "saved" else source
             try:
                 updated = self.store.update_pending_match(
                     user_id,
-                    pending.id,
+                    target.id,
                     ai_score=score,
                     suggestion=suggestion,
                     why=why,
                     summary=why,
-                    job_title=job_title or pending.job_title,
-                    company=company or pending.company,
-                    location=location or pending.location,
+                    job_title=job_title or target.job_title,
+                    company=company or target.company,
+                    location=location or target.location,
+                    source=next_source,
                 )
             except ReviewConflictError:
-                return _match_row(pending)
+                return _match_row(target)
+            for extra in pending:
+                if extra.id == target.id:
+                    continue
+                try:
+                    self.store.discard_pending_match(user_id, extra.id)
+                except ReviewConflictError:
+                    pass
             return _match_row(updated)
+        if existing:
+            return _match_row(existing[0])
         try:
             row = self.store.create_match(
                 user_id,
@@ -408,6 +443,10 @@ class ReviewService:
     ) -> dict[str, Any]:
         wanted = _store_status(status or "awaiting_decision")
         rows = self.store.list_matches(user_id, source="saved")
+        visible = {
+            row.id for row in _collapse_pending_duplicates(self.store.list_matches(user_id))
+        }
+        rows = [match for match in rows if match.id in visible]
         if wanted == "PENDING":
             rows = [match for match in rows if match.status == "PENDING"]
         elif wanted == "DECIDED":
