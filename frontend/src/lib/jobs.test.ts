@@ -271,6 +271,21 @@ describe('mock jobs api', () => {
     expect(sourcesOffCopy()).toMatch(/turned off in Settings/i)
   })
 
+  it('crawls a healthy first add so the feed is not empty until Refresh', async () => {
+    resetMockJobs()
+    simulateUnconfigured('greenhouse')
+    const created = await mockJobsApi.addTenant('greenhouse', { boardToken: 'stripe' })
+    expect(addBoardToast('greenhouse', created).tone).toBe('info')
+    const board = created.status?.boards?.find((item) => item.tenantKey === 'stripe')
+    expect(board?.status).toBe('ok')
+    expect(board?.lastSyncAt).toBeTruthy()
+    expect(created.status?.lastSyncAt).toBeTruthy()
+    const retried = await mockJobsApi.refreshTenant('greenhouse', created.tenantKey)
+    const greenhouse = retried.find((item) => item.source === 'greenhouse')
+    expect(greenhouse?.status).not.toBe('unconfigured')
+    expect(greenhouse?.boards?.find((item) => item.tenantKey === 'stripe')?.lastSyncAt).toBeTruthy()
+  })
+
   it('stamps a missing-board crawl error on that Settings board row', async () => {
     resetMockJobs()
     simulateUnconfigured('greenhouse')

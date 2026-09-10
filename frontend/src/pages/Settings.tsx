@@ -237,9 +237,11 @@ export function SettingsPage() {
       applyDoc(next)
       let rows = created.sources?.length ? created.sources : await jobsApi.sourceStatus()
       const added = addBoardToast(name, created)
-      if (alreadyOn && added.tone !== 'error') {
+      if (added.tone !== 'error') {
         try {
-          rows = await jobsApi.refresh(name)
+          rows = alreadyOn
+            ? await jobsApi.refresh(name)
+            : await jobsApi.refreshTenant(name, created.tenantKey)
         } catch {
           /* tenant is saved; refresh can retry from Job Feed */
         }
