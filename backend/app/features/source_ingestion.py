@@ -13,6 +13,7 @@ from app.job_sources.errors import (
     JobSourceRateLimitedError,
     JobSourceValidationError,
 )
+from app.job_sources.feed import parse_sources_query
 from app.job_sources.runtime import get_service
 
 bp = func.Blueprint()
@@ -60,7 +61,7 @@ def start_crawl(req: func.HttpRequest) -> func.HttpResponse:
 def list_jobs(req: func.HttpRequest) -> func.HttpResponse:
     try:
         _auth(req)
-        sources = [part.strip() for part in (req.params.get("sources") or "").split(",") if part.strip()]
+        sources = parse_sources_query(req.params.get("sources"), req.url)
         body = get_service().list_feed(
             sources=sources,
             q=req.params.get("q") or "",

@@ -89,6 +89,8 @@ def test_function_app_registers_settings_routes(function_names):
     assert "connect_email" in function_names
     assert "email_callback" in function_names
     assert "disconnect_email" in function_names
+    assert "settings_match_recalc_job" in function_names
+    assert "settings_source_discovery_job" in function_names
     assert "health" in function_names
 
 

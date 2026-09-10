@@ -335,6 +335,50 @@ class ReviewService:
         updated = self.store.reopen(user_id, match_id)
         return _match_detail(updated)
 
+    def upsert_scored_match(
+        self,
+        user_id: str,
+        *,
+        job_id: str,
+        resume_id: str,
+        job_title: str,
+        company: str,
+        location: str,
+        score: float,
+        why: str | None = None,
+        source: str = "ai",
+        match_id: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Idempotent Review queue row from a persisted Matching score."""
+        if not user_id or not job_id or not resume_id:
+            return None
+        existing = [
+            row
+            for row in self.store.list_matches(user_id, source=source)
+            if row.job_id == job_id and row.resume_id == resume_id
+        ]
+        if existing:
+            return _match_row(existing[0])
+        suggestion = "approve" if score >= 75 else "reject" if score < 50 else "review"
+        try:
+            row = self.store.create_match(
+                user_id,
+                job_id=job_id,
+                resume_id=resume_id,
+                source=source,
+                job_title=job_title or job_id,
+                company=company or "Unknown",
+                location=location or "Remote",
+                ai_score=score,
+                suggestion=suggestion,
+                why=why,
+                summary=why,
+                match_id=match_id,
+            )
+        except ReviewConflictError:
+            return None
+        return _match_row(row)
+
     def list_saved_jobs(
         self,
         user_id: str,

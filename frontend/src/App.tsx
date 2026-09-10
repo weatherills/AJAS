@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import { AppNav } from './components/AppNav'
 import { ApplyPage } from './pages/Apply'
 import { EmailPage } from './pages/Email'
 import { JobFeedPage } from './pages/JobFeed'
@@ -97,8 +98,9 @@ function useHashRoute(): Route {
 function Home() {
   return (
     <div className="page">
+      <AppNav />
       <header className="header">
-        <span className="badge">Phase 8</span>
+        <span className="badge">Live</span>
         <h1>AJAS</h1>
         <p className="tagline">AI Job Application System</p>
       </header>
@@ -106,8 +108,9 @@ function Home() {
       <main>
         <p className="intro">
           Resume Management, the job feed with match scores, Review, Auto-Apply, Email, Learning, and Settings
-          are live. Upload a resume, scan Greenhouse and Lever, review scores, apply, reply to recruiter mail,
-          and let approve/reject decisions tune ranking.
+          are live. Upload a resume, scan Greenhouse and Lever, review scores (matches at or above your
+          threshold land in Review), apply, reply to recruiter mail, and let approve/reject decisions tune
+          ranking.
         </p>
 
         <ul className="phases">

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { jobsApi, matchingApi, resumeApi, settingsApi, USE_MOCK } from '../api'
 import type { JobCard, JobDetail, JobFilters, JobSourceName, SourceStatus } from '../api/jobsTypes'
 import type { MatchView } from '../api/matchingTypes'
+import { AppNav } from '../components/AppNav'
 import { JobEmailsTab } from '../components/JobEmailsTab'
 import { MatchBadge } from '../components/MatchBadge'
 import { MatchMeter } from '../components/MatchMeter'
@@ -129,7 +130,13 @@ export function JobFeedPage() {
     void (async () => {
       try {
         const doc = await settingsApi.get()
-        if (!cancelled) setThreshold(apiToPercent(doc.matchThreshold))
+        if (!cancelled) {
+          setThreshold(apiToPercent(doc.matchThreshold))
+          const sources: JobSourceName[] = []
+          if (doc.sources.greenhouseEnabled) sources.push('greenhouse')
+          if (doc.sources.leverEnabled) sources.push('lever')
+          setFilters((prev) => ({ ...prev, sources }))
+        }
       } catch {
         /* keep default 70 */
       }
@@ -216,6 +223,31 @@ export function JobFeedPage() {
           }
           return next
         })
+      }
+    },
+    [resumeId, resumeText, threshold],
+  )
+
+  const saveMatch = useCallback(
+    async (job: JobCard) => {
+      if (!resumeId) {
+        toast('Upload a resume before saving a match.', 'error')
+        return
+      }
+      try {
+        const row = await matchingApi.scoreOne({
+          resumeId,
+          resumeText,
+          threshold,
+          job: { id: job.id, text: jobHaystack(job) },
+          explanation: true,
+          persist: true,
+        })
+        setMatches((prev) => ({ ...prev, [job.id]: { ...row, persisted: true } }))
+        toast('Saved to Review')
+      } catch (err) {
+        setSaveOverride((prev) => ({ ...prev, [job.id]: false }))
+        toast(err instanceof Error ? err.message : 'Could not save this match.', 'error')
       }
     },
     [resumeId, resumeText, threshold],
@@ -365,11 +397,9 @@ export function JobFeedPage() {
       <div className="sr-only" aria-live="polite">
         {liveMessage}
       </div>
+      <AppNav />
       <header className="library-header">
         <div>
-          <a href="#/" className="back-link">
-            Home
-          </a>
           <h1>Job feed</h1>
           <p className="tagline">Public Greenhouse and Lever postings, merged when they are the same role.</p>
         </div>
@@ -668,9 +698,11 @@ export function JobFeedPage() {
                         saveOverride[selected.id] ??
                         Boolean(matches[selected.id].persisted || (matches[selected.id].score ?? 0) >= threshold)
                       }
-                      onChange={(event) =>
-                        setSaveOverride((prev) => ({ ...prev, [selected.id]: event.target.checked }))
-                      }
+                      onChange={(event) => {
+                        const checked = event.target.checked
+                        setSaveOverride((prev) => ({ ...prev, [selected.id]: checked }))
+                        if (checked) void saveMatch(selected)
+                      }}
                     />
                     Save match
                   </label>

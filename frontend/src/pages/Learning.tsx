@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { AppNav } from '../components/AppNav'
 import { learningApi, USE_MOCK } from '../api'
 import type { LearningMetrics, LearningParams } from '../api/learningTypes'
 import { asStrictness, loadPeriod, percent, savePeriod, STRICTNESS_HELP, STRICTNESS_LABEL } from '../lib/learning'
@@ -102,11 +103,9 @@ export function LearningPanel({ compact = false }: { compact?: boolean }) {
 export function LearningPage() {
   return (
     <div className="page library-page">
+      <AppNav />
       <header className="library-header">
         <div>
-          <a href="#/" className="back-link">
-            Home
-          </a>
           <h1>Learning Loop</h1>
           <p className="tagline">Approve and reject matches to tune ranking. Metrics stay per-user.</p>
         </div>

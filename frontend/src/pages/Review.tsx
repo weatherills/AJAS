@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { reviewApi, USE_MOCK } from '../api'
 import type { DecisionValue, ReviewDetail, ReviewFilters, ReviewMatch, ReviewTab } from '../api/reviewTypes'
+import { AppNav } from '../components/AppNav'
 import { ApplyModal } from '../components/ApplyModal'
 import { ToastStack } from '../components/Toast'
 import {
@@ -234,11 +235,9 @@ export function ReviewPage() {
       <div className="sr-only" aria-live="polite">
         {liveMessage}
       </div>
+      <AppNav />
       <header className="library-header">
         <div>
-          <a href="#/" className="back-link">
-            Home
-          </a>
           <h1>Review &amp; Decision</h1>
           <p className="tagline">Approve or reject matches and saved jobs. Shortcuts: A approve · R reject · ⌘/Ctrl+Enter save with comment.</p>
         </div>
