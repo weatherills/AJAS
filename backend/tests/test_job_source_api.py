@@ -443,6 +443,12 @@ def test_feed_lists_merged_jobs_and_status(svc, store):
     empty = _body(routes.list_jobs(_req("GET", "http://localhost/api/v1/jobs?sources=", params={"sources": ""})))
     assert empty["total"] == 0
     assert empty["items"] == []
+    dropped = _body(routes.list_jobs(_req("GET", "http://localhost/api/v1/jobs?sources=&limit=25")))
+    assert dropped["total"] == 0
+    none_token = _body(
+        routes.list_jobs(_req("GET", "http://localhost/api/v1/jobs?sources=none", params={"sources": "none"}))
+    )
+    assert none_token["total"] == 0
     greenhouse = _body(
         routes.list_jobs(_req("GET", "http://localhost/api/v1/jobs?sources=greenhouse", params={"sources": "greenhouse"}))
     )

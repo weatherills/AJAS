@@ -65,7 +65,7 @@ The PRDs describe queue-driven pipelines, e.g.:
 - Learning: Review approve/reject → `learning-decisions` queue → optional `tuning-tasks`.
 - Settings: threshold PATCH → `match-recalc` (syncs Matching prefs); source enable → `source-discovery` (tenant enabled flags).
 - Matching persist (score ≥ threshold, or `persist: true`) upserts a Review queue row.
-- Job Feed `sources` omitted defaults to Greenhouse + Lever; an explicit empty list matches nothing.
+- Job Feed `sources` omitted defaults to Greenhouse + Lever; an explicit empty list, blank `sources=`, or `sources=none` matches nothing. Azure Functions drops empty query values, so the route also reads the raw URL.
 
 Queue names and message schemas are defined within each feature as it is built.
 

@@ -2,10 +2,29 @@
 
 from __future__ import annotations
 
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from app.job_sources.models import JobPostingCanonical, JobPostingRaw, SourceTenant
 from app.job_sources.store import JobSourceStore
+
+
+def parse_sources_query(raw: str | None, url: str = "") -> list[str] | None:
+    """Omitted ``sources`` defaults later; an explicit blank (or ``none``) matches nothing.
+
+    Azure Functions drops empty query values from ``req.params``, so callers may
+    pass the request URL as a fallback when ``raw`` is ``None``.
+    """
+    if raw is None and url:
+        query = parse_qs(urlparse(url).query, keep_blank_values=True)
+        if "sources" in query:
+            raw = ",".join(query.get("sources") or [])
+    if raw is None:
+        return None
+    return [
+        part.strip()
+        for part in raw.split(",")
+        if part.strip() and part.strip().lower() != "none"
+    ]
 
 
 def source_domain(url: str) -> str:
