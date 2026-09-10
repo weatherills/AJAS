@@ -1553,6 +1553,13 @@ select:focus-visible {
   margin: 0.4rem 0 0.75rem;
 }
 
+.resume-filter-banner {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+}
+
 .drawer-tabs button,
 .job-email-threads button,
 .job-pick button {
@@ -1636,9 +1643,56 @@ select:focus-visible {
   border-radius: 10px;
 }
 
+.metric-grid a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.metric-grid a:hover,
+.metric-grid a:focus-visible {
+  color: #c7d2fe;
+}
+
 .metric-grid strong {
   font-size: 1.25rem;
 }
+
+.learning-recent {
+  margin: 1.5rem 0;
+}
+
+.learning-recent h2 {
+  margin: 0 0 0.6rem;
+}
+
+.learning-recent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.learning-recent-list a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.learning-recent-list a:hover,
+.learning-recent-list a:focus-visible {
+  border-color: rgba(129, 140, 248, 0.5);
+}
+
 
 
 

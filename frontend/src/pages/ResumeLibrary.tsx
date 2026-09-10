@@ -9,6 +9,7 @@ import { AppNav } from '../components/AppNav'
 import { Modal } from '../components/Modal'
 import { StatusBadge } from '../components/StatusBadge'
 import { ToastStack } from '../components/Toast'
+import { reviewHref } from '../lib/routes'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
 
@@ -265,6 +266,9 @@ export function ResumeLibrary() {
                       Preview
                     </button>
                     <a href={`#/resumes/${item.id}/edit`}>Edit</a>
+                    {(status === 'Ready' || status === 'Needs review') && (
+                      <a href={reviewHref({ resumeId: item.id })}>Matches</a>
+                    )}
                     {status === 'Failed' && (
                       <button
                         type="button"

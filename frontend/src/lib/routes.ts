@@ -26,10 +26,27 @@ export function jobHref(jobId: string, tab?: 'details' | 'emails'): string {
   return hashHref('/jobs', { job: jobId, tab })
 }
 
-export function reviewHref(opts: { matchId?: string | null; jobId?: string | null; pane?: 'details' | 'emails' } = {}): string {
+export type ReviewHashTab = 'matches' | 'saved' | 'history'
+
+export function parseReviewTab(raw: string | null | undefined): ReviewHashTab {
+  if (raw === 'saved' || raw === 'history') return raw
+  return 'matches'
+}
+
+export function reviewHref(
+  opts: {
+    matchId?: string | null
+    jobId?: string | null
+    resumeId?: string | null
+    pane?: 'details' | 'emails'
+    tab?: ReviewHashTab | null
+  } = {},
+): string {
   return hashHref('/review', {
+    tab: opts.tab && opts.tab !== 'matches' ? opts.tab : undefined,
     match: opts.matchId,
     job: opts.matchId ? undefined : opts.jobId,
+    resume: opts.resumeId,
     pane: opts.pane,
   })
 }
@@ -41,6 +58,10 @@ export function emailHref(opts: { jobId?: string | null; threadId?: string | nul
 export function applyHref(requestId?: string | null, jobId?: string | null): string {
   const path = requestId ? `/apply/${encodeURIComponent(requestId)}` : '/apply'
   return hashHref(path, { job: jobId })
+}
+
+export function resumeHref(resumeId: string): string {
+  return hashHref(`/resumes/${encodeURIComponent(resumeId)}/edit`)
 }
 
 export function useHashSearch(): URLSearchParams {

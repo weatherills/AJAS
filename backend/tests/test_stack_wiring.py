@@ -150,3 +150,51 @@ def test_demo_review_seed_uses_feed_job_ids(monkeypatch):
     assert staff.job_id in ids
     assert analyst.job_id in ids
     assert staff.company == "Acme"
+
+
+def test_demo_resume_seed_matches_review_id():
+    from app.resumes.demo import DEMO_RESUME_ID, DEMO_USER, seed_demo_resume
+    from app.resumes.memory import InMemoryResumeStore
+
+    store = InMemoryResumeStore()
+    seed_demo_resume(store)
+    row = store.get_resume(DEMO_USER, DEMO_RESUME_ID)
+    assert row.id == "resume-1"
+    assert row.validated is True
+    assert row.processing_status == "parsed"
+    seed_demo_resume(store)
+    assert len(store.list_resumes(DEMO_USER)) == 1
+
+
+def test_demo_review_seed_resume_id_is_resume_1(monkeypatch):
+    from app.job_sources.feed import feed_cards, seed_demo_feed
+    from app.job_sources.memory import InMemoryJobSourceStore
+    from app.review.memory import InMemoryReviewStore
+    from app.review import runtime
+
+    jobs = InMemoryJobSourceStore()
+    seed_demo_feed(jobs)
+    cards = feed_cards(jobs)
+    monkeypatch.setattr(runtime, "_feed_cards", lambda: cards)
+    review = InMemoryReviewStore()
+    runtime._seed_demo_matches(review)
+    matches = review.list_matches("local-user")
+    assert matches
+    assert {item.resume_id for item in matches} == {"resume-1"}
+
+
+def test_learning_demo_jobs_align_with_feed(monkeypatch):
+    from app.job_sources.feed import feed_cards, seed_demo_feed
+    from app.job_sources.memory import InMemoryJobSourceStore
+    from app.learning.memory import InMemoryLearningStore
+
+    jobs = InMemoryJobSourceStore()
+    seed_demo_feed(jobs)
+    ids = {card["id"] for card in feed_cards(jobs)}
+    monkeypatch.setattr("app.job_sources.store.get_job_source_store", lambda: jobs)
+    store = InMemoryLearningStore(seed=False)
+    store.seed_demo("local-user", align_feed=True)
+    named = [row.job_id for row in store.list_recommendations("local-user") if not row.job_id.startswith("job-extra-")]
+    assert named
+    assert any(job_id in ids for job_id in named)
+    assert all(row.resume_id == "resume-1" for row in store.list_recommendations("local-user"))

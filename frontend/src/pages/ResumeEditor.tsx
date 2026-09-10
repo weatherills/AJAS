@@ -5,6 +5,7 @@ import { AppNav } from '../components/AppNav'
 import { Modal } from '../components/Modal'
 import { StatusBadge } from '../components/StatusBadge'
 import { ToastStack } from '../components/Toast'
+import { reviewHref } from '../lib/routes'
 import { isRunInProgress } from '../lib/runLock'
 import { uiStatus } from '../lib/status'
 import { editorIsReady, validateEditor, type EditorState } from '../lib/validation'
@@ -148,6 +149,11 @@ export function ResumeEditor({ resumeId, onBack, onSaved }: { resumeId: string; 
           </button>
           <h1>Edit resume</h1>
           <p className="muted filename">{detail.fileName}</p>
+          <p>
+            <a className="primary-link" href={reviewHref({ resumeId: detail.id })}>
+              View matches
+            </a>
+          </p>
         </div>
         <StatusBadge status={status} />
       </header>

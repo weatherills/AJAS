@@ -36,7 +36,7 @@ class InMemoryLearningStore:
         self._blobs: dict[str, dict] = {}
         self._seed_global()
         if seed:
-            self.seed_demo("local-user")
+            self.seed_demo("local-user", align_feed=True)
 
     def _seed_global(self) -> None:
         now = utc_now()
@@ -186,18 +186,12 @@ class InMemoryLearningStore:
     def put_blob(self, path: str, payload: dict) -> None:
         self._blobs[path] = dict(payload)
 
-    def seed_demo(self, user_id: str) -> None:
+    def seed_demo(self, user_id: str, *, align_feed: bool = False) -> None:
         if any(row.user_id == user_id for row in self._recs.values()):
             return
         now = utc_now()
         params = self.get_or_create_params(user_id)
-        jobs = [
-            ("job-staff", 0.88, "approve", 6),
-            ("job-platform", 0.81, "approve", 18),
-            ("job-backend", 0.74, "approve", 30),
-            ("job-frontend", 0.62, "reject", 40),
-            ("job-analyst", 0.41, "reject", 50),
-        ]
+        jobs = _named_demo_jobs(align_feed=align_feed)
         extra = [("job-extra-%s" % idx, 0.55 + (idx % 5) * 0.07, "approve" if idx % 3 else "reject", 8 + idx) for idx in range(17)]
         for job_id, score, decision, hours in [*[(a, b, c, d * 1.0) for a, b, c, d in jobs], *[(a, b, c, float(d)) for a, b, c, d in extra]]:
             rec_id = f"rec-{user_id}-{job_id}"
@@ -206,7 +200,7 @@ class InMemoryLearningStore:
                 id=rec_id,
                 user_id=user_id,
                 job_id=job_id,
-                resume_id="resume-demo",
+                resume_id="resume-1",
                 score=score,
                 score_components={"keyword": score - 0.05, "semantic": score + 0.05},
                 weight_config_id=GLOBAL_CONFIG_ID,
@@ -238,6 +232,38 @@ class InMemoryLearningStore:
 
     def users_with_decisions(self) -> list[str]:
         return sorted({row.user_id for row in self._decisions.values()})
+
+
+def _named_demo_jobs(*, align_feed: bool = False) -> list[tuple[str, float, str, int]]:
+    """Named Learning demo jobs. Optionally remap ids onto the local job feed."""
+    named = [
+        ("staff engineer", "job-staff", 0.88, "approve", 6),
+        ("platform engineer", "job-platform", 0.81, "approve", 18),
+        ("backend engineer", "job-backend", 0.74, "approve", 30),
+        ("frontend engineer", "job-frontend", 0.62, "reject", 40),
+        ("data analyst", "job-analyst", 0.41, "reject", 50),
+    ]
+    cards: list[dict] = []
+    if align_feed:
+        try:
+            from app.job_sources.feed import feed_cards, seed_demo_feed
+            from app.job_sources.store import get_job_source_store
+
+            store = get_job_source_store()
+            seed_demo_feed(store)
+            cards = feed_cards(store)
+        except Exception:
+            cards = []
+    jobs: list[tuple[str, float, str, int]] = []
+    for title, fallback, score, decision, hours in named:
+        job_id = fallback
+        needle = title.lower()
+        for card in cards:
+            if needle in (card.get("title") or "").lower():
+                job_id = card["id"]
+                break
+        jobs.append((job_id, score, decision, hours))
+    return jobs
 
 
 def hours_ago_safe(hours: float, now: str) -> str:
