@@ -11,6 +11,12 @@ const mailbox: EmailStatus = {
   oauthConfigured: true,
 }
 
+let suggestFail: string | null = null
+
+export function setEmailSuggestFail(message: string | null) {
+  suggestFail = message
+}
+
 const templates: EmailTemplate[] = [
   { id: 'thanks', name: 'Thanks', body: 'Hi {firstName},\n\nThanks for reaching out about the {role} role at {company} ({jobRef}).' },
   { id: 'followup', name: 'Follow-up', body: 'Hi {firstName},\n\nJust following up on {role} at {company}.' },
@@ -135,6 +141,11 @@ export const mockEmailApi: EmailApi = {
     return item
   },
   async suggestions() {
+    if (suggestFail) {
+      const message = suggestFail
+      suggestFail = null
+      throw new Error(message)
+    }
     return [
       { text: 'Thanks, I can talk this week.', tone: 'professional', rationale: 'Offers times.' },
       { text: 'Thanks — when works?', tone: 'concise', rationale: 'Short.' },

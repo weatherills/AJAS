@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mockEmailApi } from '../api/emailMock'
+import { mockEmailApi, setEmailSuggestFail } from '../api/emailMock'
 import { demoMailbox, fillTemplate, graphConnected, leftoverVars, mailboxReadable, oauthConfigured, relativeTime, validateAttachments } from './email'
 
 describe('email helpers', () => {
@@ -118,5 +118,17 @@ describe('mock email api', () => {
   it('lists threads for the same job id the job feed mock uses', async () => {
     const page = await mockEmailApi.listJobThreads('job-1')
     expect(page.items.some((item) => item.jobId === 'job-1' && item.subject.includes('Staff Engineer'))).toBe(true)
+  })
+
+  it('includes thread participants on list rows', async () => {
+    const page = await mockEmailApi.listThreads()
+    expect(page.items.every((item) => Array.isArray(item.participants) && item.participants.length > 0)).toBe(true)
+    const staff = page.items.find((item) => item.id === 't-staff')
+    expect(staff?.participants).toContain('maya@acme.test')
+  })
+
+  it('surfaces suggestion failures from the mock composer', async () => {
+    setEmailSuggestFail('Suggestion limit reached for today. Try again tomorrow.')
+    await expect(mockEmailApi.suggestions('t-staff')).rejects.toThrow(/Suggestion limit reached/)
   })
 })

@@ -172,6 +172,9 @@ export function EmailPage() {
                   <strong>{item.subject}</strong>
                   {item.unreadCount > 0 && <span className="unread-dot" aria-label={`${item.unreadCount} unread`} />}
                 </div>
+                {item.participants?.length ? (
+                  <p className="muted">{item.participants.filter(Boolean).slice(0, 3).join(', ')}</p>
+                ) : null}
                 <p className="muted">{item.snippet}</p>
                 <p className="muted">
                   {relativeTime(item.lastMessageAt)}

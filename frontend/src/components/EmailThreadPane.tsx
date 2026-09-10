@@ -74,11 +74,14 @@ export function EmailThreadPane({
     void emailApi.templates().then(setTemplates).catch(() => setTemplates([]))
   }, [])
 
-  const vars = useMemo(() => threadVariables(thread), [thread])
+  const vars = useMemo(
+    () => threadVariables({ ...thread, participants: thread.participants || [] }),
+    [thread],
+  )
   const leftovers = leftoverVars(body)
   const subject = thread.subject.toLowerCase().startsWith('re:') ? thread.subject : `Re: ${thread.subject}`
   const lastInbound = [...messages].reverse().find((item) => item.isIncoming)
-  const toLine = lastInbound?.from.address || thread.participants[0] || ''
+  const toLine = lastInbound?.from.address || thread.participants?.[0] || ''
 
   async function send() {
     if (!body.trim() || leftovers.length) return
@@ -249,6 +252,7 @@ export function EmailThreadPane({
         {previewHtml && (
           <iframe title="Email template preview" className="email-preview" sandbox="" srcDoc={previewHtml} />
         )}
+        {suggestError && <p className="inline-error">{suggestError}</p>}
         {suggestions.length > 0 && (
           <ul className="suggestion-list">
             {suggestions.map((item) => (
