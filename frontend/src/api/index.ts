@@ -12,6 +12,8 @@ import { liveMatchingApi } from './matchingLive'
 import { mockMatchingApi } from './matchingMock'
 import { liveEmailApi } from './emailLive'
 import { mockEmailApi } from './emailMock'
+import { liveLearningApi } from './learningLive'
+import { mockLearningApi } from './learningMock'
 import type { ReviewApi } from './reviewTypes'
 import type { AutoApplyApi } from './autoApplyTypes'
 import type { SettingsApi } from './settingsTypes'
@@ -19,6 +21,7 @@ import type { ResumeApi } from './resumeTypes'
 import type { JobsApi } from './jobsTypes'
 import type { MatchingApi } from './matchingTypes'
 import type { EmailApi } from './emailTypes'
+import type { LearningApi } from './learningTypes'
 
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
@@ -29,6 +32,7 @@ export const resumeApi: ResumeApi = USE_MOCK ? mockResumeApi : liveResumeApi
 export const jobsApi: JobsApi = USE_MOCK ? mockJobsApi : liveJobsApi
 export const matchingApi: MatchingApi = USE_MOCK ? mockMatchingApi : liveMatchingApi
 export const emailApi: EmailApi = USE_MOCK ? mockEmailApi : liveEmailApi
+export const learningApi: LearningApi = USE_MOCK ? mockLearningApi : liveLearningApi
 
 if (USE_MOCK) {
   seedMockResume()
@@ -54,3 +58,4 @@ export type { ResumeApi, ResumeDetail, ResumeListItem } from './resumeTypes'
 export type { JobCard, JobsApi } from './jobsTypes'
 export type { MatchView, MatchingApi } from './matchingTypes'
 export type { EmailApi, EmailThread } from './emailTypes'
+export type { LearningApi } from './learningTypes'

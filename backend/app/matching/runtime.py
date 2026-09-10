@@ -33,3 +33,7 @@ def get_service() -> MatchingService:
 def set_service(service: MatchingService | None) -> None:
     global _service
     _service = service
+
+
+def try_get_service() -> MatchingService | None:
+    return _service

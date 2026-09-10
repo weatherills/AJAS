@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local CodeSpring workspace link (API project id)
+.codespring/config.json
+frontend/.codespring/

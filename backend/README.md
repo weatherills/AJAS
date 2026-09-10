@@ -2,7 +2,7 @@
 
 Azure Functions app (Python v2 programming model) for the AI Job Application
 System. Feature blueprints cover Review, Auto-Apply, Settings, Resume,
-Job Source, Matching, and Email Ingestion.
+Job Source, Matching, Email Ingestion, and Learning Loop.
 
 ## Layout
 

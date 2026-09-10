@@ -36,3 +36,7 @@ def get_service() -> CrawlService:
 def set_service(service: CrawlService | None) -> None:
     global _service
     _service = service
+
+
+def try_get_service() -> CrawlService | None:
+    return _service

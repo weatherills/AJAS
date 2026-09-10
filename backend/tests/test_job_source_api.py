@@ -117,7 +117,7 @@ def svc(monkeypatch, store, queue, blobs, fetcher, sleeps):
     get_settings.cache_clear()
 
 
-def _req(method: str, url: str, *, user: str | None = USER, route=None) -> func.HttpRequest:
+def _req(method: str, url: str, *, user: str | None = USER, route=None, params=None) -> func.HttpRequest:
     headers = {}
     if user:
         headers["Authorization"] = f"Bearer {user}"
@@ -125,7 +125,7 @@ def _req(method: str, url: str, *, user: str | None = USER, route=None) -> func.
         method=method,
         url=url,
         headers=headers,
-        params={},
+        params=params or {},
         route_params=route or {},
         body=b"",
     )
@@ -440,6 +440,33 @@ def test_feed_lists_merged_jobs_and_status(svc, store):
         )
     )
     assert filtered["items"][0]["title"] == "Data Analyst"
+    empty = _body(routes.list_jobs(_req("GET", "http://localhost/api/v1/jobs?sources=", params={"sources": ""})))
+    assert empty["total"] == 0
+    assert empty["items"] == []
+    dropped = _body(routes.list_jobs(_req("GET", "http://localhost/api/v1/jobs?sources=&limit=25")))
+    assert dropped["total"] == 0
+    none_token = _body(
+        routes.list_jobs(_req("GET", "http://localhost/api/v1/jobs?sources=none", params={"sources": "none"}))
+    )
+    assert none_token["total"] == 0
+    greenhouse = _body(
+        routes.list_jobs(_req("GET", "http://localhost/api/v1/jobs?sources=greenhouse", params={"sources": "greenhouse"}))
+    )
+    assert greenhouse["total"] >= 1
+    assert all("greenhouse" in {ref["source"] for ref in item["sources"]} for item in greenhouse["items"])
     status = _body(routes.list_source_status(_req("GET", "http://localhost/api/v1/sources/status")))
     assert {row["source"] for row in status} == {"greenhouse", "lever"}
+
+
+def test_demo_seed_crawl_skips_http(svc, store, fetcher):
+    from app.job_sources.feed import seed_demo_feed
+
+    seed_demo_feed(store)
+    before = list(fetcher.calls)
+    listed = routes.start_crawl(_req("POST", "http://localhost/api/v1/sources/greenhouse/crawl", route={"id": "greenhouse"}))
+    assert listed.status_code == 202
+    assert fetcher.calls == before
+    status = _body(routes.list_source_status(_req("GET", "http://localhost/api/v1/sources/status")))
+    greenhouse = next(row for row in status if row["source"] == "greenhouse")
+    assert greenhouse["status"] != "error"
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { resumeApi } from '../api'
 import type { Contact, Education, Experience, ResumeDetail } from '../api/resumeTypes'
+import { AppNav } from '../components/AppNav'
 import { Modal } from '../components/Modal'
 import { StatusBadge } from '../components/StatusBadge'
 import { ToastStack } from '../components/Toast'
@@ -139,6 +140,7 @@ export function ResumeEditor({ resumeId, onBack, onSaved }: { resumeId: string; 
 
   return (
     <div className="page editor-page">
+      <AppNav />
       <header className="page-header">
         <div>
           <button type="button" className="link-btn" onClick={() => tryNav(onBack)}>

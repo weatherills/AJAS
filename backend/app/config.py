@@ -87,6 +87,17 @@ class Settings(BaseSettings):
     mail_reply_idempotency_hours: int = 24
     mail_blob_container: str = "mail-attachments"
 
+    learning_tune_queue: str = "tuning-tasks"
+    learning_min_samples: int = 20
+    learning_tune_after: int = 10
+    learning_window_days: int = 30
+    learning_max_weight_delta: float = 0.2
+    learning_max_threshold_delta: float = 0.05
+    learning_comment_max: int = 1000
+    learning_stale_days: int = 90
+    learning_min_shown_per_week: int = 10
+    learning_decision_rate_per_second: int = 10
+
 
 @lru_cache
 def get_settings() -> Settings:

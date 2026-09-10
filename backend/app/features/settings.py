@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 
 import azure.functions as func
@@ -127,3 +128,13 @@ def disconnect_email(req: func.HttpRequest) -> func.HttpResponse:
         "POST /v1/settings/email/disconnect",
         lambda principal: json_response(get_service().disconnect(principal.user_id)),
     )
+
+
+@bp.queue_trigger(arg_name="msg", queue_name="match-recalc", connection="AzureWebJobsStorage")
+def settings_match_recalc_job(msg: func.QueueMessage) -> None:
+    get_service().apply_match_recalc(json.loads(msg.get_body().decode("utf-8")))
+
+
+@bp.queue_trigger(arg_name="msg", queue_name="source-discovery", connection="AzureWebJobsStorage")
+def settings_source_discovery_job(msg: func.QueueMessage) -> None:
+    get_service().apply_source_discovery(json.loads(msg.get_body().decode("utf-8")))

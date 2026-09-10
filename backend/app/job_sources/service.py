@@ -112,7 +112,7 @@ class CrawlService:
     def list_feed(
         self,
         *,
-        sources: list[str],
+        sources: list[str] | None,
         q: str = "",
         location: str = "",
         status: str = "all",
@@ -211,6 +211,8 @@ class CrawlService:
         if dequeue_count > cfg.crawl_poison_dequeue:
             return self.store.finish_run(run_id, status="failed", error_summary="poisoned after repeated failures")
         tenant = self.store.get_tenant(tenant_id)
+        if (tenant.config or {}).get("demo_seed"):
+            return self.store.finish_run(run_id, status="succeeded")
         self.store.set_run_status(run_id, "running")
         listing_ok = False
         seen_ids: list[str] = []

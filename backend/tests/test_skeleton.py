@@ -42,6 +42,7 @@ def test_health_reports_live_features(monkeypatch):
         "jobs",
         "matching",
         "email",
+        "learning",
     ]
 
 
