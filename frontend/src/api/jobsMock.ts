@@ -132,6 +132,20 @@ export function resetMockJobs() {
   ]
 }
 
+export function simulateSourceError(source: JobSourceName, message: string) {
+  statuses = statuses.map((item) =>
+    item.source === source
+      ? {
+          ...item,
+          status: 'error',
+          backoffUntil: null,
+          errorMessage: message,
+          progress: null,
+        }
+      : item,
+  )
+}
+
 export function simulateLeverRateLimit(seconds = 12) {
   const until = new Date(Date.now() + seconds * 1000).toISOString()
   statuses = statuses.map((item) =>
@@ -184,6 +198,7 @@ export const mockJobsApi: JobsApi = {
     for (const name of targets) {
       const row = statuses.find((item) => item.source === name)
       if (!row) continue
+      if (row.status === 'error') continue
       if (row.status === 'rate_limited' && row.backoffUntil && new Date(row.backoffUntil).getTime() > Date.now()) {
         continue
       }
@@ -219,6 +234,7 @@ export const mockJobsApi: JobsApi = {
           description: 'New Greenhouse posting after a manual refresh.',
         })
       }
+      if (row.status === 'error') continue
       row.status = 'ok'
       row.lastSyncAt = new Date().toISOString()
       row.progress = null

@@ -24,10 +24,14 @@ export const liveJobsApi: JobsApi = {
     return json<SourceStatus[]>(await request('/api/v1/sources/status'))
   },
   async refresh(source: JobSourceName | 'all') {
-    const id = source === 'all' ? 'greenhouse' : source
-    await json(await request(`/api/v1/sources/${id}/crawl`, { method: 'POST' }))
-    if (source === 'all') {
-      await json(await request('/api/v1/sources/lever/crawl', { method: 'POST' }))
+    const ids = source === 'all' ? (['greenhouse', 'lever'] as const) : [source]
+    for (const id of ids) {
+      const resp = await request(`/api/v1/sources/${id}/crawl`, { method: 'POST' })
+      if (resp.status === 404) {
+        await resp.json().catch(() => ({}))
+        continue
+      }
+      await json(resp)
     }
     return json<SourceStatus[]>(await request('/api/v1/sources/status'))
   },

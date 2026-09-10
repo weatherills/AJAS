@@ -87,8 +87,37 @@ export function statusLabel(row: SourceStatus, now = Date.now()): string {
     const left = backoffRemainingMs(row.backoffUntil, now)
     return left > 0 ? `Temporarily limited ${formatCountdown(left)}` : 'Temporarily limited'
   }
-  if (row.status === 'error') return 'Error'
+  if (row.status === 'error') {
+    const copy = sourceErrorCopy(row) || ''
+    if (/not found/i.test(copy)) return 'Board not found'
+    if (/unreachable/i.test(copy)) return 'Unreachable'
+    return 'Error'
+  }
   return 'OK'
+}
+
+export function sourceErrorCopy(row: Pick<SourceStatus, 'source' | 'status' | 'errorMessage'>): string | null {
+  if (row.status !== 'error') return null
+  const name = sourceTitle(row.source)
+  const raw = (row.errorMessage || '').trim()
+  if (!raw) return `${name} fetch failed.`
+  return raw
+}
+
+export function refreshToastForStatuses(
+  source: JobSourceName | 'all',
+  rows: SourceStatus[],
+  added: number,
+): { text: string; tone: 'info' | 'error'; live: string } {
+  const targeted = rows.filter((item) => source === 'all' || item.source === source)
+  const failed = targeted.filter((item) => item.status === 'error')
+  if (failed.length) {
+    const text = failed.map((item) => sourceErrorCopy(item) || `${sourceTitle(item.source)} fetch failed.`).join(' ')
+    return { text, tone: 'error', live: 'Sync error' }
+  }
+  const label = source === 'all' ? 'Sources' : sourceTitle(source)
+  const text = added > 0 ? `${label} updated: ${added} new job${added === 1 ? '' : 's'}` : `${label}: no new jobs.`
+  return { text, tone: 'info', live: 'Syncing completed' }
 }
 
 export function mergeJobs(items: JobCard[]): JobCard[] {

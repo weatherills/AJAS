@@ -22,7 +22,9 @@ import {
   formatWhen,
   loadFilters,
   PAGE_SIZE,
+  refreshToastForStatuses,
   saveFilters,
+  sourceErrorCopy,
   sourceTitle,
   statusLabel,
   takeLastVisit,
@@ -410,9 +412,9 @@ export function JobFeedPage() {
       await loadPage(filters.pagination === 'infinite' ? null : String((page - 1) * PAGE_SIZE), false)
       const after = await jobsApi.list({ ...query, cursor: null, limit: 500 })
       const added = after.items.filter((item) => !before.has(item.id)).length
-      const label = source === 'all' ? 'Sources' : sourceTitle(source)
-      if (!silent) toast(added > 0 ? `${label} updated: ${added} new job${added === 1 ? '' : 's'}` : `${label}: no new jobs.`)
-      setLiveMessage('Syncing completed')
+      const outcome = refreshToastForStatuses(source, rows, added)
+      if (!silent) toast(outcome.text, outcome.tone)
+      setLiveMessage(outcome.live)
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Refresh failed', 'error')
       setLiveMessage('Sync error')
@@ -431,6 +433,7 @@ export function JobFeedPage() {
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const lever = statuses.find((item) => item.source === 'lever')
   const greenhouse = statuses.find((item) => item.source === 'greenhouse')
+  const sourceErrors = statuses.filter((item) => item.status === 'error')
 
   function sourceBlocked(row: SourceStatus | undefined) {
     return !row || offline || row.status === 'syncing' || backoffRemainingMs(row.backoffUntil, now) > 0
@@ -465,6 +468,11 @@ export function JobFeedPage() {
 
       {USE_MOCK && <p className="banner">Demo data (mock API). Filters stay in this browser.</p>}
       {offline && <p className="unsaved-banner">Offline — cached jobs only. Refresh is disabled until you reconnect.</p>}
+      {sourceErrors.length > 0 && (
+        <p className="unsaved-banner" role="alert">
+          {sourceErrors.map((item) => sourceErrorCopy(item) || `${sourceTitle(item.source)} fetch failed.`).join(' ')}
+        </p>
+      )}
 
       <div className="feed-status" role="status">
         {(['greenhouse', 'lever'] as JobSourceName[]).map((name) => {
@@ -478,8 +486,10 @@ export function JobFeedPage() {
                 <strong>{sourceTitle(name)}</strong>
                 <p className="muted">{label}</p>
                 <p className="muted">Last sync {formatWhen(row?.lastSyncAt ?? null)}</p>
-                {row?.status === 'error' && row.errorMessage && (
-                  <p className="inline-error">{sourceTitle(name)} fetch failed. Retrying soon.</p>
+                {row?.status === 'error' && (
+                  <p className="inline-error" role="alert">
+                    {sourceErrorCopy(row) || `${sourceTitle(name)} fetch failed.`}
+                  </p>
                 )}
               </div>
               <button
@@ -606,10 +616,23 @@ export function JobFeedPage() {
           )}
           {!loading && items.length === 0 && (
             <div className="empty-state">
-              <p>No jobs found</p>
-              <p className="muted">Adjust filters or refresh Greenhouse and Lever.</p>
+              {sourceErrors.length > 0 ? (
+                <>
+                  <p>Could not refresh job sources</p>
+                  {sourceErrors.map((item) => (
+                    <p key={item.source} className="muted">
+                      {sourceErrorCopy(item)}
+                    </p>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <p>No jobs found</p>
+                  <p className="muted">Adjust filters or refresh Greenhouse and Lever.</p>
+                </>
+              )}
               <button type="button" className="primary" disabled={offline} onClick={() => void refresh('all')}>
-                Refresh
+                Retry refresh
               </button>
             </div>
           )}

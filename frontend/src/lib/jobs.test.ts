@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mockJobsApi, resetMockJobs, simulateLeverRateLimit } from '../api/jobsMock'
+import { mockJobsApi, resetMockJobs, simulateLeverRateLimit, simulateSourceError } from '../api/jobsMock'
 import {
   alsoFromLabel,
   backoffRemainingMs,
@@ -10,6 +10,9 @@ import {
   matchesQuery,
   paginate,
   PAGE_SIZE,
+  refreshToastForStatuses,
+  sourceErrorCopy,
+  statusLabel,
 } from './jobs'
 import type { JobCard } from '../api/jobsTypes'
 
@@ -108,5 +111,20 @@ describe('mock jobs api', () => {
     const after = await mockJobsApi.refresh('all')
     expect(after.find((item) => item.source === 'lever')?.status).toBe('rate_limited')
     expect(after.find((item) => item.source === 'greenhouse')?.status).toBe('ok')
+  })
+
+  it('keeps a durable source error instead of clearing it on refresh', async () => {
+    resetMockJobs()
+    simulateSourceError('greenhouse', 'Greenhouse board "no-such-board" was not found. Check the board token or URL.')
+    const after = await mockJobsApi.refresh('all')
+    const greenhouse = after.find((item) => item.source === 'greenhouse')
+    expect(greenhouse?.status).toBe('error')
+    expect(greenhouse?.errorMessage).toMatch(/not found/i)
+    expect(sourceErrorCopy(greenhouse!)).toMatch(/not found/i)
+    expect(sourceErrorCopy({ source: 'lever', status: 'ok', errorMessage: null })).toBeNull()
+    expect(statusLabel(greenhouse!)).toBe('Board not found')
+    const toast = refreshToastForStatuses('all', after, 0)
+    expect(toast.tone).toBe('error')
+    expect(toast.text).toMatch(/not found/i)
   })
 })

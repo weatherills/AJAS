@@ -49,6 +49,47 @@ def _sleep_noop(_seconds: float) -> None:
     return None
 
 
+def source_display_name(source_id: str) -> str:
+    return "Greenhouse" if source_id == "greenhouse" else "Lever"
+
+
+def public_crawl_error(source_id: str, error: str | None, *, board: str | None = None) -> str:
+    """Stable, user-facing crawl failure copy for the Job Feed status bar."""
+    name = source_display_name(source_id)
+    board_label = f' "{board}"' if (board or "").strip() else ""
+    raw = (error or "").strip()
+    lowered = raw.lower()
+    if raw.startswith("Greenhouse ") or raw.startswith("Lever ") or raw.startswith("Could not reach "):
+        return raw
+    if raw.isdigit():
+        code = int(raw)
+        if code == 404:
+            return f"{name} board{board_label} was not found. Check the board token or URL."
+        if code in {429, 503, 504}:
+            return f"{name} is temporarily unavailable (HTTP {code}). Retry shortly."
+        return f"{name} returned HTTP {code}."
+    if not raw or raw == "listing fetch failed":
+        return f"{name} listing fetch failed. The board{board_label} may be unreachable."
+    if raw in {"404", "not found"} or "http 404" in lowered or "not found" in lowered:
+        return f"{name} board{board_label} was not found. Check the board token or URL."
+    if any(
+        token in lowered
+        for token in (
+            "timed out",
+            "timeout",
+            "unreachable",
+            "name or service not known",
+            "failed to resolve",
+            "connection refused",
+            "temporarily unavailable",
+        )
+    ):
+        return f"Could not reach {name}{board_label}. The board may be unreachable."
+    if lowered.startswith("http "):
+        return f"{name} returned {raw}."
+    return f"{name} fetch failed: {raw}"
+
+
 def api_status(status: str) -> str:
     return "partial" if status == "partial_success" else status
 
@@ -86,6 +127,10 @@ class CrawlService:
 
     def enqueue_crawl(self, source_id: str) -> dict:
         tenants = self._resolve_tenants(source_id)
+        if not tenants:
+            if source_id in {"greenhouse", "lever"}:
+                return {"runs": [], "status": "skipped"}
+            raise JobSourceNotFoundError(source_id)
         cfg = get_app_settings()
         runs = []
         for tenant in tenants:
@@ -151,16 +196,16 @@ class CrawlService:
         for source_id in ("greenhouse", "lever"):
             tenants = self.store.list_tenants(source_id)
             last_sync = None
-            status = "ok"
             error = None
             progress = None
             backoff_until = None
+            saw_syncing = False
+            saw_error = False
             for tenant in tenants:
                 try:
                     limit = self.store.get_rate_limit(tenant.id)
                     if limit.backoff_until and (not backoff_until or limit.backoff_until > backoff_until):
                         backoff_until = limit.backoff_until
-                        status = "rate_limited"
                 except Exception:
                     pass
                 runs = self.store.list_runs(tenant.id)
@@ -170,12 +215,20 @@ class CrawlService:
                 if latest.updated_at and (not last_sync or latest.updated_at > last_sync):
                     last_sync = latest.finished_at or latest.updated_at
                 if latest.status == "running":
-                    status = "syncing"
+                    saw_syncing = True
                     if latest.expected_count:
                         progress = f"{latest.completed_count}/{latest.expected_count}"
-                elif latest.status in {"failed", "partial_success"} and status != "syncing":
-                    status = "error"
-                    error = latest.error_summary
+                elif latest.status in {"failed", "partial_success"}:
+                    saw_error = True
+                    error = public_crawl_error(source_id, latest.error_summary, board=tenant.tenant_key)
+            if saw_syncing:
+                status = "syncing"
+            elif backoff_until:
+                status = "rate_limited"
+            elif saw_error:
+                status = "error"
+            else:
+                status = "ok"
             rows.append(
                 {
                     "source": source_id,
@@ -215,17 +268,30 @@ class CrawlService:
             return self.store.finish_run(run_id, status="succeeded")
         self.store.set_run_status(run_id, "running")
         listing_ok = False
+        listing_error: str | None = None
         seen_ids: list[str] = []
         try:
-            seen_ids, listing_ok = self._discover_jobs(tenant, run_id)
+            seen_ids, listing_ok, listing_error = self._discover_jobs(tenant, run_id)
         except JobSourceRateLimitedError as exc:
-            self.store.finish_run(run_id, status="failed", error_summary=str(exc))
+            self.store.finish_run(
+                run_id,
+                status="failed",
+                error_summary=public_crawl_error(tenant.source_id, str(exc), board=tenant.tenant_key),
+            )
             return self.store.get_run(run_id)
         except JobSourceValidationError as exc:
-            self.store.finish_run(run_id, status="failed", error_summary=str(exc))
+            self.store.finish_run(
+                run_id,
+                status="failed",
+                error_summary=public_crawl_error(tenant.source_id, str(exc), board=tenant.tenant_key),
+            )
             return self.store.get_run(run_id)
         except Exception as exc:
-            self.store.finish_run(run_id, status="failed", error_summary=str(exc))
+            self.store.finish_run(
+                run_id,
+                status="failed",
+                error_summary=public_crawl_error(tenant.source_id, str(exc), board=tenant.tenant_key),
+            )
             return self.store.get_run(run_id)
 
         run = self.store.set_run_job_counts(run_id, expected=len(seen_ids))
@@ -234,7 +300,14 @@ class CrawlService:
         if run.expected_count == 0:
             status = "succeeded" if listing_ok else "failed"
             existing = self.store.get_run(run_id).error_summary
-            summary = existing if listing_ok else (existing or "listing fetch failed")
+            if listing_ok:
+                summary = existing
+            else:
+                summary = public_crawl_error(
+                    tenant.source_id,
+                    listing_error or existing or "listing fetch failed",
+                    board=tenant.tenant_key,
+                )
             return self.store.finish_run(run_id, status=status, error_summary=summary)
         return self.store.get_run(run_id)
 
@@ -295,18 +368,16 @@ class CrawlService:
 
     def _resolve_tenants(self, source_id: str) -> list[SourceTenant]:
         if source_id in {"greenhouse", "lever"}:
-            tenants = [item for item in self.store.list_tenants(source_id) if item.enabled]
-            if not tenants:
-                raise JobSourceNotFoundError(source_id)
-            return tenants
+            return [item for item in self.store.list_tenants(source_id) if item.enabled]
         return [self.store.get_tenant(source_id)]
 
-    def _discover_jobs(self, tenant: SourceTenant, run_id: str) -> tuple[list[str], bool]:
+    def _discover_jobs(self, tenant: SourceTenant, run_id: str) -> tuple[list[str], bool, str | None]:
         cfg = get_app_settings()
         source_id = tenant.source_id
         seen_ids: list[str] = []
         seen_cursors: set[str] = set()
         listing_ok = False
+        listing_error: str | None = None
         cursor_row = self.store.get_cursor(tenant.id, LIST_ENDPOINT)
         saved_cursor = cursor_row.cursor if cursor_row else None
         cursor = saved_cursor
@@ -323,6 +394,7 @@ class CrawlService:
                 seen_cursors.add(token)
             response, error = self._get(tenant, run_id, url, endpoint=LIST_ENDPOINT)
             if response is None:
+                listing_error = error
                 if saved_cursor and cursor == saved_cursor and not reset_once and error == "404":
                     self.store.reset_cursor(tenant.id, LIST_ENDPOINT, run_id=run_id)
                     cursor = None
@@ -378,7 +450,7 @@ class CrawlService:
                     break
                 self.store.save_cursor(tenant.id, LIST_ENDPOINT, str(skip))
                 cursor = str(skip)
-        return seen_ids, listing_ok
+        return seen_ids, listing_ok, listing_error
 
     def _fetch_and_ingest(self, tenant: SourceTenant, run_id: str, payload: dict) -> None:
         source_id = tenant.source_id

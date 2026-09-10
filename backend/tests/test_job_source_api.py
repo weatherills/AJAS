@@ -470,3 +470,75 @@ def test_demo_seed_crawl_skips_http(svc, store, fetcher):
     greenhouse = next(row for row in status if row["source"] == "greenhouse")
     assert greenhouse["status"] != "error"
 
+
+def test_named_source_without_tenants_is_skipped_not_404(svc):
+    resp = routes.start_crawl(_req("POST", "http://localhost/api/v1/sources/greenhouse/crawl", route={"id": "greenhouse"}))
+    assert resp.status_code == 202
+    assert _body(resp)["status"] == "skipped"
+    assert _body(resp)["runs"] == []
+
+
+def test_public_crawl_error_maps_404_and_timeout():
+    from app.job_sources.service import public_crawl_error
+
+    missing = public_crawl_error("greenhouse", "404", board="no-such-board")
+    assert "not found" in missing.lower()
+    assert "no-such-board" in missing
+    timeout = public_crawl_error("lever", "timed out", board="down-board")
+    assert "unreachable" in timeout.lower()
+    already = public_crawl_error("greenhouse", missing)
+    assert already == missing
+
+
+def test_non_demo_missing_board_sets_durable_status_error(svc, store, fetcher):
+    tenant = store.upsert_tenant("greenhouse", "no-such-board")
+    resp = routes.start_crawl(
+        _req("POST", f"http://localhost/api/v1/sources/{tenant.id}/crawl", route={"id": tenant.id})
+    )
+    assert resp.status_code == 202
+    run = store.get_run(_body(resp)["runId"])
+    assert run.status == "failed"
+    assert "not found" in (run.error_summary or "").lower()
+    assert any("no-such-board" in url for url in fetcher.calls)
+    status = _body(routes.list_source_status(_req("GET", "http://localhost/api/v1/sources/status")))
+    greenhouse = next(row for row in status if row["source"] == "greenhouse")
+    assert greenhouse["status"] == "error"
+    assert greenhouse["errorMessage"]
+    assert "not found" in greenhouse["errorMessage"].lower()
+    assert "no-such-board" in greenhouse["errorMessage"]
+
+
+def test_unreachable_timeout_sets_durable_status_error(svc, store, fetcher):
+    tenant = store.upsert_tenant("lever", "down-board")
+    list_url = "https://api.lever.co/v0/postings/down-board?mode=json&skip=0&limit=100"
+    fetcher.script(
+        list_url,
+        TimeoutError("timed out"),
+        TimeoutError("timed out"),
+        TimeoutError("timed out"),
+        TimeoutError("timed out"),
+    )
+    routes.start_crawl(_req("POST", f"http://localhost/api/v1/sources/{tenant.id}/crawl", route={"id": tenant.id}))
+    status = _body(routes.list_source_status(_req("GET", "http://localhost/api/v1/sources/status")))
+    lever = next(row for row in status if row["source"] == "lever")
+    assert lever["status"] == "error"
+    assert lever["errorMessage"]
+    assert "unreachable" in lever["errorMessage"].lower() or "timed out" in lever["errorMessage"].lower()
+
+
+def test_demo_seed_does_not_hide_non_demo_board_error(svc, store, fetcher):
+    from app.job_sources.feed import seed_demo_feed
+
+    seed_demo_feed(store)
+    store.upsert_tenant("greenhouse", "no-such-board")
+    before = list(fetcher.calls)
+    listed = routes.start_crawl(_req("POST", "http://localhost/api/v1/sources/greenhouse/crawl", route={"id": "greenhouse"}))
+    assert listed.status_code == 202
+    new_calls = fetcher.calls[len(before) :]
+    assert any("no-such-board" in url for url in new_calls)
+    assert not any("/boards/acme/" in url for url in new_calls)
+    status = _body(routes.list_source_status(_req("GET", "http://localhost/api/v1/sources/status")))
+    greenhouse = next(row for row in status if row["source"] == "greenhouse")
+    assert greenhouse["status"] == "error"
+    assert "not found" in (greenhouse["errorMessage"] or "").lower()
+
