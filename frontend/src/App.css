@@ -10,21 +10,24 @@
   gap: 0.35rem 0.85rem;
   margin: 0 0 1.35rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
 }
 
 .app-nav a {
-  color: #94a3b8;
+  color: inherit;
+  opacity: 0.72;
   text-decoration: none;
   font-size: 0.85rem;
 }
 
 .app-nav a:hover {
-  color: #c7d2fe;
+  opacity: 1;
+  color: #6366f1;
 }
 
 .app-nav a.is-active {
-  color: #e2e8f0;
+  opacity: 1;
+  color: #6366f1;
   font-weight: 600;
 }
 
