@@ -21,6 +21,7 @@ import {
   refreshToastForStatuses,
   sourceChipPatch,
   sourceErrorCopy,
+  boardErrorCopy,
   sourceIsConfiguredStatus,
   sourceUnconfiguredCopy,
   sourcesOffCopy,
@@ -211,6 +212,22 @@ describe('mock jobs api', () => {
     expect(sourceErrorCopy(greenhouse!)).toMatch(/not found/i)
     expect(sourceErrorCopy({ source: 'lever', status: 'ok', errorMessage: null })).toBeNull()
     expect(statusLabel(greenhouse!)).toBe('Board not found')
+    const named = greenhouse?.boards?.find((item) => item.tenantKey === 'acme')
+    expect(boardErrorCopy(named!, greenhouse!, greenhouse?.boards?.length || 1)).toMatch(/not found/i)
+    expect(
+      boardErrorCopy(
+        { tenantKey: 'keep-board', enabled: true, status: 'ok', errorMessage: null },
+        greenhouse!,
+        2,
+      ),
+    ).toBeNull()
+    expect(
+      boardErrorCopy(
+        { tenantKey: 'no-such-board', enabled: true, status: 'ok', errorMessage: null },
+        greenhouse!,
+        2,
+      ),
+    ).toMatch(/no-such-board/)
     const toast = refreshToastForStatuses('all', after, 0)
     expect(toast.tone).toBe('error')
     expect(toast.text).toMatch(/not found/i)
@@ -248,6 +265,25 @@ describe('mock jobs api', () => {
     expect(boardAddPayload('acme')).toEqual({ boardToken: 'acme' })
     expect(boardInputHint('greenhouse')).toMatch(/boards.greenhouse.io/i)
     expect(sourcesOffCopy()).toMatch(/turned off in Settings/i)
+  })
+
+  it('stamps a missing-board crawl error on that Settings board row', async () => {
+    resetMockJobs()
+    simulateUnconfigured('greenhouse')
+    const created = await mockJobsApi.addTenant('greenhouse', { boardToken: 'no-such-board' })
+    const row = created.status
+    expect(row?.configured).toBe(true)
+    expect(row?.status).toBe('error')
+    const board = row?.boards?.find((item) => item.tenantKey === 'no-such-board')
+    expect(boardErrorCopy(board!, row!, row?.boards?.length || 1)).toMatch(/not found/i)
+    expect(boardErrorCopy(board!, row!, row?.boards?.length || 1)).toMatch(/no-such-board/)
+    await mockJobsApi.addTenant('greenhouse', { boardToken: 'keep-board' })
+    const after = await mockJobsApi.sourceStatus()
+    const greenhouse = after.find((item) => item.source === 'greenhouse')
+    const bad = greenhouse?.boards?.find((item) => item.tenantKey === 'no-such-board')
+    const good = greenhouse?.boards?.find((item) => item.tenantKey === 'keep-board')
+    expect(boardErrorCopy(bad!, greenhouse!, greenhouse?.boards?.length || 2)).toMatch(/no-such-board/)
+    expect(boardErrorCopy(good!, greenhouse!, greenhouse?.boards?.length || 2)).toBeNull()
   })
 
   it('removes a board and flips the last tenant back to unconfigured', async () => {

@@ -536,6 +536,10 @@ def test_non_demo_missing_board_sets_durable_status_error(svc, store, fetcher):
     assert "not found" in greenhouse["errorMessage"].lower()
     assert "no-such-board" in greenhouse["errorMessage"]
     assert greenhouse["configured"] is True
+    board = next(item for item in greenhouse["boards"] if item["tenantKey"] == "no-such-board")
+    assert board["status"] == "error"
+    assert "not found" in (board["errorMessage"] or "").lower()
+    assert "no-such-board" in (board["errorMessage"] or "")
 
 
 def test_unreachable_timeout_sets_durable_status_error(svc, store, fetcher):
@@ -571,6 +575,12 @@ def test_demo_seed_does_not_hide_non_demo_board_error(svc, store, fetcher):
     greenhouse = next(row for row in status if row["source"] == "greenhouse")
     assert greenhouse["status"] == "error"
     assert "not found" in (greenhouse["errorMessage"] or "").lower()
+    by_key = {item["tenantKey"]: item for item in greenhouse["boards"]}
+    assert by_key["acme"]["status"] != "error"
+    assert not by_key["acme"].get("errorMessage")
+    assert by_key["no-such-board"]["status"] == "error"
+    assert "not found" in (by_key["no-such-board"]["errorMessage"] or "").lower()
+    assert "no-such-board" in (by_key["no-such-board"]["errorMessage"] or "")
 
 
 def test_create_tenant_from_board_token_flips_unconfigured(svc, store):
@@ -593,7 +603,8 @@ def test_create_tenant_from_board_token_flips_unconfigured(svc, store):
     assert body["status"]["configured"] is True
     assert body["status"]["status"] != "unconfigured"
     assert body["status"]["tenantCount"] == 1
-    assert body["status"]["boards"] == [{"tenantKey": "acme", "enabled": True}]
+    assert [item["tenantKey"] for item in body["status"]["boards"]] == ["acme"]
+    assert body["status"]["boards"][0]["enabled"] is True
     tenants = store.list_tenants("greenhouse")
     assert len(tenants) == 1
     assert tenants[0].config.get("board_token") == "acme"
@@ -608,6 +619,49 @@ def test_create_tenant_from_board_token_flips_unconfigured(svc, store):
     assert greenhouse["configured"] is True
     assert lever["configured"] is False
     assert lever["status"] == "unconfigured"
+
+
+def test_create_tenant_preflight_404_stamps_board_error(svc, fetcher):
+    resp = routes.create_source_tenant(
+        _req(
+            "POST",
+            "http://localhost/api/v1/sources/greenhouse/tenants",
+            route={"id": "greenhouse"},
+            json_body={"boardToken": "no-such-board"},
+        )
+    )
+    assert resp.status_code == 201
+    body = _body(resp)
+    assert any("no-such-board" in url for url in fetcher.calls)
+    board = next(item for item in body["status"]["boards"] if item["tenantKey"] == "no-such-board")
+    assert body["status"]["configured"] is True
+    assert body["status"]["status"] == "error"
+    assert board["status"] == "error"
+    assert "not found" in (board["errorMessage"] or "").lower()
+    assert "no-such-board" in (board["errorMessage"] or "")
+    assert "not found" in (body["status"]["errorMessage"] or "").lower()
+
+
+def test_create_tenant_preflight_ok_leaves_board_clean(svc, fetcher):
+    list_url = "https://boards-api.greenhouse.io/v1/boards/stripe/jobs"
+    fetcher.script(list_url, _json_resp({"jobs": []}))
+    resp = routes.create_source_tenant(
+        _req(
+            "POST",
+            "http://localhost/api/v1/sources/greenhouse/tenants",
+            route={"id": "greenhouse"},
+            json_body={"boardToken": "stripe"},
+        )
+    )
+    assert resp.status_code == 201
+    body = _body(resp)
+    assert list_url in fetcher.calls
+    board = body["status"]["boards"][0]
+    assert board["tenantKey"] == "stripe"
+    assert board["status"] != "error"
+    assert board["errorMessage"] is None
+    assert body["status"]["status"] == "ok"
+    assert body["status"]["errorMessage"] is None
 
 
 def test_create_tenant_from_allowlisted_urls(svc, store):
@@ -718,14 +772,17 @@ def test_create_tenant_keeps_demo_seed_and_does_not_crawl(svc, store, fetcher):
         )
     )
     assert resp.status_code == 201
-    assert fetcher.calls == before
+    preflight = fetcher.calls[len(before) :]
+    assert any("/boards/stripe/" in url for url in preflight)
+    assert not any("/boards/acme/" in url for url in preflight)
     acme = next(item for item in store.list_tenants("greenhouse") if item.tenant_key == "acme")
     stripe = next(item for item in store.list_tenants("greenhouse") if item.tenant_key == "stripe")
     assert acme.config.get("demo_seed") is True
     assert stripe.config.get("demo_seed") is not True
+    after_preflight = list(fetcher.calls)
     listed = routes.start_crawl(_req("POST", "http://localhost/api/v1/sources/greenhouse/crawl", route={"id": "greenhouse"}))
     assert listed.status_code == 202
-    new_calls = fetcher.calls[len(before) :]
+    new_calls = fetcher.calls[len(after_preflight) :]
     assert any("/boards/stripe/" in url for url in new_calls)
     assert not any("/boards/acme/" in url for url in new_calls)
 
@@ -799,7 +856,8 @@ def test_delete_one_of_two_tenants_keeps_source_configured(svc, store):
     body = _body(resp)
     assert body["status"]["configured"] is True
     assert body["status"]["tenantCount"] == 1
-    assert body["status"]["boards"] == [{"tenantKey": "keep-board", "enabled": True}]
+    assert [item["tenantKey"] for item in body["status"]["boards"]] == ["keep-board"]
+    assert body["status"]["boards"][0]["enabled"] is True
     tenants = store.list_tenants("greenhouse")
     assert [item.tenant_key for item in tenants] == ["keep-board"]
 

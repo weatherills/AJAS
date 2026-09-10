@@ -128,8 +128,20 @@ def tenant_payload(tenant: SourceTenant) -> dict:
     }
 
 
-def _board_summaries(tenants: list[SourceTenant]) -> list[dict]:
-    return [{"tenantKey": item.tenant_key, "enabled": item.enabled} for item in tenants]
+def _board_payload(
+    tenant: SourceTenant,
+    *,
+    status: str = "ok",
+    error_message: str | None = None,
+    last_sync_at: str | None = None,
+) -> dict:
+    return {
+        "tenantKey": tenant.tenant_key,
+        "enabled": tenant.enabled,
+        "status": status,
+        "errorMessage": error_message,
+        "lastSyncAt": last_sync_at,
+    }
 
 
 class CrawlService:
@@ -208,6 +220,7 @@ class CrawlService:
             merged.update(config)
             config = merged
         tenant = self.store.upsert_tenant(source_id, tenant_key, config=config, enabled=enabled)
+        self._preflight_listing(tenant)
         status_rows = self.source_status()
         row = next((item for item in status_rows if item["source"] == source_id), None)
         return {
@@ -316,26 +329,22 @@ class CrawlService:
             backoff_until = None
             saw_syncing = False
             saw_error = False
+            boards: list[dict] = []
             for tenant in tenants:
-                try:
-                    limit = self.store.get_rate_limit(tenant.id)
-                    if limit.backoff_until and (not backoff_until or limit.backoff_until > backoff_until):
-                        backoff_until = limit.backoff_until
-                except Exception:
-                    pass
-                runs = self.store.list_runs(tenant.id)
-                if not runs:
-                    continue
-                latest = runs[-1]
-                if latest.updated_at and (not last_sync or latest.updated_at > last_sync):
-                    last_sync = latest.finished_at or latest.updated_at
-                if latest.status == "running":
+                board = self._board_status(tenant)
+                boards.append(board)
+                if board.get("backoffUntil") and (not backoff_until or board["backoffUntil"] > backoff_until):
+                    backoff_until = board["backoffUntil"]
+                if board.get("lastSyncAt") and (not last_sync or board["lastSyncAt"] > last_sync):
+                    last_sync = board["lastSyncAt"]
+                if board["status"] == "syncing":
                     saw_syncing = True
-                    if latest.expected_count:
-                        progress = f"{latest.completed_count}/{latest.expected_count}"
-                elif latest.status in {"failed", "partial_success"}:
+                    if board.get("progress"):
+                        progress = board["progress"]
+                elif board["status"] == "error":
                     saw_error = True
-                    error = public_crawl_error(source_id, latest.error_summary, board=tenant.tenant_key)
+                    if board.get("errorMessage"):
+                        error = board["errorMessage"]
             if saw_syncing:
                 status = "syncing"
             elif backoff_until:
@@ -354,10 +363,70 @@ class CrawlService:
                     "progress": progress,
                     "configured": True,
                     "tenantCount": len(tenants),
-                    "boards": _board_summaries(tenants),
+                    "boards": [{k: v for k, v in item.items() if k != "progress" and k != "backoffUntil"} for item in boards],
                 }
             )
         return rows
+
+    def _board_status(self, tenant: SourceTenant) -> dict:
+        last_sync = None
+        error = None
+        progress = None
+        backoff_until = None
+        status = "ok"
+        try:
+            limit = self.store.get_rate_limit(tenant.id)
+            if limit.backoff_until:
+                backoff_until = limit.backoff_until
+        except Exception:
+            pass
+        runs = self.store.list_runs(tenant.id)
+        if runs:
+            latest = runs[-1]
+            last_sync = latest.finished_at or latest.updated_at
+            if latest.status in {"running", "queued"}:
+                status = "syncing"
+                if latest.expected_count:
+                    progress = f"{latest.completed_count}/{latest.expected_count}"
+            elif latest.status in {"failed", "partial_success"}:
+                status = "error"
+                error = public_crawl_error(tenant.source_id, latest.error_summary, board=tenant.tenant_key)
+            elif backoff_until:
+                status = "rate_limited"
+        elif backoff_until:
+            status = "rate_limited"
+        return {
+            **_board_payload(tenant, status=status, error_message=error, last_sync_at=last_sync),
+            "progress": progress,
+            "backoffUntil": backoff_until,
+        }
+
+    def _preflight_listing(self, tenant: SourceTenant) -> None:
+        """Cheap public listing GET so a 404 token shows on the Settings board row."""
+        if (tenant.config or {}).get("demo_seed"):
+            return
+        url = self._list_url(tenant, cursor=None, skip=0)
+        assert_https_allowlisted(url, tenant.source_id)
+        error: str | None = None
+        try:
+            response = self.fetcher.get(url, timeout=(3.0, 5.0))
+            if response.status_code >= 400:
+                error = str(response.status_code)
+        except Exception as exc:
+            error = str(exc)
+        runs = self.store.list_runs(tenant.id)
+        latest = runs[-1] if runs else None
+        if error is None:
+            if latest is not None and latest.status in {"failed", "partial_success"}:
+                run = self.store.start_run(tenant.id, status="running")
+                self.store.finish_run(run.id, status="succeeded")
+            return
+        run = self.store.start_run(tenant.id, status="running")
+        self.store.finish_run(
+            run.id,
+            status="failed",
+            error_summary=public_crawl_error(tenant.source_id, error, board=tenant.tenant_key),
+        )
 
     def schedule_due(self) -> list[dict]:
         cfg = get_app_settings()

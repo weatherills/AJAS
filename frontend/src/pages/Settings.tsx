@@ -28,6 +28,7 @@ import {
 } from '../lib/settings'
 import {
   boardAddPayload,
+  boardErrorCopy,
   boardInputHint,
   sourceIsConfiguredStatus,
   sourceTitle,
@@ -646,7 +647,8 @@ export function SettingsPage() {
           const boardValue = name === 'greenhouse' ? ghBoard : leverBoard
           const setBoard = name === 'greenhouse' ? setGhBoard : setLeverBoard
           const label = name === 'greenhouse' ? 'Greenhouse' : 'Lever'
-          const boards = sourceStatus.find((item) => item.source === name)?.boards || []
+          const sourceRow = sourceStatus.find((item) => item.source === name)
+          const boards = sourceRow?.boards || []
           return (
             <div key={name}>
               <div className={`source-row ${configured ? '' : 'is-unconfigured'}`}>
@@ -673,12 +675,22 @@ export function SettingsPage() {
                 <ul className="source-board-list">
                   {boards.map((item) => {
                     const busy = removingKey === `${name}:${item.tenantKey}`
+                    const boardError = sourceRow
+                      ? boardErrorCopy(item, sourceRow, boards.length)
+                      : (item.errorMessage || '').trim() || null
                     return (
-                      <li key={item.tenantKey} className="source-board-row">
-                        <span>
-                          <span className="sr-only">{label} board </span>
-                          <code>{item.tenantKey}</code>
-                        </span>
+                      <li key={item.tenantKey} className={`source-board-row${boardError ? ' has-error' : ''}`}>
+                        <div className="source-board-copy">
+                          <span>
+                            <span className="sr-only">{label} board </span>
+                            <code>{item.tenantKey}</code>
+                          </span>
+                          {boardError && (
+                            <p className="inline-error" role="alert">
+                              {boardError}
+                            </p>
+                          )}
+                        </div>
                         <button
                           type="button"
                           className="link-btn danger"

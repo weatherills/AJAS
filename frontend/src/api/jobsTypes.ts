@@ -32,6 +32,9 @@ export type JobDetail = JobCard & {
 export type SourceBoard = {
   tenantKey: string
   enabled: boolean
+  status?: SourceSyncStatus
+  errorMessage?: string | null
+  lastSyncAt?: string | null
 }
 
 export type SourceStatus = {

@@ -1,4 +1,4 @@
-import type { JobCard, JobFilters, JobListQuery, JobSourceName, JobSourceRef, SourceStatus } from '../api/jobsTypes'
+import type { JobCard, JobFilters, JobListQuery, JobSourceName, JobSourceRef, SourceBoard, SourceStatus } from '../api/jobsTypes'
 import type { SettingsApi } from '../api/settingsTypes'
 
 const FILTER_KEY = 'ajas.jobFeed.filters'
@@ -121,6 +121,26 @@ export function sourceErrorCopy(row: Pick<SourceStatus, 'source' | 'status' | 'e
   const raw = (row.errorMessage || '').trim()
   if (!raw) return `${name} fetch failed.`
   return raw
+}
+
+export function boardErrorCopy(
+  board: Pick<SourceBoard, 'tenantKey' | 'status' | 'errorMessage'>,
+  source: Pick<SourceStatus, 'source' | 'status' | 'errorMessage'>,
+  boardCount = 1,
+): string | null {
+  const own = (board.errorMessage || '').trim()
+  if (own && (board.status === 'error' || /not found|unreachable|fetch failed|returned HTTP/i.test(own))) {
+    return own
+  }
+  if (board.status === 'error') {
+    return sourceErrorCopy(source) || `${sourceTitle(source.source)} fetch failed.`
+  }
+  const sourceCopy = sourceErrorCopy(source)
+  if (!sourceCopy) return null
+  const key = (board.tenantKey || '').trim().toLowerCase()
+  if (key && sourceCopy.toLowerCase().includes(key)) return sourceCopy
+  if (boardCount === 1) return sourceCopy
+  return null
 }
 
 export function refreshToastForStatuses(
