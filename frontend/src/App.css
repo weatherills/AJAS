@@ -4,6 +4,30 @@
   padding: 3rem 1.5rem 4rem;
 }
 
+.app-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  margin: 0 0 1.35rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.app-nav a {
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.app-nav a:hover {
+  color: #c7d2fe;
+}
+
+.app-nav a.is-active {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
 .header {
   text-align: center;
   margin-bottom: 2.5rem;

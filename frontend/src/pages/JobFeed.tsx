@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { jobsApi, matchingApi, resumeApi, settingsApi, USE_MOCK } from '../api'
 import type { JobCard, JobDetail, JobFilters, JobSourceName, SourceStatus } from '../api/jobsTypes'
 import type { MatchView } from '../api/matchingTypes'
+import { AppNav } from '../components/AppNav'
 import { JobEmailsTab } from '../components/JobEmailsTab'
 import { MatchBadge } from '../components/MatchBadge'
 import { MatchMeter } from '../components/MatchMeter'
@@ -396,11 +397,9 @@ export function JobFeedPage() {
       <div className="sr-only" aria-live="polite">
         {liveMessage}
       </div>
+      <AppNav />
       <header className="library-header">
         <div>
-          <a href="#/" className="back-link">
-            Home
-          </a>
           <h1>Job feed</h1>
           <p className="tagline">Public Greenhouse and Lever postings, merged when they are the same role.</p>
         </div>
