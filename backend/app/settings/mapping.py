@@ -61,13 +61,24 @@ def api_email(connection: EmailConnection | None) -> dict:
     return body
 
 
+def effective_source_enabled(*, stored: bool, explicit: bool, configured: bool | None) -> bool:
+    """Unset source toggles follow tenant presence; an explicit off stays off."""
+    if configured is None:
+        return stored
+    if not explicit:
+        return configured
+    return bool(stored and configured)
+
+
 def _source_payload(settings: UserSettings) -> dict:
     """Include configured flags when job sources are wired so Settings can hide empty toggles."""
-    gh_enabled = settings.greenhouse_enabled
-    lv_enabled = settings.lever_enabled
+    gh_stored = settings.greenhouse_enabled
+    lv_enabled_stored = settings.lever_enabled
+    gh_explicit = bool(getattr(settings, "greenhouse_explicit", False))
+    lv_explicit = bool(getattr(settings, "lever_explicit", False))
     body = {
-        "greenhouseEnabled": gh_enabled,
-        "leverEnabled": lv_enabled,
+        "greenhouseEnabled": gh_stored,
+        "leverEnabled": lv_enabled_stored,
     }
     try:
         from app.job_sources.runtime import tenant_counts_or_none
@@ -81,8 +92,12 @@ def _source_payload(settings: UserSettings) -> dict:
     lv_ok = counts.get("lever", 0) > 0
     body["greenhouseConfigured"] = gh_ok
     body["leverConfigured"] = lv_ok
-    body["greenhouseEnabled"] = bool(gh_enabled and gh_ok)
-    body["leverEnabled"] = bool(lv_enabled and lv_ok)
+    body["greenhouseEnabled"] = effective_source_enabled(
+        stored=gh_stored, explicit=gh_explicit, configured=gh_ok
+    )
+    body["leverEnabled"] = effective_source_enabled(
+        stored=lv_enabled_stored, explicit=lv_explicit, configured=lv_ok
+    )
     return body
 
 

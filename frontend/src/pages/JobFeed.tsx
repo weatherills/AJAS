@@ -9,7 +9,7 @@ import { MatchBadge } from '../components/MatchBadge'
 import { MatchMeter } from '../components/MatchMeter'
 import { WhyThisScore, WhyThisScoreInline } from '../components/MatchWhy'
 import { ToastStack } from '../components/Toast'
-import { apiToPercent } from '../lib/settings'
+import { apiToPercent, isSourceNotConfiguredError } from '../lib/settings'
 import { jobHaystack, resumeHaystack } from '../lib/matching'
 import { jobHref, useHashSearch } from '../lib/routes'
 import { preselectReady } from '../lib/status'
@@ -17,17 +17,24 @@ import {
   ALL_SOURCES,
   alsoFromLabel,
   backoffRemainingMs,
-  defaultFilters,
+  clearSessionFilters,
+  feedSourcesFromSettings,
   formatCountdown,
   formatWhen,
   loadFilters,
+  nextFeedSources,
   PAGE_SIZE,
+  persistFeedSourceChip,
   refreshToastForStatuses,
   saveFilters,
+  boardErrorCopy,
+  feedErrorLines,
+  sourceBoardErrors,
   sourceErrorCopy,
   sourceIsConfiguredStatus,
   sourceTitle,
   sourceUnconfiguredCopy as feedSourceUnconfiguredCopy,
+  sourcesOffCopy,
   statusLabel,
   takeLastVisit,
 } from '../lib/jobs'
@@ -63,6 +70,8 @@ export function JobFeedPage() {
   const [saveOverride, setSaveOverride] = useState<Record<string, boolean>>({})
   const [listMinHeight, setListMinHeight] = useState(0)
   const [drawerTab, setDrawerTab] = useState<'details' | 'emails'>('details')
+  const [sourcesReady, setSourcesReady] = useState(false)
+  const [sourceSaving, setSourceSaving] = useState<JobSourceName | null>(null)
   const search = useHashSearch()
   const toastId = useRef(1)
   const sentinel = useRef<HTMLDivElement | null>(null)
@@ -123,10 +132,11 @@ export function JobFeedPage() {
   }, [])
 
   useEffect(() => {
+    if (!sourcesReady) return
     saveFilters(filters)
     setPage(1)
     void loadPage(null, false)
-  }, [filters, loadPage])
+  }, [filters, loadPage, sourcesReady])
 
   useEffect(() => {
     void loadStatus()
@@ -178,16 +188,26 @@ export function JobFeedPage() {
     let cancelled = false
     void (async () => {
       try {
+        const rows = await jobsApi.sourceStatus()
+        if (!cancelled) setStatuses(rows)
+      } catch {
+        /* status bar is non-blocking */
+      }
+      try {
         const doc = await settingsApi.get()
         if (!cancelled) {
           setThreshold(apiToPercent(doc.matchThreshold))
-          const sources: JobSourceName[] = []
-          if (doc.sources.greenhouseEnabled) sources.push('greenhouse')
-          if (doc.sources.leverEnabled) sources.push('lever')
-          setFilters((prev) => ({ ...prev, sources }))
+          const next = feedSourcesFromSettings(doc.sources)
+          if (next === null) {
+            setFilters((prev) => (prev.sources.length ? prev : { ...prev, sources: [...ALL_SOURCES] }))
+          } else {
+            setFilters((prev) => ({ ...prev, sources: next }))
+          }
         }
       } catch {
-        /* keep default 70 */
+        /* keep default 70 and local filters */
+      } finally {
+        if (!cancelled) setSourcesReady(true)
       }
       try {
         const list = await resumeApi.list()
@@ -424,19 +444,35 @@ export function JobFeedPage() {
     }
   }
 
-  function toggleSource(name: JobSourceName) {
-    setFilters((prev) => {
-      const on = prev.sources.includes(name)
-      const sources = on ? prev.sources.filter((item) => item !== name) : [...prev.sources, name]
-      return { ...prev, sources }
-    })
+  async function toggleSource(name: JobSourceName) {
+    if (sourceSaving) return
+    const previous = filters.sources
+    const next = nextFeedSources(previous, name)
+    setFilters((prev) => ({ ...prev, sources: next.sources }))
+    setSourceSaving(name)
+    try {
+      const fromSettings = await persistFeedSourceChip(settingsApi, name, next.enabled)
+      if (fromSettings !== null) {
+        setFilters((prev) => ({ ...prev, sources: fromSettings }))
+      }
+    } catch (err) {
+      setFilters((prev) => ({ ...prev, sources: previous }))
+      if (isSourceNotConfiguredError(err)) {
+        toast(err instanceof Error ? err.message : 'Source is not configured.', 'error')
+      } else {
+        toast(err instanceof Error ? err.message : 'Couldn’t save source. Try again.', 'error')
+      }
+    } finally {
+      setSourceSaving(null)
+    }
   }
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const lever = statuses.find((item) => item.source === 'lever')
   const greenhouse = statuses.find((item) => item.source === 'greenhouse')
-  const sourceErrors = statuses.filter((item) => item.status === 'error')
+  const boardErrorLines = feedErrorLines(statuses)
   const sourceUnconfigured = statuses.filter((item) => !sourceIsConfiguredStatus(item))
+  const sourcesOff = filters.sources.length === 0 && statuses.some((item) => sourceIsConfiguredStatus(item))
 
   function sourceBlocked(row: SourceStatus | undefined) {
     return (
@@ -476,16 +512,25 @@ export function JobFeedPage() {
         </div>
       </header>
 
-      {USE_MOCK && <p className="banner">Demo data (mock API). Filters stay in this browser.</p>}
+      {USE_MOCK && (
+        <p className="banner">Demo data (mock API). Search filters stay in this browser. Source chips save to Settings.</p>
+      )}
       {offline && <p className="unsaved-banner">Offline — cached jobs only. Refresh is disabled until you reconnect.</p>}
       {sourceUnconfigured.length > 0 && (
         <p className="banner" role="status">
-          {sourceUnconfigured.map((item) => feedSourceUnconfiguredCopy(item) || `${sourceTitle(item.source)} is not configured.`).join(' ')}
+          {sourceUnconfigured.map((item) => feedSourceUnconfiguredCopy(item) || `${sourceTitle(item.source)} is not configured.`).join(' ')}{' '}
+          <a href="#/settings">Add a board in Settings</a>
         </p>
       )}
-      {sourceErrors.length > 0 && (
+      {sourcesOff && (
+        <p className="banner" role="status">
+          {sourcesOffCopy()} <a href="#/settings">Open Settings</a>
+        </p>
+      )}
+      {boardErrorLines.length > 0 && (
         <p className="unsaved-banner" role="alert">
-          {sourceErrors.map((item) => sourceErrorCopy(item) || `${sourceTitle(item.source)} fetch failed.`).join(' ')}
+          {boardErrorLines.map((item) => item.message).join(' ')}{' '}
+          <a href="#/settings">Open Settings</a>
         </p>
       )}
 
@@ -495,20 +540,43 @@ export function JobFeedPage() {
           const left = backoffRemainingMs(row?.backoffUntil ?? null, now)
           const blocked = sourceBlocked(row)
           const label = row ? statusLabel(row, now) : 'Idle'
+          const boardErrors = row ? sourceBoardErrors(row) : []
+          const boards = row?.boards || []
           return (
             <div key={name} className={`feed-source feed-source-${row?.status || 'ok'}`}>
               <div>
                 <strong>{sourceTitle(name)}</strong>
                 <p className="muted">{label}</p>
                 <p className="muted">Last sync {formatWhen(row?.lastSyncAt ?? null)}</p>
-                {row?.status === 'error' && (
+                {row && boardErrors.length === 0 && row.status === 'error' && (
                   <p className="inline-error" role="alert">
-                    {sourceErrorCopy(row) || `${sourceTitle(name)} fetch failed.`}
+                    {sourceErrorCopy(row) || `${sourceTitle(name)} fetch failed.`}{' '}
+                    <a href="#/settings">Open Settings</a>
                   </p>
+                )}
+                {row && (boardErrors.length > 0 || boards.length > 1) && (
+                  <ul className="feed-source-boards">
+                    {boards.map((board) => {
+                      const err = boardErrorCopy(board, row, boards.length)
+                      return (
+                        <li key={board.tenantKey}>
+                          <code>{board.tenantKey}</code>
+                          {err ? (
+                            <p className="inline-error" role="alert">
+                              {err} <a href="#/settings">Fix in Settings</a>
+                            </p>
+                          ) : (
+                            <p className="muted">{board.status === 'syncing' ? 'Syncing…' : 'OK'}</p>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
                 )}
                 {row && !sourceIsConfiguredStatus(row) && (
                   <p className="muted" role="status">
-                    {feedSourceUnconfiguredCopy(row)}
+                    {feedSourceUnconfiguredCopy(row)}{' '}
+                    <a href="#/settings">Add a board</a>
                   </p>
                 )}
               </div>
@@ -541,17 +609,22 @@ export function JobFeedPage() {
             </button>
           </div>
           <fieldset>
-            <legend>Source</legend>
+            <legend>Sources</legend>
             {ALL_SOURCES.map((name) => (
               <label key={name} className="chip-toggle">
                 <input
                   type="checkbox"
                   checked={filters.sources.includes(name)}
-                  onChange={() => toggleSource(name)}
+                  disabled={sourceSaving !== null}
+                  onChange={() => void toggleSource(name)}
                 />
                 {sourceTitle(name)}
               </label>
             ))}
+            <p className="muted">
+              Same as Settings. Turning a source off here saves it for the next visit.
+              {sourceSaving ? ' Saving…' : ''}
+            </p>
           </fieldset>
           <label>
             Search
@@ -613,7 +686,7 @@ export function JobFeedPage() {
             type="button"
             className="secondary"
             onClick={() => {
-              setFilters(defaultFilters())
+              setFilters((prev) => clearSessionFilters(prev))
               setOnlyThreshold(false)
               setFiltersOpen(false)
             }}
@@ -642,14 +715,25 @@ export function JobFeedPage() {
           )}
           {!loading && items.length === 0 && (
             <div className="empty-state">
-              {sourceErrors.length > 0 ? (
+              {boardErrorLines.length > 0 ? (
                 <>
                   <p>Could not refresh job sources</p>
-                  {sourceErrors.map((item) => (
-                    <p key={item.source} className="muted">
-                      {sourceErrorCopy(item)}
+                  {boardErrorLines.map((item) => (
+                    <p key={item.key} className="muted">
+                      {item.message}
                     </p>
                   ))}
+                  <p className="muted">
+                    Retry a board or remove it in <a href="#/settings">Settings</a>.
+                  </p>
+                </>
+              ) : sourcesOff ? (
+                <>
+                  <p>Sources are off in Settings</p>
+                  <p className="muted">{sourcesOffCopy()}</p>
+                  <p className="muted">
+                    Turn Greenhouse or Lever on in <a href="#/settings">Settings</a> to see jobs from those boards.
+                  </p>
                 </>
               ) : sourceUnconfigured.length > 0 ? (
                 <>
@@ -660,7 +744,7 @@ export function JobFeedPage() {
                     </p>
                   ))}
                   <p className="muted">
-                    Add a board token, then enable the source in <a href="#/settings">Settings</a>.
+                    Add a Greenhouse board token or Lever company URL in <a href="#/settings">Settings</a>, then enable the source.
                   </p>
                 </>
               ) : (
@@ -669,14 +753,22 @@ export function JobFeedPage() {
                   <p className="muted">Adjust filters or refresh Greenhouse and Lever.</p>
                 </>
               )}
-              <button
-                type="button"
-                className="primary"
-                disabled={offline || (sourceBlocked(greenhouse) && sourceBlocked(lever))}
-                onClick={() => void refresh('all')}
-              >
-                Retry refresh
-              </button>
+              {sourcesOff || sourceUnconfigured.length > 0 || boardErrorLines.length > 0 ? (
+                <a className="primary" href="#/settings">
+                  {sourceUnconfigured.length > 0 && !sourcesOff && boardErrorLines.length === 0
+                    ? 'Add a board'
+                    : 'Open Settings'}
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={offline || (sourceBlocked(greenhouse) && sourceBlocked(lever))}
+                  onClick={() => void refresh('all')}
+                >
+                  Retry refresh
+                </button>
+              )}
             </div>
           )}
           {items.length > 0 && (
@@ -795,7 +887,12 @@ export function JobFeedPage() {
                 Emails
               </button>
             </div>
-            <JobCrossLinks jobId={selected.id} resumeId={resumeId} current="jobs" />
+            <JobCrossLinks
+              jobId={selected.id}
+              matchId={matches[selected.id]?.matchId}
+              resumeId={resumeId}
+              current="jobs"
+            />
             {drawerTab === 'emails' && <JobEmailsTab jobId={selected.id} />}
             {drawerTab === 'details' && detailLoading && <p className="skeleton">Loading details…</p>}
             {drawerTab === 'details' && !detailLoading && detail && (

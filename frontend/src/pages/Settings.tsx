@@ -26,7 +26,14 @@ import {
   sourceIsConfigured,
   sourceUnconfiguredCopy,
 } from '../lib/settings'
-import { sourceIsConfiguredStatus } from '../lib/jobs'
+import {
+  addBoardToast,
+  boardAddPayload,
+  boardErrorCopy,
+  boardInputHint,
+  sourceIsConfiguredStatus,
+  sourceTitle,
+} from '../lib/jobs'
 import { LearningPanel } from './Learning'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
@@ -59,6 +66,13 @@ export function SettingsPage() {
     value: boolean
   } | null>(null)
   const [sourceStatus, setSourceStatus] = useState<SourceStatus[]>([])
+  const [ghBoard, setGhBoard] = useState('')
+  const [leverBoard, setLeverBoard] = useState('')
+  const [ghAddStatus, setGhAddStatus] = useState<SaveStatus>('idle')
+  const [leverAddStatus, setLeverAddStatus] = useState<SaveStatus>('idle')
+  const [removingKey, setRemovingKey] = useState<string | null>(null)
+  const [retryingKey, setRetryingKey] = useState<string | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState<{ name: JobSourceName; tenantKey: string } | null>(null)
   const [connecting, setConnecting] = useState(false)
   const [popupBlocked, setPopupBlocked] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
@@ -93,15 +107,15 @@ export function SettingsPage() {
 
   const load = useCallback(async () => {
     try {
+      setSourceStatus(await jobsApi.sourceStatus())
+    } catch {
+      /* source status is additive; settings toggles still render */
+    }
+    try {
       applyDoc(await settingsApi.get())
       setLoadError(null)
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load settings')
-    }
-    try {
-      setSourceStatus(await jobsApi.sourceStatus())
-    } catch {
-      /* source status is additive; settings toggles still render */
     }
   }, [applyDoc])
 
@@ -200,6 +214,92 @@ export function SettingsPage() {
       }
       setSourceError('Couldn’t save source toggle. Try again.')
       setSourceRetry({ key, value })
+    }
+  }
+
+  async function addBoard(name: JobSourceName) {
+    if (!doc) return
+    const value = (name === 'greenhouse' ? ghBoard : leverBoard).trim()
+    const enabledKey = name === 'greenhouse' ? 'greenhouseEnabled' : 'leverEnabled'
+    const setAddStatus = name === 'greenhouse' ? setGhAddStatus : setLeverAddStatus
+    const setToggleStatus = name === 'greenhouse' ? setGhStatus : setLeverStatus
+    if (!value) {
+      setSourceError(sourceUnconfiguredCopy(name))
+      return
+    }
+    const alreadyOn = Boolean(doc.sources[enabledKey]) && sourceConfigured(name)
+    setAddStatus('saving')
+    setSourceError(null)
+    setSourceRetry(null)
+    try {
+      const created = await jobsApi.addTenant(name, boardAddPayload(value))
+      const next = await settingsApi.patch({ sources: { [enabledKey]: true } })
+      applyDoc(next)
+      let rows = created.sources?.length ? created.sources : await jobsApi.sourceStatus()
+      const added = addBoardToast(name, created)
+      if (added.tone !== 'error') {
+        try {
+          rows = alreadyOn
+            ? await jobsApi.refresh(name)
+            : await jobsApi.refreshTenant(name, created.tenantKey)
+        } catch {
+          /* tenant is saved; refresh can retry from Job Feed */
+        }
+      }
+      setSourceStatus(rows)
+      if (name === 'greenhouse') setGhBoard('')
+      else setLeverBoard('')
+      setAddStatus('saved')
+      setToggleStatus('saved')
+      toast(added.text, added.tone)
+    } catch (err) {
+      setAddStatus('error')
+      setSourceError(err instanceof Error ? err.message : `Couldn’t add the ${sourceTitle(name)} board.`)
+    }
+  }
+
+  async function removeBoard(name: JobSourceName, tenantKey: string) {
+    const setAddStatus = name === 'greenhouse' ? setGhAddStatus : setLeverAddStatus
+    const setToggleStatus = name === 'greenhouse' ? setGhStatus : setLeverStatus
+    setConfirmRemove(null)
+    setRemovingKey(`${name}:${tenantKey}`)
+    setSourceError(null)
+    setSourceRetry(null)
+    try {
+      const removed = await jobsApi.removeTenant(name, tenantKey)
+      try {
+        applyDoc(await settingsApi.get())
+      } catch {
+        /* source status still updates the Not configured badge */
+      }
+      setSourceStatus(removed.sources?.length ? removed.sources : await jobsApi.sourceStatus())
+      setAddStatus('idle')
+      setToggleStatus('saved')
+      toast(`${sourceTitle(name)} board “${removed.tenantKey}” removed`)
+    } catch (err) {
+      setSourceError(err instanceof Error ? err.message : `Couldn’t remove the ${sourceTitle(name)} board.`)
+    } finally {
+      setRemovingKey(null)
+    }
+  }
+
+  async function retryBoard(name: JobSourceName, tenantKey: string) {
+    setRetryingKey(`${name}:${tenantKey}`)
+    setSourceError(null)
+    setSourceRetry(null)
+    try {
+      const rows = await jobsApi.refreshTenant(name, tenantKey)
+      setSourceStatus(rows)
+      const row = rows.find((item) => item.source === name)
+      const boards = row?.boards || []
+      const board = boards.find((item) => item.tenantKey === tenantKey)
+      const err = row && board ? boardErrorCopy(board, row, boards.length) : null
+      if (err) toast(err, 'error')
+      else toast(`${sourceTitle(name)} board “${tenantKey}” refreshed`)
+    } catch (err) {
+      setSourceError(err instanceof Error ? err.message : `Couldn’t retry the ${sourceTitle(name)} board.`)
+    } finally {
+      setRetryingKey(null)
     }
   }
 
@@ -563,13 +663,18 @@ export function SettingsPage() {
 
       <section className="editor-section" aria-labelledby="sources-heading">
         <h2 id="sources-heading">Sources</h2>
-        <p className="muted">Turn ingestion on or off. Credentials are not entered here.</p>
+        <p className="muted">Turn Greenhouse and Lever on or off. Job Feed source chips save the same setting. Add a public board token or company URL, or remove a board that should no longer be crawled.</p>
         {(['greenhouse', 'lever'] as const).map((name) => {
           const enabledKey = name === 'greenhouse' ? 'greenhouseEnabled' : 'leverEnabled'
           const configured = sourceConfigured(name)
           const enabled = Boolean(doc?.sources[enabledKey]) && configured
           const status = name === 'greenhouse' ? ghStatus : leverStatus
+          const addStatus = name === 'greenhouse' ? ghAddStatus : leverAddStatus
+          const boardValue = name === 'greenhouse' ? ghBoard : leverBoard
+          const setBoard = name === 'greenhouse' ? setGhBoard : setLeverBoard
           const label = name === 'greenhouse' ? 'Greenhouse' : 'Lever'
+          const sourceRow = sourceStatus.find((item) => item.source === name)
+          const boards = sourceRow?.boards || []
           return (
             <div key={name}>
               <div className={`source-row ${configured ? '' : 'is-unconfigured'}`}>
@@ -592,18 +697,85 @@ export function SettingsPage() {
                   {status === 'saved' && 'Saved'}
                 </span>
               </div>
+              {boards.length > 0 && (
+                <ul className="source-board-list">
+                  {boards.map((item) => {
+                    const busyKey = `${name}:${item.tenantKey}`
+                    const busy = removingKey === busyKey || retryingKey === busyKey
+                    const boardError = sourceRow
+                      ? boardErrorCopy(item, sourceRow, boards.length)
+                      : (item.errorMessage || '').trim() || null
+                    return (
+                      <li key={item.tenantKey} className={`source-board-row${boardError ? ' has-error' : ''}`}>
+                        <div className="source-board-copy">
+                          <span>
+                            <span className="sr-only">{label} board </span>
+                            <code>{item.tenantKey}</code>
+                          </span>
+                          {boardError && (
+                            <p className="inline-error" role="alert">
+                              {boardError}
+                            </p>
+                          )}
+                        </div>
+                        <div className="source-board-actions">
+                          <button
+                            type="button"
+                            className="link-btn"
+                            disabled={busy || removingKey !== null || retryingKey !== null}
+                            aria-label={`Retry ${label} board ${item.tenantKey}`}
+                            onClick={() => void retryBoard(name, item.tenantKey)}
+                          >
+                            {retryingKey === busyKey ? 'Retrying…' : 'Retry'}
+                          </button>
+                          <button
+                            type="button"
+                            className="link-btn danger"
+                            disabled={busy || removingKey !== null || retryingKey !== null}
+                            aria-label={`Remove ${label} board ${item.tenantKey}`}
+                            onClick={() => setConfirmRemove({ name, tenantKey: item.tenantKey })}
+                          >
+                            {removingKey === busyKey ? 'Removing…' : 'Remove'}
+                          </button>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
               {!configured && (
                 <div className="oauth-unconfigured source-unconfigured" role="status">
                   <p>
                     <span className="status-badge status-needs-review">Not configured</span>
                   </p>
                   <p>{sourceUnconfiguredCopy(name)}</p>
-                  <p className="muted">
-                    Turning this source on would not start a crawl. An operator needs to add a {label}{' '}
-                    board token first.
-                  </p>
                 </div>
               )}
+              <form
+                className="source-add-form"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void addBoard(name)
+                }}
+              >
+                <label>
+                  {label} board
+                  <input
+                    value={boardValue}
+                    onChange={(event) => setBoard(event.target.value)}
+                    placeholder={boardInputHint(name)}
+                    autoComplete="off"
+                    spellCheck={false}
+                    aria-label={`Add ${label} board`}
+                  />
+                </label>
+                <button type="submit" className="secondary" disabled={addStatus === 'saving' || !boardValue.trim()}>
+                  {addStatus === 'saving' ? 'Adding…' : configured ? 'Add board' : 'Add and enable'}
+                </button>
+                <span className="save-status" aria-live="polite">
+                  {addStatus === 'saved' && 'Saved'}
+                </span>
+              </form>
             </div>
           )
         })}
@@ -620,6 +792,33 @@ export function SettingsPage() {
           </div>
         )}
       </section>
+
+      {confirmRemove && (
+        <Modal
+          title={`Remove ${sourceTitle(confirmRemove.name)} board?`}
+          onClose={() => setConfirmRemove(null)}
+        >
+          <p>
+            Remove <strong>{confirmRemove.tenantKey}</strong> from {sourceTitle(confirmRemove.name)}. Job Feed
+            stops listing jobs from this board.
+            {(sourceStatus.find((item) => item.source === confirmRemove.name)?.boards || []).length <= 1
+              ? ` ${sourceTitle(confirmRemove.name)} goes back to Not configured.`
+              : ''}
+          </p>
+          <div className="modal-actions">
+            <button type="button" className="secondary" onClick={() => setConfirmRemove(null)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="danger"
+              onClick={() => void removeBoard(confirmRemove.name, confirmRemove.tenantKey)}
+            >
+              Remove board
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {confirmDisconnect && (
         <Modal title="Disconnect Microsoft 365?" onClose={() => setConfirmDisconnect(false)}>
