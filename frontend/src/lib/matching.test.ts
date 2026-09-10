@@ -78,6 +78,20 @@ describe('mock matching api', () => {
     expect(des?.versions?.algorithm).toBe('weighted-legacy')
   })
 
+  it('persists a Save match below the threshold', async () => {
+    const row = await mockMatchingApi.scoreOne({
+      resumeId: 'seed-ready',
+      resumeText: 'python azure cosmos matching crawlers',
+      threshold: 70,
+      persist: true,
+      job: { id: 'des', text: 'Title: Product Designer\nCompany: Globex\nSkills: figma illustration branding workshop' },
+    })
+    expect(row.state).toBe('computed')
+    expect((row.score || 0) < 70).toBe(true)
+    expect(row.persisted).toBe(true)
+    expect(row.matchId).toBe('match-des')
+  })
+
   it('returns a no-resume state without a resume id', async () => {
     const rows = await mockMatchingApi.scoreMany({
       resumeId: null,

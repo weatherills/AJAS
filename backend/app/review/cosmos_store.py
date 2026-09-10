@@ -23,6 +23,12 @@ class CosmosReviewStore:
         self._persist_working(working)
         return saved
 
+    def update_pending_match(self, user_id: str, match_id: str, **kwargs: Any) -> ReviewMatch:
+        working = self._hydrate()
+        saved = working.update_pending_match(user_id, match_id, **kwargs)
+        self._persist_working(working)
+        return saved
+
     def get_match(self, match_id: str, *, user_id: str) -> ReviewMatch:
         return self._hydrate().get_match(match_id, user_id=user_id)
 

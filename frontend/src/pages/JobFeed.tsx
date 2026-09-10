@@ -887,7 +887,12 @@ export function JobFeedPage() {
                 Emails
               </button>
             </div>
-            <JobCrossLinks jobId={selected.id} resumeId={resumeId} current="jobs" />
+            <JobCrossLinks
+              jobId={selected.id}
+              matchId={matches[selected.id]?.matchId}
+              resumeId={resumeId}
+              current="jobs"
+            />
             {drawerTab === 'emails' && <JobEmailsTab jobId={selected.id} />}
             {drawerTab === 'details' && detailLoading && <p className="skeleton">Loading details…</p>}
             {drawerTab === 'details' && !detailLoading && detail && (
