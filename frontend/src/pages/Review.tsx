@@ -379,6 +379,7 @@ export function ReviewPage() {
         setHelpOpen((open) => !open)
         return
       }
+      if (event.key === '/' && !typing) {
         event.preventDefault()
         searchRef.current?.focus()
         return
