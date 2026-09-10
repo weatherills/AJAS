@@ -29,9 +29,12 @@ import {
   saveFilters,
   boardErrorCopy,
   feedErrorLines,
+  jobsListMayHaveChanged,
+  nextSourcePollMs,
   sourceBoardErrors,
   sourceErrorCopy,
   sourceIsConfiguredStatus,
+  sourceListFingerprint,
   sourceTitle,
   sourceUnconfiguredCopy as feedSourceUnconfiguredCopy,
   sourcesOffCopy,
@@ -77,6 +80,15 @@ export function JobFeedPage() {
   const sentinel = useRef<HTMLDivElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
   const pollMs = useRef(15_000)
+  const pageRef = useRef(page)
+  const paginationRef = useRef(filters.pagination)
+  const loadingRef = useRef(loading)
+  const loadingMoreRef = useRef(loadingMore)
+  const statusFingerprint = useRef<string | null>(null)
+  pageRef.current = page
+  paginationRef.current = filters.pagination
+  loadingRef.current = loading
+  loadingMoreRef.current = loadingMore
 
   const toast = (text: string, tone: Toast['tone'] = 'info') => {
     const id = toastId.current++
@@ -97,9 +109,10 @@ export function JobFeedPage() {
   )
 
   const loadPage = useCallback(
-    async (nextCursor: string | null, append: boolean) => {
+    async (nextCursor: string | null, append: boolean, opts?: { silent?: boolean }) => {
+      const silent = Boolean(opts?.silent)
       if (append) setLoadingMore(true)
-      else setLoading(true)
+      else if (!silent) setLoading(true)
       try {
         const result = await jobsApi.list({ ...query, cursor: nextCursor })
         setItems((prev) => (append ? [...prev, ...result.items] : result.items))
@@ -107,29 +120,47 @@ export function JobFeedPage() {
         setTotal(result.total)
         setLoadError(null)
       } catch (err) {
-        setLoadError(err instanceof Error ? err.message : 'Could not load jobs')
+        if (!silent) setLoadError(err instanceof Error ? err.message : 'Could not load jobs')
       } finally {
-        setLoading(false)
-        setLoadingMore(false)
+        if (append) setLoadingMore(false)
+        else if (!silent) setLoading(false)
       }
     },
     [query],
   )
+  const loadPageRef = useRef(loadPage)
+  loadPageRef.current = loadPage
 
-  const loadStatus = useCallback(async () => {
-    try {
-      const rows = await jobsApi.sourceStatus()
-      setStatuses(rows)
-      if (rows.some((item) => item.status === 'syncing')) {
-        setLiveMessage('Syncing started')
-        pollMs.current = 15_000
-      } else {
-        pollMs.current = Math.min(60_000, pollMs.current * 1.5 || 15_000)
-      }
-    } catch {
-      /* status bar is non-blocking */
+  const applyStatuses = useCallback((rows: SourceStatus[], opts?: { refetchJobs?: boolean }) => {
+    const nextFp = sourceListFingerprint(rows)
+    const shouldRefetch = Boolean(opts?.refetchJobs) && jobsListMayHaveChanged(statusFingerprint.current, nextFp)
+    statusFingerprint.current = nextFp
+    setStatuses(rows)
+    if (rows.some((item) => item.status === 'syncing')) {
+      setLiveMessage('Syncing started')
+      pollMs.current = nextSourcePollMs(true, pollMs.current)
+    } else {
+      pollMs.current = nextSourcePollMs(false, pollMs.current)
+    }
+    if (shouldRefetch && !loadingRef.current && !loadingMoreRef.current) {
+      const currentPage = pageRef.current
+      const cursor = paginationRef.current === 'pages' && currentPage > 1 ? String((currentPage - 1) * PAGE_SIZE) : null
+      void loadPageRef.current(cursor, false, { silent: true })
     }
   }, [])
+
+  const loadStatus = useCallback(
+    async (opts?: { refetchJobs?: boolean }) => {
+      try {
+        const rows = await jobsApi.sourceStatus()
+        applyStatuses(rows, opts)
+        return rows
+      } catch {
+        return null
+      }
+    },
+    [applyStatuses],
+  )
 
   useEffect(() => {
     if (!sourcesReady) return
@@ -187,12 +218,6 @@ export function JobFeedPage() {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      try {
-        const rows = await jobsApi.sourceStatus()
-        if (!cancelled) setStatuses(rows)
-      } catch {
-        /* status bar is non-blocking */
-      }
       try {
         const doc = await settingsApi.get()
         if (!cancelled) {
@@ -352,20 +377,36 @@ export function JobFeedPage() {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
+    let timer = 0
     const poll = async () => {
-      if (document.hidden) return
-      await loadStatus()
-      const limited = statuses.filter(
-        (item) => item.status === 'rate_limited' && backoffRemainingMs(item.backoffUntil, Date.now()) === 0,
-      )
-      for (const row of limited) {
-        setLiveMessage('Rate limit ended')
-        void refresh(row.source, true)
+      if (cancelled) return
+      if (!document.hidden) {
+        const rows = await loadStatus({ refetchJobs: true })
+        const limited = (rows || []).filter(
+          (item) => item.status === 'rate_limited' && backoffRemainingMs(item.backoffUntil, Date.now()) === 0,
+        )
+        for (const row of limited) {
+          setLiveMessage('Rate limit ended')
+          void refresh(row.source, true)
+        }
       }
+      if (!cancelled) timer = window.setTimeout(() => void poll(), pollMs.current)
     }
-    const handle = window.setInterval(() => void poll(), pollMs.current)
-    return () => window.clearInterval(handle)
-  }, [loadStatus, statuses])
+    timer = window.setTimeout(() => void poll(), Math.min(pollMs.current, 5_000))
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [loadStatus])
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden) void loadStatus({ refetchJobs: true })
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [loadStatus])
 
   useEffect(() => {
     if (filters.pagination !== 'infinite') return
@@ -430,7 +471,7 @@ export function JobFeedPage() {
       const before = new Set(snapshot.items.map((item) => item.id))
       setLiveMessage('Syncing started')
       const rows = await jobsApi.refresh(source)
-      setStatuses(rows)
+      applyStatuses(rows)
       await loadPage(filters.pagination === 'infinite' ? null : String((page - 1) * PAGE_SIZE), false)
       const after = await jobsApi.list({ ...query, cursor: null, limit: 500 })
       const added = after.items.filter((item) => !before.has(item.id)).length

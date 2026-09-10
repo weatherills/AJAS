@@ -164,6 +164,37 @@ export function sourceBoardErrors(
   return lines
 }
 
+export function sourceListFingerprint(rows: SourceStatus[]): string {
+  return [...rows]
+    .map((row) => {
+      const boards = [...(row.boards || [])]
+        .map((board) => [board.tenantKey, board.enabled ? '1' : '0', board.status ?? '', board.lastSyncAt ?? ''].join(':'))
+        .sort()
+        .join(',')
+      return [
+        row.source,
+        row.status,
+        row.lastSyncAt ?? '',
+        row.backoffUntil ?? '',
+        row.configured === false ? '0' : '1',
+        String(row.tenantCount ?? ''),
+        boards,
+      ].join('|')
+    })
+    .sort()
+    .join('\n')
+}
+
+export function jobsListMayHaveChanged(previous: string | null, next: string): boolean {
+  return previous != null && previous !== next
+}
+
+export function nextSourcePollMs(syncing: boolean, current: number): number {
+  if (syncing) return 5_000
+  if (!current || current < 15_000) return 15_000
+  return Math.min(60_000, current * 1.5)
+}
+
 export function feedErrorLines(rows: SourceStatus[]): { key: string; message: string }[] {
   const lines: { key: string; message: string }[] = []
   for (const row of rows) {
