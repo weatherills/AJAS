@@ -33,6 +33,7 @@ export function EmailThreadPane({
   const [sending, setSending] = useState(false)
   const [templates, setTemplates] = useState<EmailTemplate[]>([])
   const [templateId, setTemplateId] = useState('')
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null)
   const [suggestions, setSuggestions] = useState<EmailSuggestion[]>([])
   const [suggestError, setSuggestError] = useState<string | null>(null)
   const [files, setFiles] = useState<File[]>([])
@@ -109,7 +110,13 @@ export function EmailThreadPane({
     try {
       setSuggestions(await emailApi.suggestions(thread.id, { tone: 'professional' }))
     } catch (err) {
-      setSuggestError(err instanceof Error ? err.message : 'Could not generate replies')
+      const message =
+        err instanceof Error && (err.message.toLowerCase().includes('limit') || err.message.toLowerCase().includes('rate'))
+          ? 'Suggestion limit reached for today. Try again tomorrow.'
+          : err instanceof Error
+            ? err.message
+            : 'Could not generate replies'
+      setSuggestError(message)
     }
   }
 
@@ -225,8 +232,23 @@ export function EmailThreadPane({
           <button type="button" className="secondary" onClick={() => void generate()}>
             Generate reply
           </button>
+          <button
+            type="button"
+            className="secondary"
+            disabled={!templateId}
+            onClick={() => {
+              if (!templateId) return
+              void emailApi.previewTemplate(templateId).then((preview) => {
+                setPreviewHtml(preview.html)
+              }).catch(() => undefined)
+            }}
+          >
+            Preview theme
+          </button>
         </div>
-        {suggestError && <p className="warn-text">{suggestError}</p>}
+        {previewHtml && (
+          <iframe title="Email template preview" className="email-preview" sandbox="" srcDoc={previewHtml} />
+        )}
         {suggestions.length > 0 && (
           <ul className="suggestion-list">
             {suggestions.map((item) => (

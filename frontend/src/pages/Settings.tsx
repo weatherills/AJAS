@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getUserId, jobsApi, learningApi, setUserId, settingsApi, USE_MOCK } from '../api'
-import type { SettingsDoc } from '../api/settingsTypes'
+import { json, request, fetchAuthConfig, type AuthConfig } from '../api/live'
+import type { SettingsAuditItem, SettingsDoc } from '../api/settingsTypes'
 import type { JobSourceName, SourceStatus } from '../api/jobsTypes'
 import { AppNav } from '../components/AppNav'
 import { Modal } from '../components/Modal'
@@ -86,6 +87,12 @@ export function SettingsPage() {
   const [learningSample, setLearningSample] = useState(0)
   const [learningStatus, setLearningStatus] = useState<SaveStatus>('idle')
   const [learningTick, setLearningTick] = useState(0)
+  const [autoApplyEnabled, setAutoApplyEnabled] = useState(true)
+  const [autoApplyStatus, setAutoApplyStatus] = useState<SaveStatus>('idle')
+  const [auditItems, setAuditItems] = useState<SettingsAuditItem[]>([])
+  const [devices, setDevices] = useState<{ id: string; label: string; createdAt: string; lastSeenAt: string }[]>([])
+  const [sessionBusy, setSessionBusy] = useState(false)
+  const [authConfig, setAuthConfig] = useState<AuthConfig | null>(null)
   const toastId = useRef(1)
   const saveGen = useRef(0)
   const oauthState = useRef<string | null>(null)
@@ -101,6 +108,7 @@ export function SettingsPage() {
     const value = apiToPercent(next.matchThreshold)
     setPercent(value)
     setSavedPercent(value)
+    if (next.autoApplyEnabled != null) setAutoApplyEnabled(next.autoApplyEnabled)
     if (next.oauthConfigured === false) setOauthBlocked(true)
     else if (next.oauthConfigured === true) setOauthBlocked(false)
   }, [])
@@ -113,6 +121,24 @@ export function SettingsPage() {
     }
     try {
       applyDoc(await settingsApi.get())
+      try {
+        setAuditItems((await settingsApi.listAudit()).items)
+      } catch {
+        setAuditItems([])
+      }
+      try {
+        const page = await json<{ items: { id: string; label: string; createdAt: string; lastSeenAt: string }[] }>(
+          await request('/api/v1/auth/devices'),
+        )
+        setDevices(page.items)
+      } catch {
+        setDevices([])
+      }
+      try {
+        setAuthConfig(await fetchAuthConfig())
+      } catch {
+        setAuthConfig(null)
+      }
       setLoadError(null)
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load settings')
@@ -422,6 +448,13 @@ export function SettingsPage() {
           <h1>Settings</h1>
           <p className="tagline">Match threshold, learning, Microsoft 365 email, and job sources.</p>
         </div>
+        {!doc && !loadError && (
+          <section className="editor-section" aria-busy="true" aria-label="Loading settings">
+            <div className="skeleton settings-skel" />
+            <div className="skeleton settings-skel" />
+            <div className="skeleton settings-skel" />
+          </section>
+        )}
         <label className="user-field">
           Signed in as
           <input
@@ -508,6 +541,41 @@ export function SettingsPage() {
         )}
       </section>
 
+      <section className="editor-section" aria-labelledby="auto-apply-heading">
+        <h2 id="auto-apply-heading">Auto-Apply</h2>
+        <p className="muted">Turn off to hide Apply in Review until you are ready to submit applications.</p>
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={autoApplyEnabled}
+            onChange={(event) => {
+              const next = event.target.checked
+              setAutoApplyEnabled(next)
+              setAutoApplyStatus('saving')
+              void settingsApi
+                .patch({ autoApplyEnabled: next })
+                .then((doc) => {
+                  applyDoc(doc)
+                  setAutoApplyStatus('saved')
+                  toast(next ? 'Auto-Apply enabled' : 'Auto-Apply disabled')
+                  return settingsApi.listAudit().catch(() => ({ items: [] as SettingsAuditItem[] }))
+                })
+                .then((page) => setAuditItems(page.items))
+                .catch((err) => {
+                  setAutoApplyEnabled(!next)
+                  setAutoApplyStatus('error')
+                  toast(err instanceof Error ? err.message : 'Could not save Auto-Apply', 'error')
+                })
+            }}
+          />
+          Auto-Apply is {autoApplyEnabled ? 'on' : 'off'}
+        </label>
+        <p className="save-status" aria-live="polite">
+          {autoApplyStatus === 'saving' && 'Saving…'}
+          {autoApplyStatus === 'saved' && 'Saved'}
+        </p>
+      </section>
+
       <section className="editor-section" aria-labelledby="learning-prefs-heading">
         <h2 id="learning-prefs-heading">Matching preferences</h2>
         <p className="muted">Auto-tune ranking from Review decisions, or set match strictness yourself.</p>
@@ -579,7 +647,11 @@ export function SettingsPage() {
 
       <section className="editor-section" aria-labelledby="email-heading">
         <h2 id="email-heading">Email connection</h2>
-        <p className="muted">Read-only access to your mailbox (Mail.Read and offline_access).</p>
+        <p className="muted">
+          AJAS requests the least privilege needed to ingest recruiter mail and send replies from this app:{' '}
+          <code>Mail.Read</code>, <code>Mail.Send</code>, and <code>offline_access</code>. We do not ask for mailbox
+          admin or directory scopes. Microsoft will show this consent list before you connect.
+        </p>
         {ui === 'unconfigured' && (
           <div className="oauth-unconfigured" role="status">
             <p>
@@ -790,6 +862,97 @@ export function SettingsPage() {
               </button>
             )}
           </div>
+        )}
+      </section>
+
+      <section className="editor-section" aria-labelledby="session-heading">
+        <h2 id="session-heading">Devices and sessions</h2>
+        <p className="muted">Short-lived access tokens with rotating refresh. Dev Bearer user ids still work. Cookie sessions send an HttpOnly `ajas_sess` cookie; writes also send the CSRF token.</p>
+        {authConfig?.mode === 'aad' && (
+          <p className="banner">
+            This host expects an Azure AD JWT.
+            {authConfig.loginUrl ? (
+              <>
+                {' '}
+                <a href={authConfig.loginUrl}>Sign in with Microsoft</a>
+              </>
+            ) : (
+              ' Set MICROSOFT_CLIENT_ID and AUTH_JWT_SECRET or AUTH_JWT_JWKS_URL, then reload.'
+            )}
+          </p>
+        )}
+        <button
+          type="button"
+          className="secondary"
+          disabled={sessionBusy}
+          onClick={() => {
+            setSessionBusy(true)
+            void request('/api/v1/auth/session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ label: 'Cursor desktop' }),
+            })
+              .then((resp) => json<{ deviceId: string; csrfToken?: string }>(resp))
+              .then((issued) =>
+                request('/api/v1/auth/devices')
+                  .then((resp) => json<{ items: { id: string; label: string; createdAt: string; lastSeenAt: string }[] }>(resp))
+                  .then((page) => {
+                    setDevices(page.items)
+                    toast(`Session device ${issued.deviceId.slice(0, 8)}…`)
+                  }),
+              )
+              .catch((err) => toast(err instanceof Error ? err.message : 'Could not issue session', 'error'))
+              .finally(() => setSessionBusy(false))
+          }}
+        >
+          Issue session
+        </button>
+        {devices.length === 0 ? (
+          <p className="muted">No session devices yet.</p>
+        ) : (
+          <ul className="audit-list">
+            {devices.map((item) => (
+              <li key={item.id}>
+                <strong>{item.label}</strong>
+                <span className="muted">
+                  {' '}
+                  {formatWhen(item.lastSeenAt)} · created {formatWhen(item.createdAt)}
+                </span>
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => {
+                    void request(`/api/v1/auth/devices/${encodeURIComponent(item.id)}`, { method: 'DELETE' }).then(() =>
+                      setDevices((prev) => prev.filter((row) => row.id !== item.id)),
+                    )
+                  }}
+                >
+                  Revoke
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="editor-section" aria-labelledby="audit-heading">
+        <h2 id="audit-heading">Settings audit trail</h2>
+        <p className="muted">Who changed threshold, sources, Auto-Apply, or email connection — and when.</p>
+        {auditItems.length === 0 ? (
+          <p className="muted">No audited changes yet.</p>
+        ) : (
+          <ul className="audit-list">
+            {auditItems.slice(0, 20).map((item) => (
+              <li key={item.id}>
+                <strong>{item.fieldMask.join(', ') || item.entityType}</strong>
+                <span className="muted">
+                  {' '}
+                  {item.actorId} · {formatWhen(item.createdAt)}
+                </span>
+                <pre className="audit-diff">{JSON.stringify(item.detail, null, 2)}</pre>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

@@ -23,7 +23,8 @@ export type EmailThread = {
   lastMessageAt: string
   unreadCount: number
   snippet: string
-  participants: string[]
+  deliveryAlert?: 'bounced' | 'deferred' | null
+  canonical?: boolean
 }
 
 export type EmailAttachment = {
@@ -97,6 +98,8 @@ export type EmailApi = {
   suggestions(threadId: string, body?: { tone?: string; contextNotes?: string }): Promise<EmailSuggestion[]>
   refresh(): Promise<EmailStatus & { status: string }>
   templates(): Promise<EmailTemplate[]>
+  previewTemplate(id: string): Promise<{ id: string; name: string; text: string; html: string }>
   link(threadId: string, jobId: string): Promise<EmailThread>
   unlink(threadId: string): Promise<EmailThread>
+  listSuppressions(): Promise<{ address: string; reason: string; source?: string }[]>
 }

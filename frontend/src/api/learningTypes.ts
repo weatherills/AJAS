@@ -24,6 +24,7 @@ export type LearningMetrics = {
   threshold: number
   model_version: string
   approveRateDeltaPct: number | null
+  liftVsBaseline: number | null
   empty: boolean
   summary: string
 }
@@ -32,4 +33,6 @@ export type LearningApi = {
   params(): Promise<LearningParams>
   patchParams(body: { tuningMode?: 'auto' | 'manual'; strictness?: number }): Promise<LearningParams>
   metrics(period: '7d' | '30d'): Promise<LearningMetrics>
+  validatePipeline(events: unknown[]): Promise<{ accepted: number; rejected: number; errors?: unknown[] }>
+  backfill(events: unknown[]): Promise<{ applied: number }>
 }

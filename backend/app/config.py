@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     match_max_text_chars: int = 100_000
     match_max_rank_pairs: int = 1000
     match_rank_async_after: int = 10
+    match_semantic_timeout_sec: float = 2.0
+    match_ab_test: bool = False
+    crawl_max_concurrent_per_tenant: int = 1
 
     mail_ingest_queue: str = "mail-ingest"
     mail_webhook_client_state: str = "dev-mail-webhook"
@@ -89,6 +92,7 @@ class Settings(BaseSettings):
     mail_link_auto_threshold: float = 0.85
     mail_reply_idempotency_hours: int = 24
     mail_blob_container: str = "mail-attachments"
+    mail_retention_days: int = 90
 
     learning_tune_queue: str = "tuning-tasks"
     learning_min_samples: int = 20
@@ -100,6 +104,13 @@ class Settings(BaseSettings):
     learning_stale_days: int = 90
     learning_min_shown_per_week: int = 10
     learning_decision_rate_per_second: int = 10
+
+    cors_allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    mail_bounce_webhook_secret: str = "dev-bounce-secret"
+    key_vault_uri: str = ""
+    ingestion_alert_webhook: str = ""
+    auth_session_cookies: bool = True
+    applicationinsights_connection_string: str = ""
 
 
 @lru_cache

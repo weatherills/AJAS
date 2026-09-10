@@ -1277,6 +1277,48 @@ select:focus-visible {
   background: rgba(99, 102, 241, 0.16);
 }
 
+.review-bulk,
+.review-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.6rem 0;
+}
+
+.toggle-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.audit-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.audit-diff {
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  background: rgba(15, 23, 42, 0.4);
+  padding: 0.5rem;
+  border-radius: 0.4rem;
+}
+
+.onboarding {
+  margin: 1.25rem 0 1.5rem;
+}
+
+.onboarding ol {
+  padding-left: 1.2rem;
+}
+
+.onboarding li.is-done a {
+  color: inherit;
+  opacity: 0.75;
+}
+
 .review-row-btn {
   background: none;
   border: none;
@@ -1873,6 +1915,76 @@ select:focus-visible {
 .learning-recent-list a:hover,
 .learning-recent-list a:focus-visible {
   border-color: rgba(129, 140, 248, 0.5);
+}
+
+.settings-skel {
+  min-height: 4rem;
+  margin-bottom: 0.75rem;
+  border-radius: 12px;
+}
+
+.email-preview {
+  width: 100%;
+  min-height: 220px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 12px;
+  background: #0f172a;
+  color-scheme: dark light;
+}
+
+.ops-page .ops-slo,
+.ops-page .ops-traces {
+  color: inherit;
+}
+
+@media (max-width: 375px) {
+  .review-page .library-header,
+  .ops-page .library-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .job-drawer.review-drawer {
+    width: 100%;
+    max-width: 100vw;
+    padding: 0.75rem;
+    border-radius: 0;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .review-drawer,
+  .job-drawer {
+    color: #1e293b;
+    background: #f8fafc;
+  }
+
+  .review-drawer h3,
+  .job-drawer-head h2 {
+    color: #0f172a;
+  }
+
+  .review-actions {
+    background: #f8fafc;
+  }
+
+  .email-preview {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.18);
+  }
+
+  .ops-page {
+    color: #1e293b;
+  }
+}
+
+kbd {
+  font: inherit;
+  font-size: 0.85em;
+  padding: 0.05rem 0.35rem;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.4);
 }
 
 

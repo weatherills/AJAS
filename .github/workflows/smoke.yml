@@ -1,0 +1,23 @@
+name: Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Functions base URL
+        required: true
+        default: http://127.0.0.1:7071
+  # Call from a deploy workflow with AJAS_BASE_URL to block rollout.
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Smoke
+        env:
+          AJAS_BASE_URL: ${{ inputs.base_url || 'http://127.0.0.1:7071' }}
+        run: python scripts/smoke.py

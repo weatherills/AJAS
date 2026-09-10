@@ -9,6 +9,7 @@ export const NAV_LINKS: NavLink[] = [
   { href: '#/email', label: 'Email' },
   { href: '#/learning', label: 'Learning' },
   { href: '#/settings', label: 'Settings' },
+  { href: '#/ops', label: 'Ops' },
 ]
 
 export function hashPath(hash: string): string {

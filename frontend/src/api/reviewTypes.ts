@@ -37,6 +37,9 @@ export type ReviewMatch = {
   comment: string | null
   decision: DecisionValue | null
   scoreAtDecision: number | null
+  archived?: boolean
+  priority?: number
+  assigneeId?: string | null
 }
 
 export type ReviewDecision = {
@@ -69,6 +72,7 @@ export type ReviewFilters = {
   status: 'all' | 'awaiting' | 'approved' | 'rejected'
   createdAfter: string
   sort: 'score' | 'date' | 'company' | 'title'
+  q: string
 }
 
 export type ReviewApi = {
@@ -80,4 +84,9 @@ export type ReviewApi = {
     meta: { etag: string; idempotencyKey: string },
   ): Promise<{ decisionId: string; matchStatus: ReviewStatus; version: number; occurredAt: string }>
   reopen(matchId: string): Promise<ReviewMatch>
+  bulk(body: { action: 'archive' | 'unarchive' | 'prioritize' | 'assign'; matchIds: string[]; assigneeId?: string }): Promise<{
+    action: string
+    updated: string[]
+    count: number
+  }>
 }

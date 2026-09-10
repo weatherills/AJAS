@@ -81,6 +81,10 @@ class SettingsService:
         self._reject_unconfigured_enable(sources)
 
         kwargs: dict = {"actor_id": user_id, "expected_version": settings.version}
+        if "autoApplyEnabled" in body:
+            if not isinstance(body["autoApplyEnabled"], bool):
+                raise SettingsValidationError("autoApplyEnabled must be a boolean", path="autoApplyEnabled")
+            kwargs["auto_apply_enabled"] = body["autoApplyEnabled"]
         if "matchThreshold" in body:
             kwargs["match_threshold"] = db_threshold(body["matchThreshold"])
         if "greenhouseEnabled" in sources:
@@ -219,7 +223,7 @@ class SettingsService:
         expires_at = (
             datetime.now(timezone.utc) + timedelta(seconds=int(tokens.expires_in or 3600))
         ).isoformat().replace("+00:00", "Z")
-        scopes = tokens.scope.split() if tokens.scope else ["offline_access", "Mail.Read"]
+        scopes = tokens.scope.split() if tokens.scope else ["offline_access", "Mail.Read", "Mail.Send"]
         connection = EmailConnection(
             id=pending.id if pending else new_id(),
             user_id=user_id,
@@ -261,6 +265,23 @@ class SettingsService:
     def _last_actor(self, user_id: str, entity_id: str) -> str | None:
         entries = self.store.list_audit(user_id, entity_id=entity_id)
         return entries[0].actor_id if entries else None
+
+    def list_audit(self, user_id: str) -> dict:
+        entries = self.store.list_audit(user_id)
+        return {
+            "items": [
+                {
+                    "id": entry.id,
+                    "entityType": entry.entity_type,
+                    "entityId": entry.entity_id,
+                    "actorId": entry.actor_id,
+                    "fieldMask": entry.field_mask,
+                    "detail": entry.detail,
+                    "createdAt": entry.created_at,
+                }
+                for entry in entries
+            ]
+        }
 
     def _patch_with_retry(self, user_id: str, kwargs: dict):
         last_error: Exception | None = None

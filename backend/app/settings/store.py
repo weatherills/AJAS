@@ -21,6 +21,7 @@ class SettingsStore(Protocol):
         match_threshold: object = ...,
         greenhouse_enabled: object = ...,
         lever_enabled: object = ...,
+        auto_apply_enabled: object = ...,
     ) -> UserSettings: ...
 
     def effective_threshold(self, user_id: str) -> int: ...

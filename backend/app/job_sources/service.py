@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import random
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any, Callable
@@ -14,6 +15,8 @@ from app.job_sources.errors import (
     JobSourceRateLimitedError,
     JobSourceValidationError,
 )
+from app.job_sources.events import CrawlEventLog
+from app.job_sources.global_limit import consume_global
 from app.job_sources.feed import feed_cards, filter_cards
 from app.job_sources.http import FetchResponse, HttpFetcher, UrllibFetcher
 from app.job_sources.keys import parse_ts, utc_now
@@ -170,6 +173,7 @@ class CrawlService:
         self.blobs = blobs or InMemoryBlobStore()
         self.fetcher = fetcher or UrllibFetcher()
         self.sleeper = sleeper or _sleep_noop
+        self.events = CrawlEventLog()
 
     def enqueue_crawl(self, source_id: str) -> dict:
         tenants = self._resolve_tenants(source_id)
@@ -474,6 +478,7 @@ class CrawlService:
     def schedule_due(self) -> list[dict]:
         cfg = get_app_settings()
         queued: list[dict] = []
+        cap = max(1, int(getattr(cfg, "crawl_max_concurrent_per_tenant", 1) or 1))
         for schedule in self.store.due_schedules():
             try:
                 tenant = self.store.get_tenant(schedule.source_tenant_id)
@@ -481,10 +486,24 @@ class CrawlService:
                 continue
             if not tenant.enabled:
                 continue
+            inflight = [
+                item
+                for item in self.store.list_runs(tenant.id)
+                if item.status in {"queued", "running"}
+            ]
+            if len(inflight) >= cap:
+                self.events.emit(
+                    "rate_limited",
+                    tenantId=tenant.id,
+                    sourceId=tenant.source_id,
+                    reason="per_tenant_cap",
+                )
+                continue
             run = self.store.start_run(tenant.id, status="queued")
             msg = {"tenantId": tenant.id, "runId": run.id}
             self.queue.enqueue(cfg.crawl_runs_queue, msg)
             queued.append(msg)
+            self.events.emit("start", tenantId=tenant.id, sourceId=tenant.source_id, runId=run.id)
         return queued
 
     def process_crawl_run(self, payload: dict, *, dequeue_count: int = 1) -> SourceFetchRun:
@@ -492,10 +511,14 @@ class CrawlService:
         tenant_id = payload["tenantId"]
         run_id = payload["runId"]
         if dequeue_count > cfg.crawl_poison_dequeue:
+            self.events.emit("error", tenantId=tenant_id, runId=run_id, reason="poisoned")
             return self.store.finish_run(run_id, status="failed", error_summary="poisoned after repeated failures")
         tenant = self.store.get_tenant(tenant_id)
+        self.events.emit("start", tenantId=tenant.id, sourceId=tenant.source_id, runId=run_id, board=tenant.tenant_key)
         if (tenant.config or {}).get("demo_seed"):
-            return self.store.finish_run(run_id, status="succeeded")
+            finished = self.store.finish_run(run_id, status="succeeded")
+            self.events.emit("finish", tenantId=tenant.id, sourceId=tenant.source_id, runId=run_id, status="succeeded")
+            return finished
         self.store.set_run_status(run_id, "running")
         listing_ok = False
         listing_error: str | None = None
@@ -503,6 +526,13 @@ class CrawlService:
         try:
             seen_ids, listing_ok, listing_error = self._discover_jobs(tenant, run_id)
         except JobSourceRateLimitedError as exc:
+            self.events.emit(
+                "rate_limited",
+                tenantId=tenant.id,
+                sourceId=tenant.source_id,
+                runId=run_id,
+                board=tenant.tenant_key,
+            )
             self.store.finish_run(
                 run_id,
                 status="failed",
@@ -538,7 +568,15 @@ class CrawlService:
                     listing_error or existing or "listing fetch failed",
                     board=tenant.tenant_key,
                 )
-            return self.store.finish_run(run_id, status=status, error_summary=summary)
+            finished = self.store.finish_run(run_id, status=status, error_summary=summary)
+            self.events.emit(
+                "error" if status == "failed" else "finish",
+                tenantId=tenant.id,
+                sourceId=tenant.source_id,
+                runId=run_id,
+                status=status,
+            )
+            return finished
         return self.store.get_run(run_id)
 
     def process_job_fetch(self, payload: dict, *, dequeue_count: int = 1) -> SourceFetchRun:
@@ -594,6 +632,12 @@ class CrawlService:
             elif run.error_summary:
                 summary = run.error_summary
             finished = self.store.finish_run(run.id, status="succeeded", error_summary=summary)
+            self.events.emit(
+                "finish",
+                tenantId=run.source_tenant_id,
+                runId=run.id,
+                status="succeeded",
+            )
             self._rank_ingested_jobs(finished)
             return finished
         return run
@@ -796,6 +840,7 @@ class CrawlService:
         rate_limited = False
         while retries <= MAX_GET_RETRIES_TRANSIENT:
             try:
+                consume_global()
                 self.store.consume_rate_limit(tenant.id)
             except JobSourceRateLimitedError as exc:
                 until = (datetime.now(timezone.utc) + timedelta(seconds=1)).isoformat().replace("+00:00", "Z")
@@ -903,7 +948,7 @@ class CrawlService:
                     return min(60.0, max(0.0, delay))
                 except (TypeError, ValueError, OverflowError):
                     pass
-        return min(60.0, float(2 ** (attempt - 1)))
+        return min(60.0, float(2 ** (attempt - 1)) * (0.5 + random.random()))
 
     def _list_url(self, tenant: SourceTenant, *, cursor: str | None, skip: int) -> str:
         base = tenant.config.get("base_url")

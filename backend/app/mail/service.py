@@ -8,6 +8,7 @@ from datetime import timedelta
 
 from app.config import get_settings as get_app_settings
 from app.config import microsoft_oauth_configured
+from app.mail.bounce import classify_delivery, thread_fingerprint
 from app.mail.errors import (
     MailConflictError,
     MailForbiddenError,
@@ -18,6 +19,7 @@ from app.mail.errors import (
     MailValidationError,
 )
 from app.mail.graph import GraphAttachment, GraphClient, GraphMessage, LocalGraphClient, pending_followup
+from app.mail.pii import redact_pii
 from app.mail.keys import (
     apply_template,
     body_hash,
@@ -75,6 +77,7 @@ class EmailService:
     def list_threads(self, user_id: str, *, job_id: str | None = None, unlinked_only: bool = False, limit: int = 50, cursor: str | None = None) -> dict:
         account = self._require_mailbox(user_id)
         rows = self.store.list_threads(account.id, job_id=job_id, unlinked_only=unlinked_only)
+        rows = self._merge_thread_views(rows)
         offset = int(cursor) if cursor else 0
         if offset < 0:
             raise MailValidationError("invalid cursor", path="cursor")
@@ -186,7 +189,10 @@ class EmailService:
         now = self.clock()
         limit = get_app_settings().mail_suggestion_limit_per_day
         if self.store.suggestion_count_today(thread.id, now=now) >= limit:
-            raise MailRateLimitedError("suggestion limit exceeded for this thread")
+            raise MailRateLimitedError(
+                "Suggestion limit reached for today. Try again tomorrow.",
+                retry_after=86400,
+            )
         messages = self.store.list_messages(thread.id)
         payload = body or {}
         drafts = generate_suggestions(
@@ -395,6 +401,9 @@ class EmailService:
             created_at=self.clock(),
             updated_at=self.clock(),
         )
+        bounce = classify_delivery(item.from_address, item.subject, item.body_text)
+        if bounce:
+            inbound.delivery_status = bounce
         decision = decide_link(
             inbound,
             existing_thread=existing_thread,
@@ -418,7 +427,12 @@ class EmailService:
                 created_at=now,
                 updated_at=now,
             )
-            thread = self.store.upsert_thread(thread)
+            duplicate = self._thread_by_fingerprint(account.id, thread.subject, thread.participants)
+            if duplicate:
+                thread = duplicate
+                inbound.email_thread_id = duplicate.id
+            else:
+                thread = self.store.upsert_thread(thread)
         if decision.job:
             thread = self.store.link_thread(
                 thread.id,
@@ -458,7 +472,12 @@ class EmailService:
                 created_at=now,
             )
         )
-        log.info("ajas.mail.ingest persisted message_id=%s thread_id=%s", saved.id, thread.id)
+        log.info(
+            "ajas.mail.ingest persisted message_id=%s thread_id=%s snippet=%s",
+            saved.id,
+            thread.id,
+            redact_pii(inbound.snippet or snippet_of(inbound.body_text)),
+        )
 
     def _store_attachments(self, message: EmailMessage, attachments: list[GraphAttachment], *, incoming: bool) -> None:
         cfg = get_app_settings()
@@ -650,7 +669,76 @@ class EmailService:
         except Exception:
             return []
 
+    def purge_expired(self, *, user_id: str | None = None) -> dict:
+        days = get_app_settings().mail_retention_days
+        cutoff = parse_ts(self.clock()) - timedelta(days=days)
+        purged = 0
+        accounts = []
+        if user_id:
+            try:
+                accounts = [self._require_mailbox(user_id)]
+            except Exception:
+                accounts = []
+        else:
+            try:
+                accounts = list(getattr(self.store, "_accounts", {}).values())
+            except Exception:
+                accounts = []
+        for account in accounts:
+            for thread in self.store.list_threads(account.id):
+                for message in self.store.list_messages(thread.id):
+                    stamp = parse_ts(message.received_at or message.created_at)
+                    if stamp >= cutoff:
+                        continue
+                    if message.body_text and message.body_text != "[redacted]":
+                        message.body_text = "[redacted]"
+                        message.body_html = None
+                        message.snippet = redact_pii(message.snippet)
+                        self.store.upsert_message(message)
+                        purged += 1
+        return {"purged": purged, "retentionDays": days}
+
+    def _merge_thread_views(self, rows: list) -> list:
+        groups: dict[tuple, list] = {}
+        order: list[tuple] = []
+        for row in rows:
+            key = thread_fingerprint(row.subject, row.participants)
+            if key not in groups:
+                order.append(key)
+            groups.setdefault(key, []).append(row)
+        merged = []
+        for key in order:
+            items = groups[key]
+            items.sort(key=lambda item: item.last_message_at, reverse=True)
+            primary = items[0]
+            if len(items) > 1:
+                primary = primary.model_copy(
+                    update={"unread_count": sum(item.unread_count for item in items)}
+                )
+            merged.append(primary)
+        return merged
+
+    def _thread_by_fingerprint(self, account_id: str, subject: str, participants: list[str]):
+        wanted = thread_fingerprint(subject, participants)
+        for row in self.store.list_threads(account_id):
+            if thread_fingerprint(row.subject, row.participants) == wanted:
+                return row
+        return None
+
+    def _delivery_alert(self, thread) -> str | None:
+        try:
+            messages = self.store.list_messages(thread.id)
+        except Exception:
+            return None
+        for message in messages:
+            if message.delivery_status in {"bounced", "failed"}:
+                return "bounced"
+            if message.delivery_status == "deferred":
+                return "deferred"
+        return None
+
     def _thread_json(self, thread: EmailThread) -> dict:
+        alert = self._delivery_alert(thread)
         return {
             "id": thread.id,
             "subject": thread.subject,
@@ -665,6 +753,8 @@ class EmailService:
             "unreadCount": thread.unread_count,
             "snippet": thread.snippet,
             "participants": thread.participants,
+            "deliveryAlert": alert,
+            "canonical": True,
         }
 
     def _message_json(self, message: EmailMessage) -> dict:

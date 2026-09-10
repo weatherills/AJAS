@@ -144,4 +144,7 @@ export const liveMatchingApi: MatchingApi = {
         return mapResult(jobId, query.resumeId, { ...row, persisted: true })
       })
   },
+  async warmup() {
+    return json(await request('/api/v1/matches/warmup', { method: 'POST' }))
+  },
 }

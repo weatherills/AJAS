@@ -13,6 +13,7 @@ export const DEFAULT_FILTERS: ReviewFilters = {
   status: 'awaiting',
   createdAfter: '',
   sort: 'score',
+  q: '',
 }
 
 export function validateComment(raw: string): { value: string; error: string | null; remaining: number } {
@@ -88,6 +89,11 @@ export function applyFilters(items: ReviewMatch[], tab: ReviewTab, filters: Revi
     if (score == null && (filters.minScore > 0 || filters.maxScore < 100) && tab !== 'saved') return false
     if (filters.company && !item.company.toLowerCase().includes(filters.company.toLowerCase())) return false
     if (filters.location && !item.location.toLowerCase().includes(filters.location.toLowerCase())) return false
+    if (filters.q) {
+      const q = filters.q.toLowerCase()
+      const blob = `${item.jobTitle} ${item.company} ${item.location}`.toLowerCase()
+      if (!blob.includes(q)) return false
+    }
     if (filters.createdAfter) {
       const stamp = item.queuedAt || item.createdAt
       if (stamp.slice(0, 10) < filters.createdAfter) return false
@@ -125,6 +131,45 @@ export function filtersForTab(tab: ReviewTab): ReviewFilters {
     ...DEFAULT_FILTERS,
     status: tab === 'history' ? 'all' : 'awaiting',
     source: tab === 'saved' ? 'saved' : tab === 'matches' ? 'ai' : 'all',
+  }
+}
+
+const PRESET_KEY = 'ajas.review.presets.v1'
+
+export type ReviewPreset = { name: string; filters: ReviewFilters }
+
+export function loadReviewPresets(): ReviewPreset[] {
+  try {
+    const raw = localStorage.getItem(PRESET_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as ReviewPreset[]
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+export function saveReviewPreset(name: string, filters: ReviewFilters): ReviewPreset[] {
+  const next = [...loadReviewPresets().filter((item) => item.name !== name), { name, filters }]
+  localStorage.setItem(PRESET_KEY, JSON.stringify(next))
+  return next
+}
+
+export function filtersFromSearch(params: URLSearchParams, tab: ReviewTab): ReviewFilters {
+  const base = filtersForTab(tab)
+  const min = Number(params.get('min'))
+  const max = Number(params.get('max'))
+  return {
+    ...base,
+    minScore: Number.isFinite(min) && params.has('min') ? min : base.minScore,
+    maxScore: Number.isFinite(max) && params.has('max') ? max : base.maxScore,
+    company: params.get('company') || '',
+    location: params.get('loc') || '',
+    q: params.get('q') || '',
+    source: (params.get('source') as ReviewFilters['source']) || base.source,
+    status: (params.get('status') as ReviewFilters['status']) || base.status,
+    createdAfter: params.get('after') || '',
+    sort: (params.get('sort') as ReviewFilters['sort']) || base.sort,
   }
 }
 

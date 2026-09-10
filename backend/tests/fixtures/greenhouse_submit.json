@@ -1,0 +1,15 @@
+{
+  "vendor": "greenhouse",
+  "postingUrl": "https://boards.greenhouse.io/acme/jobs/12345",
+  "jobId": "12345",
+  "profile": {
+    "full_name": "Alex Jobseeker",
+    "email": "alex@example.com",
+    "phone": "+1-555-0100"
+  },
+  "expectedEndpoint": "https://boards-api.greenhouse.io/v1/boards/acme/jobs/12345",
+  "response": {
+    "id": "gh-app-99",
+    "request_id": "gh-req-1"
+  }
+}

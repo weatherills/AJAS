@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 import base64
+import concurrent.futures
 import hashlib
 import json
+import logging
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 from uuid import uuid4
 
 from app.config import get_settings as get_app_settings
+from app.matching.ab import assign_variant, weights_for
 from app.matching.constants import DEFAULT_MODEL_ID
 from app.matching.embedder import Embedder, default_embedder
+from app.slo import record_latency
 from app.matching.errors import (
     MatchingConflictError,
     MatchingNotFoundError,
@@ -27,10 +31,13 @@ from app.matching.queues import InMemoryJobQueue, JobQueue
 from app.matching.scoring import KEYWORD_WEIGHTS_VERSION, cosine_similarity, keyword_score, score_1dp
 from app.matching.store import MatchingStore, get_matching_store
 from app.matching.texts import NotFoundTextLoader, TextLoader
+from app.mail.pii import redact_pii
 
 IDEMPOTENCY_TTL_SEC = 24 * 60 * 60
 PRINTABLE_EXTRA = {"\n", "\r", "\t"}
 Clock = Callable[[], float]
+_EMBED_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="embed")
+log = logging.getLogger("ajas")
 
 
 def _now() -> float:
@@ -86,9 +93,11 @@ class MatchingService:
         self.text_loader = text_loader or NotFoundTextLoader()
         self.clock = clock or _now
         self.low_confidence_events = 0
+        self.semantic_fallback_events = 0
         self._sync_hits: dict[str, list[float]] = {}
         self._idem: dict[tuple[str, str], dict[str, Any]] = {}
         self._operations: dict[str, Operation] = {}
+        self._list_cache: dict[tuple, tuple[float, dict]] = {}
 
     def compute(self, user_id: str, body: dict, *, idempotency_key_header: str | None = None) -> tuple[int, dict]:
         pair = self._single_pair(user_id, body)
@@ -104,6 +113,7 @@ class MatchingService:
             result = self._score_pair(user_id, pair, options, source="sync")
             status, payload = 200, result
         self._remember(user_id, idempotency_key_header, fingerprint, status, payload)
+        self.invalidate_list_cache(user_id)
         return status, payload
 
     def rank(self, user_id: str, body: dict, *, idempotency_key_header: str | None = None) -> tuple[int, dict]:
@@ -122,6 +132,7 @@ class MatchingService:
             results = [self._score_pair(user_id, pair, options, source="batch") for pair in pairs]
             status, payload = 200, self._rank_payload(results, options)
         self._remember(user_id, idempotency_key_header, fingerprint, status, payload)
+        self.invalidate_list_cache(user_id)
         return status, payload
 
     def list_matches(
@@ -136,6 +147,13 @@ class MatchingService:
     ) -> dict:
         if limit < 1 or limit > 100:
             raise MatchingValidationError("limit must be 1–100", path="limit")
+        cache_key = (user_id, job_id, resume_id, min_score, limit, cursor)
+        hit = self._list_cache.get(cache_key)
+        now = self.clock()
+        if hit and hit[0] > now:
+            body = dict(hit[1])
+            body["cache"] = "hit"
+            return body
         offset = self._decode_cursor(cursor)
         model = self.store.get_model(DEFAULT_MODEL_ID)
         rows = self.store.list_runs(
@@ -154,7 +172,9 @@ class MatchingService:
         next_cursor = None
         if offset + limit < len(items):
             next_cursor = self._encode_cursor(offset + limit)
-        return {"items": page, "nextCursor": next_cursor}
+        body = {"items": page, "nextCursor": next_cursor, "cache": "miss"}
+        self._list_cache[cache_key] = (now + 30, {"items": page, "nextCursor": next_cursor})
+        return body
 
     def get_operation(self, user_id: str, operation_id: str) -> dict:
         op = self._operations.get(operation_id)
@@ -278,19 +298,57 @@ class MatchingService:
         if failures and successes and op.status == "completed":
             op.error = op.error or "partial failure"
 
+    def warmup(self, user_id: str) -> dict:
+        started = self.clock()
+        sample = "Warmup resume text with python azure kubernetes terraform docker functions."
+        error = None
+        try:
+            self.embedder.embed([sample, sample])
+            warm = True
+        except Exception as exc:
+            warm = False
+            error = str(exc)
+        elapsed_ms = int((self.clock() - started) * 1000)
+        record_latency("POST /v1/matches/warmup", elapsed_ms)
+        return {
+            "warm": warm,
+            "elapsedMs": elapsed_ms,
+            "variant": assign_variant(user_id),
+            "fallbackRate": self.semantic_fallback_events,
+            "error": error,
+        }
+
+    def ab_assignment(self, user_id: str) -> dict:
+        model = self._model_for_user(user_id)
+        keyword, semantic, variant = weights_for(user_id, model.keyword_weight, model.semantic_weight)
+        return {
+            "variant": variant,
+            "weights": {"keyword": keyword, "semantic": semantic},
+            "control": {"keyword": model.keyword_weight, "semantic": model.semantic_weight},
+        }
+
     def _score_pair(self, user_id: str, pair: dict, options: dict, *, source: str) -> dict:
         resume_text = pair["resume_text"]
         job_text = pair["job_text"]
         if len(resume_text) < 30 or len(job_text) < 30:
             self.low_confidence_events += 1
         model = self._model_for_user(user_id)
+        keyword_w, semantic_w, variant = weights_for(user_id, model.keyword_weight, model.semantic_weight)
         keyword_norm = keyword_score(resume_text, job_text)
+        fallback = False
+        timeout = get_app_settings().match_semantic_timeout_sec
         try:
-            vectors = self.embedder.embed([resume_text, job_text])
+            future = _EMBED_POOL.submit(self.embedder.embed, [resume_text, job_text])
+            vectors = future.result(timeout=timeout)
             semantic_norm = cosine_similarity(vectors[0], vectors[1]) if len(vectors) >= 2 else 0.0
+        except concurrent.futures.TimeoutError:
+            semantic_norm = 0.0
+            fallback = True
+            keyword_w, semantic_w = 1.0, 0.0
+            self.semantic_fallback_events += 1
         except Exception:
             semantic_norm = 0.0
-        score = score_1dp(keyword_norm, semantic_norm, model.keyword_weight, model.semantic_weight)
+        score = score_1dp(keyword_norm, semantic_norm, keyword_w, semantic_w)
         explanation = None
         if options["explanation"]:
             try:
@@ -331,7 +389,9 @@ class MatchingService:
             "breakdown": {
                 "keyword": round(keyword_norm * 100.0, 1),
                 "semantic": round(semantic_norm * 100.0, 1),
-                "weights": {"keyword": model.keyword_weight, "semantic": model.semantic_weight},
+                "weights": {"keyword": keyword_w, "semantic": semantic_w},
+                "variant": variant,
+                "fallback": "keyword_only" if fallback else None,
             },
             "persisted": persisted,
             "thresholdUsed": options["threshold_used"],
@@ -339,6 +399,19 @@ class MatchingService:
             "input": {"resumeId": pair.get("resume_id"), "jobId": pair.get("job_id")},
             "idx": pair.get("idx"),
         }
+        log.info(
+            "ajas.match.explain %s",
+            json.dumps(
+                {
+                    "user_id": user_id,
+                    "job_id": pair.get("job_id"),
+                    "score": score,
+                    "breakdown": body["breakdown"],
+                    "why": redact_pii(explanation or ""),
+                },
+                default=str,
+            ),
+        )
         if pair.get("job_id"):
             body["jobId"] = pair["job_id"]
         if match_id:
@@ -686,6 +759,9 @@ class MatchingService:
         }
         encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+    def invalidate_list_cache(self, user_id: str) -> None:
+        self._list_cache = {key: value for key, value in self._list_cache.items() if key[0] != user_id}
 
     def _cached(self, user_id: str, header: str | None, fingerprint: str) -> tuple[int, dict] | None:
         if not header:

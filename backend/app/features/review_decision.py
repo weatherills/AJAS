@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Callable
 
 import azure.functions as func
@@ -10,6 +11,7 @@ import azure.functions as func
 from app.auth import AuthError, ForbiddenError, get_principal, require_scopes
 from app.http import error_response, json_response
 from app.observability import log_exception, log_request
+from app.slo import record_latency
 from app.review.constants import READ_SCOPE, WRITE_SCOPE
 from app.review.errors import (
     ReviewConflictError,
@@ -18,6 +20,7 @@ from app.review.errors import (
     ReviewValidationError,
 )
 from app.review.runtime import get_service
+from app.tracing import finish_span, start_span
 
 bp = func.Blueprint()
 FEATURE = "review"
@@ -52,6 +55,13 @@ def _map_error(exc: Exception) -> func.HttpResponse:
     raise exc
 
 
+def _record_route_latency(route: str, started: float) -> None:
+    elapsed = (time.perf_counter() - started) * 1000
+    record_latency(route, elapsed)
+    if route == "GET /v1/matches":
+        record_latency("GET /v1/review", elapsed)
+
+
 def _run(
     req: func.HttpRequest,
     route: str,
@@ -59,10 +69,13 @@ def _run(
     handler: Callable,
 ) -> func.HttpResponse:
     user_id: str | None = None
+    started = time.perf_counter()
     try:
         principal = _auth(req, *scopes)
         user_id = principal.user_id
+        span = start_span("review", route=route, method=req.method)
         resp = handler(principal)
+        finish_span(span, ok=resp.status_code < 400)
         log_request(
             feature=FEATURE,
             route=route,
@@ -70,6 +83,7 @@ def _run(
             status=resp.status_code,
             user_id=user_id,
         )
+        _record_route_latency(route, started)
         return resp
     except Exception as exc:
         log_exception(FEATURE, route, exc)
@@ -82,6 +96,7 @@ def _run(
             user_id=user_id,
             error=str(exc),
         )
+        _record_route_latency(route, started)
         return resp
 
 
@@ -161,12 +176,21 @@ def list_matches(req: func.HttpRequest) -> func.HttpResponse:
             location=req.params.get("location") or None,
             source=req.params.get("source") or None,
             created_after=req.params.get("createdAfter") or None,
-            page_size=_query_int(req.params.get("pageSize"), "pageSize"),
-            continuation=req.params.get("continuation") or None,
+            page_size=_query_int(req.params.get("limit") or req.params.get("pageSize"), "pageSize"),
+            continuation=req.params.get("cursor") or req.params.get("continuation") or None,
+            include_archived=(req.params.get("includeArchived") or "").lower() in {"1", "true", "yes"},
         )
         return json_response(body)
 
     return _run(req, "GET /v1/matches", READ_SCOPE, handler=handle)
+
+
+@bp.route(route="v1/matches/bulk", methods=["POST"])
+def bulk_update_matches(req: func.HttpRequest) -> func.HttpResponse:
+    def handle(principal):
+        return json_response(get_service().bulk_update(principal.user_id, _json_body(req)))
+
+    return _run(req, "POST /v1/matches/bulk", WRITE_SCOPE, handler=handle)
 
 
 @bp.route(route="v1/matches/{matchId}", methods=["GET"])

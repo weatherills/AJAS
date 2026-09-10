@@ -104,7 +104,8 @@ def _collapse_pending_duplicates(rows: list[ReviewMatch]) -> list[ReviewMatch]:
     return [row for row in rows if row.status != "PENDING" or row.id in keep_ids]
 
 
-def _match_row(match: ReviewMatch) -> dict[str, Any]:
+def _match_row(match: ReviewMatch, triage: dict[str, Any] | None = None) -> dict[str, Any]:
+    flags = triage or {}
     return {
         "matchId": match.id,
         "userId": match.user_id,
@@ -121,11 +122,14 @@ def _match_row(match: ReviewMatch) -> dict[str, Any]:
         "updatedAt": match.updated_at,
         "queuedAt": match.queued_at,
         "etag": match.etag,
+        "archived": bool(flags.get("archived")),
+        "priority": int(flags.get("priority") or 0),
+        "assigneeId": flags.get("assigneeId"),
     }
 
 
-def _match_detail(match: ReviewMatch) -> dict[str, Any]:
-    body = _match_row(match)
+def _match_detail(match: ReviewMatch, triage: dict[str, Any] | None = None) -> dict[str, Any]:
+    body = _match_row(match, triage)
     body.update(
         {
             "summary": match.summary,
@@ -171,6 +175,7 @@ class ReviewService:
         self.processed_decisions = 0
         self.poisoned = 0
         self.learning_events: list[dict[str, Any]] = []
+        self._triage: dict[str, dict[str, Any]] = {}
 
     def list_matches(
         self,
@@ -186,6 +191,7 @@ class ReviewService:
         created_after: str | None = None,
         page_size: int | None = None,
         continuation: str | None = None,
+        include_archived: bool = False,
     ) -> dict[str, Any]:
         size = _page_size(page_size)
         if min_score is not None and (min_score < 0 or min_score > 100):
@@ -222,6 +228,9 @@ class ReviewService:
             row.id for row in _collapse_pending_duplicates(self.store.list_matches(user_id))
         }
         rows = [row for row in rows if row.id in visible]
+        if not include_archived:
+            rows = [row for row in rows if not self._triage.get(row.id, {}).get("archived")]
+        rows = sorted(rows, key=lambda row: -int(self._triage.get(row.id, {}).get("priority") or 0))
         page, token = _paginate(rows, page_size=size, continuation=continuation)
         filters = {
             key: value
@@ -239,7 +248,10 @@ class ReviewService:
         self.store.record_audit(user_id=user_id, event_type="VIEW_LIST", payload={"filters": filters})
         if filters:
             self.store.record_audit(user_id=user_id, event_type="FILTER", payload=filters)
-        body: dict[str, Any] = {"items": [_match_row(match) for match in page]}
+        body: dict[str, Any] = {
+            "items": [_match_row(match, self._triage.get(match.id)) for match in page],
+            "nextCursor": token,
+        }
         if token:
             body["continuationToken"] = token
         return body
@@ -271,7 +283,7 @@ class ReviewService:
             self.blobs.sas_url(f"resumes/{user_id}/{match.resume_id}", minutes=minutes) if match.resume_id else None
         )
         return {
-            "match": _match_detail(match),
+            "match": _match_detail(match, self._triage.get(match.id)),
             "decision": decision,
             "blobs": {"jobUrl": job_url, "resumeUrl": resume_url},
         }
@@ -642,3 +654,32 @@ class ReviewService:
         hours = settings.review_overwrite_hours or IDEMPOTENCY_TTL_HOURS
         age = parse_ts(self.clock()) - parse_ts(events[-1].created_at)
         return age > timedelta(hours=hours)
+
+    def bulk_update(self, user_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        action = str(body.get("action") or "").strip().lower()
+        ids = body.get("matchIds") or body.get("match_ids") or []
+        if action not in {"archive", "unarchive", "prioritize", "assign"}:
+            raise ReviewValidationError("action must be archive, unarchive, prioritize, or assign", path="action")
+        if not isinstance(ids, list) or not ids:
+            raise ReviewValidationError("matchIds is required", path="matchIds")
+        assignee = str(body.get("assigneeId") or body.get("assignee_id") or user_id)
+        updated: list[str] = []
+        for match_id in ids:
+            match = self.store.get_match(str(match_id), user_id=user_id)
+            flags = dict(self._triage.get(match.id) or {})
+            if action == "archive":
+                flags["archived"] = True
+            elif action == "unarchive":
+                flags["archived"] = False
+            elif action == "prioritize":
+                flags["priority"] = 1
+            elif action == "assign":
+                flags["assigneeId"] = assignee
+            self._triage[match.id] = flags
+            updated.append(match.id)
+        self.store.record_audit(
+            user_id=user_id,
+            event_type="BULK_UPDATE",
+            payload={"action": action, "matchIds": updated},
+        )
+        return {"action": action, "updated": updated, "count": len(updated)}

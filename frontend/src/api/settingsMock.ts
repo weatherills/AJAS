@@ -1,4 +1,4 @@
-import type { SettingsApi, SettingsDoc } from './settingsTypes'
+import type { SettingsApi, SettingsAuditItem, SettingsDoc } from './settingsTypes'
 
 function now() {
   return new Date().toISOString()
@@ -9,6 +9,7 @@ function blank(): SettingsDoc {
   return {
     matchThreshold: 0.7,
     oauthConfigured: true,
+    autoApplyEnabled: true,
     emailConnection: {
       status: 'disconnected',
       provider: null,
@@ -23,6 +24,7 @@ function blank(): SettingsDoc {
 }
 
 let doc = blank()
+let audit: SettingsAuditItem[] = []
 const oauth = new Map<string, { redirectUri: string }>()
 let sourceExplicit = { greenhouse: false, lever: false }
 
@@ -35,6 +37,7 @@ function applySourceDefaults(next: SettingsDoc): SettingsDoc {
 
 export function resetMockSettings() {
   doc = blank()
+  audit = []
   oauth.clear()
   sourceExplicit = { greenhouse: false, lever: false }
 }
@@ -57,7 +60,30 @@ export const mockSettingsApi: SettingsApi = {
     return applySourceDefaults(structuredClone(doc))
   },
   async patch(body) {
-    if (body.matchThreshold != null) doc.matchThreshold = body.matchThreshold
+    if (body.autoApplyEnabled != null) {
+      audit.unshift({
+        id: crypto.randomUUID(),
+        entityType: 'user_settings',
+        entityId: 'local-user',
+        actorId: 'local-user',
+        fieldMask: ['auto_apply_enabled'],
+        detail: { auto_apply_enabled: { from: doc.autoApplyEnabled, to: body.autoApplyEnabled } },
+        createdAt: now(),
+      })
+      doc.autoApplyEnabled = body.autoApplyEnabled
+    }
+    if (body.matchThreshold != null) {
+      audit.unshift({
+        id: crypto.randomUUID(),
+        entityType: 'user_settings',
+        entityId: 'local-user',
+        actorId: 'local-user',
+        fieldMask: ['match_threshold'],
+        detail: { match_threshold: { from: doc.matchThreshold, to: body.matchThreshold } },
+        createdAt: now(),
+      })
+      doc.matchThreshold = body.matchThreshold
+    }
     if (body.sources?.greenhouseEnabled != null) {
       if (body.sources.greenhouseEnabled && doc.sources.greenhouseConfigured === false) {
         throw Object.assign(new Error('Greenhouse is not configured. Add a board token before turning this source on, or Job Feed stays empty.'), {
@@ -78,6 +104,9 @@ export const mockSettingsApi: SettingsApi = {
     }
     doc.audit.updatedAt = now()
     return applySourceDefaults(structuredClone(doc))
+  },
+  async listAudit() {
+    return { items: structuredClone(audit) }
   },
   async connectEmail(redirectUri) {
     if (doc.emailConnection.status === 'connected') {
@@ -111,7 +140,7 @@ export const mockSettingsApi: SettingsApi = {
       provider: 'microsoft',
       tenantId: 'mock-tenant',
       accountId: 'jane@contoso.com',
-      scopes: ['offline_access', 'Mail.Read'],
+      scopes: ['offline_access', 'Mail.Read', 'Mail.Send'],
       lastVerifiedAt: now(),
       errorCode: null,
     }

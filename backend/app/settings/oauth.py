@@ -12,7 +12,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Protocol
 
-REQUIRED_SCOPES = ["offline_access", "Mail.Read"]
+REQUIRED_SCOPES = ["offline_access", "Mail.Read", "Mail.Send"]
+# Least privilege for ingest + in-app reply. Do not add directory or mailbox-admin scopes.
 
 
 class GraphError(Exception):

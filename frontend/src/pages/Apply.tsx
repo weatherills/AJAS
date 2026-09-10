@@ -131,7 +131,44 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
                   Provider id <code>{detail.source.external_application_id}</code>
                 </p>
               )}
-              {detail.failure_reason && <p className="inline-error">{detail.failure_reason}</p>}
+                  {detail.failure_reason && <p className="inline-error">{detail.failure_reason}</p>}
+                  {detail.manual_fallback && (
+                    <section className="apply-manual">
+                      <h3>{detail.captcha ? 'Captcha / SSO — finish in the browser' : 'Manual package'}</h3>
+                      <p>{detail.manual_next_steps}</p>
+                      {detail.artifacts.deep_link_url && (
+                        <p>
+                          <button
+                            type="button"
+                            className="secondary"
+                            onClick={() => {
+                              void navigator.clipboard?.writeText(detail.artifacts.deep_link_url || '')
+                              toast('Posting URL copied')
+                            }}
+                          >
+                            Copy posting URL
+                          </button>
+                        </p>
+                      )}
+                      {detail.cover_letter_text && (
+                        <p>
+                          <button
+                            type="button"
+                            className="secondary"
+                            onClick={() => {
+                              void navigator.clipboard?.writeText(detail.cover_letter_text || '')
+                              toast('Cover letter copied')
+                            }}
+                          >
+                            Copy cover letter
+                          </button>
+                        </p>
+                      )}
+                    </section>
+                  )}
+                  {typeof detail.retry_count === 'number' && detail.retry_count > 0 && (
+                    <p className="muted">Retries so far: {detail.retry_count} (exponential backoff on 429/5xx)</p>
+                  )}
               <section>
                 <h3>Artifacts</h3>
                 {detail.artifacts.package_blob_sas && (

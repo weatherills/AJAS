@@ -74,11 +74,17 @@ export function LearningPanel({ compact = false }: { compact?: boolean }) {
           <li>
             <a href={historyHref}>
               <strong>{percent(metrics.precision_proxy)}</strong>
-              <span className="muted">Approve rate ({period})</span>
+              <span className="muted" title="Share of Review decisions that were approvals in this window.">Approve rate ({period})</span>
               {metrics.approveRateDeltaPct != null && (
                 <span className="muted">
                   {metrics.approveRateDeltaPct >= 0 ? '+' : ''}
                   {metrics.approveRateDeltaPct}% vs prior {period}
+                </span>
+              )}
+              {metrics.liftVsBaseline != null && (
+                <span className="muted" title="Approve rate minus a 50% coin-flip baseline. Positive means ranking is beating chance.">
+                  {metrics.liftVsBaseline >= 0 ? '+' : ''}
+                  {metrics.liftVsBaseline} pts vs 50% baseline
                 </span>
               )}
             </a>
@@ -106,6 +112,58 @@ export function LearningPanel({ compact = false }: { compact?: boolean }) {
         <p className="muted">Adjusted from your last {Math.min(params.sample_size, 30)} decisions.</p>
       )}
       <p className="muted">{STRICTNESS_HELP[strictness]}</p>
+    </section>
+  )
+}
+
+function LearningBackfill() {
+  const [raw, setRaw] = useState('[]')
+  const [result, setResult] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function run(kind: 'validate' | 'backfill') {
+    setBusy(true)
+    setError(null)
+    try {
+      const parsed = JSON.parse(raw)
+      const events = Array.isArray(parsed) ? parsed : parsed.events
+      if (!Array.isArray(events)) throw new Error('JSON must be an array or { events: [] }')
+      if (kind === 'validate') {
+        const body = await learningApi.validatePipeline(events)
+        setResult(`Validated ${body.accepted} accepted, ${body.rejected} rejected`)
+      } else {
+        const body = await learningApi.backfill(events)
+        setResult(`Backfilled ${body.applied} events`)
+      }
+    } catch (err) {
+      setResult(null)
+      setError(err instanceof Error ? err.message : 'Could not run pipeline')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="editor-section" aria-labelledby="learning-backfill-heading">
+      <h2 id="learning-backfill-heading">Pipeline backfill</h2>
+      <p className="muted">Paste decision events as JSON, validate the shape, then apply them to this user.</p>
+      <textarea
+        aria-label="Learning pipeline events JSON"
+        value={raw}
+        onChange={(event) => setRaw(event.target.value)}
+        rows={6}
+      />
+      <div className="review-action-row">
+        <button type="button" className="secondary" disabled={busy} onClick={() => void run('validate')}>
+          Validate
+        </button>
+        <button type="button" className="primary" disabled={busy} onClick={() => void run('backfill')}>
+          Backfill
+        </button>
+      </div>
+      {error && <p className="inline-error">{error}</p>}
+      {result && <p className="muted">{result}</p>}
     </section>
   )
 }
@@ -140,6 +198,7 @@ export function LearningPage() {
       </header>
       {USE_MOCK && <p className="banner">Demo data (mock API).</p>}
       <LearningPanel />
+      <LearningBackfill />
       <section className="learning-recent" aria-labelledby="learning-recent-heading">
         <h2 id="learning-recent-heading">Recent decisions</h2>
         {recentError && <p className="inline-error">{recentError}</p>}
