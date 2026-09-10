@@ -38,6 +38,18 @@ from app.job_sources.urls import (
 )
 
 RETRYABLE_STATUS = {429, 503, 504}
+
+
+def _resume_rank_text(resume: Any) -> str:
+    parts: list[str] = []
+    contact = getattr(resume, "contact", None)
+    if contact:
+        parts.extend([p for p in (contact.full_name, contact.email) if p])
+    parts.extend(skill.name for skill in getattr(resume, "skills", []) or [] if getattr(skill, "name", None))
+    for exp in getattr(resume, "experiences", []) or []:
+        parts.extend([p for p in (exp.title, exp.company, exp.description) if p])
+    haystack = " ".join(parts)
+    return haystack or (getattr(resume, "text_preview", None) or "")
 MAX_PAGES = 100
 MAX_GET_RETRIES_TRANSIENT = 5
 MAX_GET_RETRIES_NETWORK = 3
@@ -581,8 +593,63 @@ class CrawlService:
                 summary = f"{run.error_summary}; {extra}"
             elif run.error_summary:
                 summary = run.error_summary
-            return self.store.finish_run(run.id, status="succeeded", error_summary=summary)
+            finished = self.store.finish_run(run.id, status="succeeded", error_summary=summary)
+            self._rank_ingested_jobs(finished)
+            return finished
         return run
+
+    def _rank_ingested_jobs(self, run: SourceFetchRun) -> None:
+        """Score newly crawled postings into Review so the queue is not empty until Rank."""
+        try:
+            tenant = self.store.get_tenant(run.source_tenant_id)
+        except JobSourceNotFoundError:
+            return
+        if (tenant.config or {}).get("demo_seed"):
+            return
+        raws = {item.id: item for item in self.store.list_raw(tenant.id, current_only=True)}
+        if not raws:
+            return
+        linked = {link.canonical_id for link in self.store.list_links() if link.raw_id in raws}
+        cards = [card for card in feed_cards(self.store) if card["id"] in linked]
+        if not cards:
+            return
+        try:
+            from app.matching.runtime import get_service as get_matching
+            from app.matching.runtime import try_get_service as try_matching
+            from app.resumes.demo import DEMO_RESUME_ID, DEMO_USER
+            from app.resumes.runtime import get_service as get_resume
+            from app.resumes.runtime import try_get_service as try_resume
+        except Exception:
+            return
+        matching = try_matching() or get_matching()
+        resumes = try_resume() or get_resume()
+        try:
+            resume = resumes.get(DEMO_USER, DEMO_RESUME_ID)
+        except Exception:
+            return
+        resume_text = _resume_rank_text(resume)
+        if not resume_text.strip():
+            return
+        cfg = get_app_settings()
+        job_ids = [card["id"] for card in cards][: cfg.match_max_rank_pairs]
+        job_texts = [
+            (card.get("description") or card.get("snippet") or card.get("title") or "").strip() or card["id"]
+            for card in cards
+        ][: cfg.match_max_rank_pairs]
+        try:
+            matching.rank(
+                DEMO_USER,
+                {
+                    "resumeId": resume.id,
+                    "resumeText": resume_text,
+                    "jobIds": job_ids,
+                    "jobTexts": job_texts,
+                },
+            )
+            if hasattr(matching, "drain"):
+                matching.drain()
+        except Exception:
+            return
 
     def _resolve_tenants(self, source_id: str) -> list[SourceTenant]:
         if source_id in {"greenhouse", "lever"}:
