@@ -27,6 +27,9 @@ import {
   persistFeedSourceChip,
   refreshToastForStatuses,
   saveFilters,
+  boardErrorCopy,
+  feedErrorLines,
+  sourceBoardErrors,
   sourceErrorCopy,
   sourceIsConfiguredStatus,
   sourceTitle,
@@ -467,7 +470,7 @@ export function JobFeedPage() {
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const lever = statuses.find((item) => item.source === 'lever')
   const greenhouse = statuses.find((item) => item.source === 'greenhouse')
-  const sourceErrors = statuses.filter((item) => item.status === 'error')
+  const boardErrorLines = feedErrorLines(statuses)
   const sourceUnconfigured = statuses.filter((item) => !sourceIsConfiguredStatus(item))
   const sourcesOff = filters.sources.length === 0 && statuses.some((item) => sourceIsConfiguredStatus(item))
 
@@ -524,9 +527,10 @@ export function JobFeedPage() {
           {sourcesOffCopy()} <a href="#/settings">Open Settings</a>
         </p>
       )}
-      {sourceErrors.length > 0 && (
+      {boardErrorLines.length > 0 && (
         <p className="unsaved-banner" role="alert">
-          {sourceErrors.map((item) => sourceErrorCopy(item) || `${sourceTitle(item.source)} fetch failed.`).join(' ')}
+          {boardErrorLines.map((item) => item.message).join(' ')}{' '}
+          <a href="#/settings">Open Settings</a>
         </p>
       )}
 
@@ -536,17 +540,38 @@ export function JobFeedPage() {
           const left = backoffRemainingMs(row?.backoffUntil ?? null, now)
           const blocked = sourceBlocked(row)
           const label = row ? statusLabel(row, now) : 'Idle'
+          const boardErrors = row ? sourceBoardErrors(row) : []
+          const boards = row?.boards || []
           return (
             <div key={name} className={`feed-source feed-source-${row?.status || 'ok'}`}>
               <div>
                 <strong>{sourceTitle(name)}</strong>
                 <p className="muted">{label}</p>
                 <p className="muted">Last sync {formatWhen(row?.lastSyncAt ?? null)}</p>
-                {row?.status === 'error' && (
+                {row && boardErrors.length === 0 && row.status === 'error' && (
                   <p className="inline-error" role="alert">
                     {sourceErrorCopy(row) || `${sourceTitle(name)} fetch failed.`}{' '}
-                    <a href="#/settings">Remove the board in Settings</a>
+                    <a href="#/settings">Open Settings</a>
                   </p>
+                )}
+                {row && (boardErrors.length > 0 || boards.length > 1) && (
+                  <ul className="feed-source-boards">
+                    {boards.map((board) => {
+                      const err = boardErrorCopy(board, row, boards.length)
+                      return (
+                        <li key={board.tenantKey}>
+                          <code>{board.tenantKey}</code>
+                          {err ? (
+                            <p className="inline-error" role="alert">
+                              {err} <a href="#/settings">Fix in Settings</a>
+                            </p>
+                          ) : (
+                            <p className="muted">{board.status === 'syncing' ? 'Syncing…' : 'OK'}</p>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
                 )}
                 {row && !sourceIsConfiguredStatus(row) && (
                   <p className="muted" role="status">
@@ -690,14 +715,17 @@ export function JobFeedPage() {
           )}
           {!loading && items.length === 0 && (
             <div className="empty-state">
-              {sourceErrors.length > 0 ? (
+              {boardErrorLines.length > 0 ? (
                 <>
                   <p>Could not refresh job sources</p>
-                  {sourceErrors.map((item) => (
-                    <p key={item.source} className="muted">
-                      {sourceErrorCopy(item)}
+                  {boardErrorLines.map((item) => (
+                    <p key={item.key} className="muted">
+                      {item.message}
                     </p>
                   ))}
+                  <p className="muted">
+                    Retry a board or remove it in <a href="#/settings">Settings</a>.
+                  </p>
                 </>
               ) : sourcesOff ? (
                 <>
@@ -725,9 +753,11 @@ export function JobFeedPage() {
                   <p className="muted">Adjust filters or refresh Greenhouse and Lever.</p>
                 </>
               )}
-              {sourcesOff || sourceUnconfigured.length > 0 ? (
+              {sourcesOff || sourceUnconfigured.length > 0 || boardErrorLines.length > 0 ? (
                 <a className="primary" href="#/settings">
-                  {sourcesOff ? 'Open Settings' : 'Add a board'}
+                  {sourceUnconfigured.length > 0 && !sourcesOff && boardErrorLines.length === 0
+                    ? 'Add a board'
+                    : 'Open Settings'}
                 </a>
               ) : (
                 <button
@@ -857,7 +887,12 @@ export function JobFeedPage() {
                 Emails
               </button>
             </div>
-            <JobCrossLinks jobId={selected.id} resumeId={resumeId} current="jobs" />
+            <JobCrossLinks
+              jobId={selected.id}
+              matchId={matches[selected.id]?.matchId}
+              resumeId={resumeId}
+              current="jobs"
+            />
             {drawerTab === 'emails' && <JobEmailsTab jobId={selected.id} />}
             {drawerTab === 'details' && detailLoading && <p className="skeleton">Loading details…</p>}
             {drawerTab === 'details' && !detailLoading && detail && (

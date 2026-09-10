@@ -174,6 +174,17 @@ def test_create_run_computes_threshold_and_save_decision(store):
     assert below.decision_saved is False
     saved = store.list_runs(USER, saved_only=True)
     assert {item.id for item in saved} == {run.id}
+    forced = store.create_run(
+        USER,
+        resume_id="resume-1",
+        job_id="job-saved",
+        keyword_raw=0.2,
+        semantic_raw=0.2,
+        force_save=True,
+    )
+    assert forced.meets_threshold is False
+    assert forced.decision_saved is True
+    assert {item.id for item in store.list_runs(USER, saved_only=True)} == {run.id, forced.id}
 
 
 def test_threshold_override_and_save_all(store):

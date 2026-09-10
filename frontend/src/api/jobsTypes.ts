@@ -97,6 +97,7 @@ export type JobsApi = {
   get(id: string): Promise<JobDetail>
   sourceStatus(): Promise<SourceStatus[]>
   refresh(source: JobSourceName | 'all'): Promise<SourceStatus[]>
+  refreshTenant(source: JobSourceName, tenantKey: string): Promise<SourceStatus[]>
   addTenant(source: JobSourceName, body: AddTenantBody): Promise<AddTenantResult>
   removeTenant(source: JobSourceName, tenantKey: string): Promise<AddTenantResult>
 }

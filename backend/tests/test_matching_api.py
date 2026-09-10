@@ -215,6 +215,34 @@ def test_high_score_persists_and_low_score_does_not(svc):
     assert [item["jobId"] for item in listed["items"]] == ["job-high"]
 
 
+def test_persist_true_saves_below_threshold(svc):
+    resp = routes.compute_match(
+        _req(
+            "POST",
+            "http://localhost/api/v1/matches/compute",
+            json_body={"resumeText": RESUME, "jobText": LOW_JOB, "jobId": "job-low", "persist": True},
+        )
+    )
+    assert resp.status_code == 200
+    body = _body(resp)
+    assert body["score"] < 70
+    assert body["persisted"] is True
+    assert body["matchId"]
+    listed = _body(routes.list_match_results(_req("GET", "http://localhost/api/v1/match-results")))
+    assert [item["jobId"] for item in listed["items"]] == ["job-low"]
+    again = routes.compute_match(
+        _req(
+            "POST",
+            "http://localhost/api/v1/matches/compute",
+            json_body={"resumeText": RESUME, "jobText": LOW_JOB, "jobId": "job-low", "persist": True},
+        )
+    )
+    assert again.status_code == 200
+    assert _body(again)["matchId"] == body["matchId"]
+    listed_again = _body(routes.list_match_results(_req("GET", "http://localhost/api/v1/match-results")))
+    assert [item["jobId"] for item in listed_again["items"]] == ["job-low"]
+
+
 def test_weights_keyword_semantic_0_4_0_6(monkeypatch, store, queue, clock):
     monkeypatch.setenv("AUTH_MODE", "dev")
     get_settings.cache_clear()
