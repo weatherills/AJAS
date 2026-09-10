@@ -457,3 +457,16 @@ def test_feed_lists_merged_jobs_and_status(svc, store):
     status = _body(routes.list_source_status(_req("GET", "http://localhost/api/v1/sources/status")))
     assert {row["source"] for row in status} == {"greenhouse", "lever"}
 
+
+def test_demo_seed_crawl_skips_http(svc, store, fetcher):
+    from app.job_sources.feed import seed_demo_feed
+
+    seed_demo_feed(store)
+    before = list(fetcher.calls)
+    listed = routes.start_crawl(_req("POST", "http://localhost/api/v1/sources/greenhouse/crawl", route={"id": "greenhouse"}))
+    assert listed.status_code == 202
+    assert fetcher.calls == before
+    status = _body(routes.list_source_status(_req("GET", "http://localhost/api/v1/sources/status")))
+    greenhouse = next(row for row in status if row["source"] == "greenhouse")
+    assert greenhouse["status"] != "error"
+
