@@ -114,6 +114,13 @@ def svc(monkeypatch, store, queue, blobs, fetcher, sleeps):
     set_service(service)
     yield service
     set_service(None)
+    from app.matching.runtime import set_service as set_matching
+    from app.resumes.runtime import set_service as set_resume
+    from app.review.runtime import set_service as set_review
+
+    set_matching(None)
+    set_resume(None)
+    set_review(None)
     get_settings.cache_clear()
 
 
