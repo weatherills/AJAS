@@ -79,7 +79,7 @@ export function isSourceNotConfiguredError(err: unknown): boolean {
 
 export function sourceUnconfiguredCopy(source: 'greenhouse' | 'lever'): string {
   const name = source === 'greenhouse' ? 'Greenhouse' : 'Lever'
-  return `No ${name} board is configured. Add a board token before turning this source on, or Job Feed stays empty.`
+  return `No ${name} board is configured. Add a board token or public board URL, then turn this source on.`
 }
 
 export const OAUTH_MESSAGE_TYPE = 'ajas-ms-oauth'

@@ -33,6 +33,7 @@ from app.job_sources.urls import (
     greenhouse_list_url,
     lever_detail_url,
     lever_list_url,
+    parse_board_input,
     with_query,
 )
 
@@ -118,6 +119,19 @@ def run_payload(run: SourceFetchRun, *, tenant_id: str | None = None) -> dict:
     }
 
 
+def tenant_payload(tenant: SourceTenant) -> dict:
+    return {
+        "id": tenant.id,
+        "sourceId": tenant.source_id,
+        "tenantKey": tenant.tenant_key,
+        "enabled": tenant.enabled,
+    }
+
+
+def _board_summaries(tenants: list[SourceTenant]) -> list[dict]:
+    return [{"tenantKey": item.tenant_key, "enabled": item.enabled} for item in tenants]
+
+
 class CrawlService:
     def __init__(
         self,
@@ -151,6 +165,62 @@ class CrawlService:
         if len(runs) == 1:
             body["runId"] = runs[0]["runId"]
         return body
+
+    def create_tenant(self, source_id: str, body: dict | None) -> dict:
+        if source_id not in {"greenhouse", "lever"}:
+            raise JobSourceNotFoundError(source_id)
+        payload = body or {}
+        if not isinstance(payload, dict):
+            raise JobSourceValidationError("JSON object required")
+        token = payload.get("boardToken") or payload.get("board_token") or payload.get("tenantKey") or payload.get(
+            "tenant_key"
+        )
+        url = (
+            payload.get("boardUrl")
+            or payload.get("board_url")
+            or payload.get("companyUrl")
+            or payload.get("company_url")
+        )
+        company = payload.get("company")
+        enabled = payload.get("enabled", True)
+        if enabled is None:
+            enabled = True
+        if not isinstance(enabled, bool):
+            raise JobSourceValidationError("enabled must be a boolean", path="enabled")
+        tenant_key = parse_board_input(
+            source_id,
+            token=token if isinstance(token, str) else None,
+            url=url if isinstance(url, str) else None,
+        )
+        config: dict[str, Any] = {"namespace": tenant_key}
+        if source_id == "greenhouse":
+            config["board_token"] = tenant_key
+        else:
+            config["site"] = tenant_key
+        if isinstance(company, str) and company.strip():
+            config["company"] = company.strip()
+        existing = next(
+            (item for item in self.store.list_tenants(source_id) if item.tenant_key == tenant_key),
+            None,
+        )
+        if existing is not None:
+            merged = dict(existing.config or {})
+            merged.update(config)
+            config = merged
+        tenant = self.store.upsert_tenant(source_id, tenant_key, config=config, enabled=enabled)
+        status_rows = self.source_status()
+        row = next((item for item in status_rows if item["source"] == source_id), None)
+        return {
+            **tenant_payload(tenant),
+            "status": row,
+            "sources": status_rows,
+        }
+
+    def list_source_tenants(self, source_id: str) -> dict:
+        if source_id not in {"greenhouse", "lever"}:
+            raise JobSourceNotFoundError(source_id)
+        tenants = self.store.list_tenants(source_id)
+        return {"sourceId": source_id, "items": [tenant_payload(item) for item in tenants]}
 
     def get_run(self, source_id: str, run_id: str) -> dict:
         run = self.store.get_run(run_id)
@@ -214,6 +284,7 @@ class CrawlService:
                         "progress": None,
                         "configured": False,
                         "tenantCount": 0,
+                        "boards": [],
                     }
                 )
                 continue
@@ -261,6 +332,7 @@ class CrawlService:
                     "progress": progress,
                     "configured": True,
                     "tenantCount": len(tenants),
+                    "boards": _board_summaries(tenants),
                 }
             )
         return rows

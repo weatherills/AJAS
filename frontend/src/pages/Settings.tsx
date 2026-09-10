@@ -26,7 +26,12 @@ import {
   sourceIsConfigured,
   sourceUnconfiguredCopy,
 } from '../lib/settings'
-import { sourceIsConfiguredStatus } from '../lib/jobs'
+import {
+  boardAddPayload,
+  boardInputHint,
+  sourceIsConfiguredStatus,
+  sourceTitle,
+} from '../lib/jobs'
 import { LearningPanel } from './Learning'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
@@ -59,6 +64,10 @@ export function SettingsPage() {
     value: boolean
   } | null>(null)
   const [sourceStatus, setSourceStatus] = useState<SourceStatus[]>([])
+  const [ghBoard, setGhBoard] = useState('')
+  const [leverBoard, setLeverBoard] = useState('')
+  const [ghAddStatus, setGhAddStatus] = useState<SaveStatus>('idle')
+  const [leverAddStatus, setLeverAddStatus] = useState<SaveStatus>('idle')
   const [connecting, setConnecting] = useState(false)
   const [popupBlocked, setPopupBlocked] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
@@ -200,6 +209,43 @@ export function SettingsPage() {
       }
       setSourceError('Couldn’t save source toggle. Try again.')
       setSourceRetry({ key, value })
+    }
+  }
+
+  async function addBoard(name: JobSourceName) {
+    if (!doc) return
+    const value = (name === 'greenhouse' ? ghBoard : leverBoard).trim()
+    const enabledKey = name === 'greenhouse' ? 'greenhouseEnabled' : 'leverEnabled'
+    const setAddStatus = name === 'greenhouse' ? setGhAddStatus : setLeverAddStatus
+    const setToggleStatus = name === 'greenhouse' ? setGhStatus : setLeverStatus
+    if (!value) {
+      setSourceError(sourceUnconfiguredCopy(name))
+      return
+    }
+    const alreadyOn = Boolean(doc.sources[enabledKey]) && sourceConfigured(name)
+    setAddStatus('saving')
+    setSourceError(null)
+    setSourceRetry(null)
+    try {
+      const created = await jobsApi.addTenant(name, boardAddPayload(value))
+      const next = await settingsApi.patch({ sources: { [enabledKey]: true } })
+      applyDoc(next)
+      setSourceStatus(created.sources?.length ? created.sources : await jobsApi.sourceStatus())
+      if (alreadyOn) {
+        try {
+          setSourceStatus(await jobsApi.refresh(name))
+        } catch {
+          /* tenant is saved; refresh can retry from Job Feed */
+        }
+      }
+      if (name === 'greenhouse') setGhBoard('')
+      else setLeverBoard('')
+      setAddStatus('saved')
+      setToggleStatus('saved')
+      toast(`${sourceTitle(name)} board “${created.tenantKey}” added`)
+    } catch (err) {
+      setAddStatus('error')
+      setSourceError(err instanceof Error ? err.message : `Couldn’t add the ${sourceTitle(name)} board.`)
     }
   }
 
@@ -563,13 +609,17 @@ export function SettingsPage() {
 
       <section className="editor-section" aria-labelledby="sources-heading">
         <h2 id="sources-heading">Sources</h2>
-        <p className="muted">Turn ingestion on or off. Credentials are not entered here.</p>
+        <p className="muted">Turn Greenhouse and Lever on or off. Add a public board token or company URL when a source is not configured.</p>
         {(['greenhouse', 'lever'] as const).map((name) => {
           const enabledKey = name === 'greenhouse' ? 'greenhouseEnabled' : 'leverEnabled'
           const configured = sourceConfigured(name)
           const enabled = Boolean(doc?.sources[enabledKey]) && configured
           const status = name === 'greenhouse' ? ghStatus : leverStatus
+          const addStatus = name === 'greenhouse' ? ghAddStatus : leverAddStatus
+          const boardValue = name === 'greenhouse' ? ghBoard : leverBoard
+          const setBoard = name === 'greenhouse' ? setGhBoard : setLeverBoard
           const label = name === 'greenhouse' ? 'Greenhouse' : 'Lever'
+          const boards = sourceStatus.find((item) => item.source === name)?.boards || []
           return (
             <div key={name}>
               <div className={`source-row ${configured ? '' : 'is-unconfigured'}`}>
@@ -592,18 +642,44 @@ export function SettingsPage() {
                   {status === 'saved' && 'Saved'}
                 </span>
               </div>
+              {boards.length > 0 && (
+                <p className="muted source-boards">
+                  Boards: {boards.map((item) => item.tenantKey).join(', ')}
+                </p>
+              )}
               {!configured && (
                 <div className="oauth-unconfigured source-unconfigured" role="status">
                   <p>
                     <span className="status-badge status-needs-review">Not configured</span>
                   </p>
                   <p>{sourceUnconfiguredCopy(name)}</p>
-                  <p className="muted">
-                    Turning this source on would not start a crawl. An operator needs to add a {label}{' '}
-                    board token first.
-                  </p>
                 </div>
               )}
+              <form
+                className="source-add-form"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void addBoard(name)
+                }}
+              >
+                <label>
+                  {label} board
+                  <input
+                    value={boardValue}
+                    onChange={(event) => setBoard(event.target.value)}
+                    placeholder={boardInputHint(name)}
+                    autoComplete="off"
+                    spellCheck={false}
+                    aria-label={`Add ${label} board`}
+                  />
+                </label>
+                <button type="submit" className="secondary" disabled={addStatus === 'saving' || !boardValue.trim()}>
+                  {addStatus === 'saving' ? 'Adding…' : configured ? 'Add board' : 'Add and enable'}
+                </button>
+                <span className="save-status" aria-live="polite">
+                  {addStatus === 'saved' && 'Saved'}
+                </span>
+              </form>
             </div>
           )
         })}

@@ -1,5 +1,6 @@
-import type { JobCard, JobListQuery, JobSourceName, JobsApi, SourceStatus } from './jobsTypes'
-import { canonicalKey, mergeJobs, matchesQuery, paginate, PAGE_SIZE, sourceDomain } from '../lib/jobs'
+import type { AddTenantResult, JobCard, JobListQuery, JobSourceName, JobsApi, SourceStatus } from './jobsTypes'
+import { boardAddPayload, canonicalKey, mergeJobs, matchesQuery, paginate, PAGE_SIZE, sourceDomain } from '../lib/jobs'
+import { markMockSourceConfigured } from './settingsMock'
 
 type RawJob = Omit<JobCard, 'isNew' | 'snippet'> & {
   description: string
@@ -99,6 +100,7 @@ let statuses: SourceStatus[] = [
     progress: null,
     configured: true,
     tenantCount: 1,
+    boards: [{ tenantKey: 'acme', enabled: true }],
   },
   {
     source: 'lever',
@@ -109,6 +111,7 @@ let statuses: SourceStatus[] = [
     progress: null,
     configured: true,
     tenantCount: 1,
+    boards: [{ tenantKey: 'acme', enabled: true }],
   },
 ]
 let extraAdded = false
@@ -126,6 +129,7 @@ export function resetMockJobs() {
       progress: null,
       configured: true,
       tenantCount: 1,
+      boards: [{ tenantKey: 'acme', enabled: true }],
     },
     {
       source: 'lever',
@@ -136,6 +140,7 @@ export function resetMockJobs() {
       progress: null,
       configured: true,
       tenantCount: 1,
+      boards: [{ tenantKey: 'acme', enabled: true }],
     },
   ]
 }
@@ -152,6 +157,7 @@ export function simulateUnconfigured(source: JobSourceName) {
           progress: null,
           configured: false,
           tenantCount: 0,
+          boards: [],
         }
       : item,
   )
@@ -265,5 +271,39 @@ export const mockJobsApi: JobsApi = {
       row.progress = null
     }
     return structuredClone(statuses)
+  },
+  async addTenant(source, body) {
+    const raw = (body.boardToken || body.boardUrl || '').trim()
+    if (!raw) throw Object.assign(new Error('board token or URL is required'), { code: 'VALIDATION_ERROR' })
+    const payload = boardAddPayload(raw)
+    const key = (payload.boardToken || payload.boardUrl || raw)
+      .replace(/^https:\/\/(boards\.greenhouse\.io|boards-api\.greenhouse\.io\/v1\/boards|jobs\.lever\.co|api\.lever\.co\/v0\/postings)\//i, '')
+      .split(/[/?#]/)[0]
+      .toLowerCase()
+    if (!key) throw Object.assign(new Error('board token or URL is required'), { code: 'VALIDATION_ERROR' })
+    statuses = currentStatuses()
+    const row = statuses.find((item) => item.source === source)
+    if (row) {
+      const boards = [...(row.boards || [])]
+      if (!boards.some((item) => item.tenantKey === key)) boards.push({ tenantKey: key, enabled: body.enabled !== false })
+      row.boards = boards
+      row.tenantCount = boards.length
+      row.configured = true
+      if (row.status === 'unconfigured') {
+        row.status = 'ok'
+        row.errorMessage = null
+      }
+    }
+    markMockSourceConfigured(source, true)
+    const sources = structuredClone(statuses)
+    const result: AddTenantResult = {
+      id: `tenant-${source}-${key}`,
+      sourceId: source,
+      tenantKey: key,
+      enabled: body.enabled !== false,
+      status: structuredClone(row || null),
+      sources,
+    }
+    return result
   },
 }

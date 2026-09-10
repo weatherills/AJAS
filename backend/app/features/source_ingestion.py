@@ -45,6 +45,18 @@ def _json_payload(msg: func.QueueMessage) -> dict:
     return json.loads(msg.get_body().decode("utf-8"))
 
 
+def _json_body(req: func.HttpRequest) -> dict:
+    try:
+        body = req.get_json()
+    except ValueError as exc:
+        raise JobSourceValidationError("JSON body required") from exc
+    if body is None:
+        return {}
+    if not isinstance(body, dict):
+        raise JobSourceValidationError("JSON object required")
+    return body
+
+
 @bp.route(route="v1/sources/{id}/crawl", methods=["POST"])
 def start_crawl(req: func.HttpRequest) -> func.HttpResponse:
     try:
@@ -53,6 +65,25 @@ def start_crawl(req: func.HttpRequest) -> func.HttpResponse:
         body = service.enqueue_crawl(req.route_params["id"])
         service.drain()
         return json_response(body, status_code=202)
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/sources/{id}/tenants", methods=["POST"])
+def create_source_tenant(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        _auth(req)
+        body = get_service().create_tenant(req.route_params["id"], _json_body(req))
+        return json_response(body, status_code=201)
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/sources/{id}/tenants", methods=["GET"])
+def list_source_tenants(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        _auth(req)
+        return json_response(get_service().list_source_tenants(req.route_params["id"]))
     except Exception as exc:
         return _handle(exc)
 

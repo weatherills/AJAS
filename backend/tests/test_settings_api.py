@@ -68,6 +68,7 @@ def _req(
     *,
     user: str | None = USER,
     json_body=None,
+    route=None,
 ) -> func.HttpRequest:
     headers = {}
     body = b""
@@ -76,7 +77,7 @@ def _req(
     if json_body is not None:
         headers["Content-Type"] = "application/json"
         body = json.dumps(json_body).encode()
-    return func.HttpRequest(method=method, url=url, headers=headers, params={}, route_params={}, body=body)
+    return func.HttpRequest(method=method, url=url, headers=headers, params={}, route_params=route or {}, body=body)
 
 
 def _body(resp: func.HttpResponse):
@@ -275,6 +276,56 @@ def test_enable_source_with_tenants_still_toggles(svc, queue):
         tenants = jobs.store.list_tenants("greenhouse")
         assert tenants and all(item.enabled for item in tenants)
         assert queue.of("source-discovery") == [{"userId": USER, "source": "greenhouse"}]
+    finally:
+        set_jobs(None)
+
+
+def test_add_tenant_then_enable_source(svc, queue):
+    from app.features import source_ingestion as jobs_routes
+    from app.job_sources.memory import InMemoryJobSourceStore
+    from app.job_sources.queues import InMemoryJobQueue as JobsQueue
+    from app.job_sources.runtime import set_service as set_jobs
+    from app.job_sources.service import CrawlService
+
+    jobs = CrawlService(store=InMemoryJobSourceStore(), queue=JobsQueue())
+    set_jobs(jobs)
+    try:
+        created = jobs_routes.create_source_tenant(
+            _req(
+                "POST",
+                "http://localhost/api/v1/sources/greenhouse/tenants",
+                json_body={"boardToken": "acme"},
+                route={"id": "greenhouse"},
+            )
+        )
+        assert created.status_code == 201
+        got = _body(routes.get_settings(_req("GET", "http://localhost/api/v1/settings")))
+        assert got["sources"]["greenhouseConfigured"] is True
+        assert got["sources"]["greenhouseEnabled"] is False
+        assert got["sources"]["leverConfigured"] is False
+        blocked = routes.patch_settings(
+            _req(
+                "PATCH",
+                "http://localhost/api/v1/settings",
+                json_body={"sources": {"leverEnabled": True}},
+            )
+        )
+        assert blocked.status_code == 400
+        assert _body(blocked)["error"]["code"] == "SOURCE_NOT_CONFIGURED"
+        on = routes.patch_settings(
+            _req(
+                "PATCH",
+                "http://localhost/api/v1/settings",
+                json_body={"sources": {"greenhouseEnabled": True}},
+            )
+        )
+        assert on.status_code == 200
+        body = _body(on)
+        assert body["sources"]["greenhouseEnabled"] is True
+        assert body["sources"]["greenhouseConfigured"] is True
+        tenants = jobs.store.list_tenants("greenhouse")
+        assert tenants and all(item.enabled for item in tenants)
+        assert all(item.tenant_key == "acme" for item in tenants)
     finally:
         set_jobs(None)
 

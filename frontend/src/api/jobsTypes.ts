@@ -29,6 +29,11 @@ export type JobDetail = JobCard & {
   descriptionError?: string | null
 }
 
+export type SourceBoard = {
+  tenantKey: string
+  enabled: boolean
+}
+
 export type SourceStatus = {
   source: JobSourceName
   status: SourceSyncStatus
@@ -38,6 +43,7 @@ export type SourceStatus = {
   progress: string | null
   configured?: boolean
   tenantCount?: number
+  boards?: SourceBoard[]
 }
 
 export type JobStatusFilter = 'all' | 'new'
@@ -66,9 +72,26 @@ export type JobFilters = {
   pagination: 'infinite' | 'pages'
 }
 
+export type AddTenantBody = {
+  boardToken?: string
+  boardUrl?: string
+  company?: string
+  enabled?: boolean
+}
+
+export type AddTenantResult = {
+  id: string
+  sourceId: JobSourceName
+  tenantKey: string
+  enabled: boolean
+  status: SourceStatus | null
+  sources: SourceStatus[]
+}
+
 export type JobsApi = {
   list(query: JobListQuery): Promise<JobListPage>
   get(id: string): Promise<JobDetail>
   sourceStatus(): Promise<SourceStatus[]>
   refresh(source: JobSourceName | 'all'): Promise<SourceStatus[]>
+  addTenant(source: JobSourceName, body: AddTenantBody): Promise<AddTenantResult>
 }

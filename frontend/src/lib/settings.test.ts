@@ -76,6 +76,7 @@ describe('settings mapping', () => {
     expect(isSourceNotConfiguredError(new Error('Couldn’t save source toggle. Try again.'))).toBe(false)
     expect(sourceUnconfiguredCopy('greenhouse')).toMatch(/board token/i)
     expect(sourceUnconfiguredCopy('lever')).toMatch(/Lever/)
+    expect(sourceUnconfiguredCopy('greenhouse')).toMatch(/turn this source on/i)
   })
 
   it('shows fewer-matches copy near 100', () => {

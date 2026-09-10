@@ -3,6 +3,8 @@ import { mockJobsApi, resetMockJobs, simulateLeverRateLimit, simulateSourceError
 import {
   alsoFromLabel,
   backoffRemainingMs,
+  boardAddPayload,
+  boardInputHint,
   canonicalKey,
   defaultFilters,
   formatCountdown,
@@ -14,6 +16,7 @@ import {
   sourceErrorCopy,
   sourceIsConfiguredStatus,
   sourceUnconfiguredCopy,
+  sourcesOffCopy,
   statusLabel,
 } from './jobs'
 import type { JobCard } from '../api/jobsTypes'
@@ -145,5 +148,22 @@ describe('mock jobs api', () => {
     expect(toast.tone).toBe('error')
     expect(toast.text).toMatch(/not configured/i)
     expect(toast.live).toBe('Source not configured')
+  })
+
+  it('adds a board token and flips an unconfigured source on', async () => {
+    resetMockJobs()
+    simulateUnconfigured('greenhouse')
+    const created = await mockJobsApi.addTenant('greenhouse', { boardToken: 'stripe' })
+    expect(created.tenantKey).toBe('stripe')
+    expect(created.status?.configured).toBe(true)
+    expect(created.status?.status).not.toBe('unconfigured')
+    const after = await mockJobsApi.sourceStatus()
+    const greenhouse = after.find((item) => item.source === 'greenhouse')
+    expect(sourceIsConfiguredStatus(greenhouse)).toBe(true)
+    expect(greenhouse?.boards?.some((item) => item.tenantKey === 'stripe')).toBe(true)
+    expect(boardAddPayload('https://jobs.lever.co/openai')).toEqual({ boardUrl: 'https://jobs.lever.co/openai' })
+    expect(boardAddPayload('acme')).toEqual({ boardToken: 'acme' })
+    expect(boardInputHint('greenhouse')).toMatch(/boards.greenhouse.io/i)
+    expect(sourcesOffCopy()).toMatch(/turned off in Settings/i)
   })
 })

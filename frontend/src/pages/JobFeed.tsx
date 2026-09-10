@@ -28,6 +28,7 @@ import {
   sourceIsConfiguredStatus,
   sourceTitle,
   sourceUnconfiguredCopy as feedSourceUnconfiguredCopy,
+  sourcesOffCopy,
   statusLabel,
   takeLastVisit,
 } from '../lib/jobs'
@@ -437,6 +438,7 @@ export function JobFeedPage() {
   const greenhouse = statuses.find((item) => item.source === 'greenhouse')
   const sourceErrors = statuses.filter((item) => item.status === 'error')
   const sourceUnconfigured = statuses.filter((item) => !sourceIsConfiguredStatus(item))
+  const sourcesOff = filters.sources.length === 0 && statuses.some((item) => sourceIsConfiguredStatus(item))
 
   function sourceBlocked(row: SourceStatus | undefined) {
     return (
@@ -480,7 +482,13 @@ export function JobFeedPage() {
       {offline && <p className="unsaved-banner">Offline — cached jobs only. Refresh is disabled until you reconnect.</p>}
       {sourceUnconfigured.length > 0 && (
         <p className="banner" role="status">
-          {sourceUnconfigured.map((item) => feedSourceUnconfiguredCopy(item) || `${sourceTitle(item.source)} is not configured.`).join(' ')}
+          {sourceUnconfigured.map((item) => feedSourceUnconfiguredCopy(item) || `${sourceTitle(item.source)} is not configured.`).join(' ')}{' '}
+          <a href="#/settings">Add a board in Settings</a>
+        </p>
+      )}
+      {sourcesOff && (
+        <p className="banner" role="status">
+          {sourcesOffCopy()} <a href="#/settings">Open Settings</a>
         </p>
       )}
       {sourceErrors.length > 0 && (
@@ -508,7 +516,8 @@ export function JobFeedPage() {
                 )}
                 {row && !sourceIsConfiguredStatus(row) && (
                   <p className="muted" role="status">
-                    {feedSourceUnconfiguredCopy(row)}
+                    {feedSourceUnconfiguredCopy(row)}{' '}
+                    <a href="#/settings">Add a board</a>
                   </p>
                 )}
               </div>
@@ -651,6 +660,14 @@ export function JobFeedPage() {
                     </p>
                   ))}
                 </>
+              ) : sourcesOff ? (
+                <>
+                  <p>Sources are off in Settings</p>
+                  <p className="muted">{sourcesOffCopy()}</p>
+                  <p className="muted">
+                    Turn Greenhouse or Lever on in <a href="#/settings">Settings</a> to see jobs from those boards.
+                  </p>
+                </>
               ) : sourceUnconfigured.length > 0 ? (
                 <>
                   <p>Job sources are not configured</p>
@@ -660,7 +677,7 @@ export function JobFeedPage() {
                     </p>
                   ))}
                   <p className="muted">
-                    Add a board token, then enable the source in <a href="#/settings">Settings</a>.
+                    Add a Greenhouse board token or Lever company URL in <a href="#/settings">Settings</a>, then enable the source.
                   </p>
                 </>
               ) : (
@@ -669,14 +686,20 @@ export function JobFeedPage() {
                   <p className="muted">Adjust filters or refresh Greenhouse and Lever.</p>
                 </>
               )}
-              <button
-                type="button"
-                className="primary"
-                disabled={offline || (sourceBlocked(greenhouse) && sourceBlocked(lever))}
-                onClick={() => void refresh('all')}
-              >
-                Retry refresh
-              </button>
+              {sourcesOff || sourceUnconfigured.length > 0 ? (
+                <a className="primary" href="#/settings">
+                  {sourcesOff ? 'Open Settings' : 'Add a board'}
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={offline || (sourceBlocked(greenhouse) && sourceBlocked(lever))}
+                  onClick={() => void refresh('all')}
+                >
+                  Retry refresh
+                </button>
+              )}
             </div>
           )}
           {items.length > 0 && (

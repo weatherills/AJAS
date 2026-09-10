@@ -195,3 +195,20 @@ export function alsoFromLabel(sources: JobSourceRef[], primary: JobSourceName): 
 export function sourceTitle(source: JobSourceName): string {
   return source === 'greenhouse' ? 'Greenhouse' : 'Lever'
 }
+
+export function boardInputHint(source: JobSourceName): string {
+  return source === 'greenhouse'
+    ? 'Board token or https://boards.greenhouse.io/… URL'
+    : 'Company slug or https://jobs.lever.co/… URL'
+}
+
+export function boardAddPayload(raw: string): { boardToken?: string; boardUrl?: string } {
+  const value = raw.trim()
+  if (!value) return {}
+  if (/^https?:\/\//i.test(value)) return { boardUrl: value }
+  return { boardToken: value }
+}
+
+export function sourcesOffCopy(): string {
+  return 'Job sources are turned off in Settings, so the feed is empty even if boards are configured.'
+}

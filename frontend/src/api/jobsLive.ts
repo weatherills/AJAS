@@ -1,5 +1,5 @@
 import { json, request } from './live'
-import type { JobDetail, JobListPage, JobListQuery, JobSourceName, JobsApi, SourceStatus } from './jobsTypes'
+import type { AddTenantBody, AddTenantResult, JobDetail, JobListPage, JobListQuery, JobSourceName, JobsApi, SourceStatus } from './jobsTypes'
 
 function queryString(query: JobListQuery): string {
   const params = new URLSearchParams()
@@ -34,5 +34,14 @@ export const liveJobsApi: JobsApi = {
       await json(resp)
     }
     return json<SourceStatus[]>(await request('/api/v1/sources/status'))
+  },
+  async addTenant(source: JobSourceName, body: AddTenantBody) {
+    return json<AddTenantResult>(
+      await request(`/api/v1/sources/${source}/tenants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    )
   },
 }

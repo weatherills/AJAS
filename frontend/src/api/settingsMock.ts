@@ -30,6 +30,15 @@ export function resetMockSettings() {
   oauth.clear()
 }
 
+export function markMockSourceConfigured(source: 'greenhouse' | 'lever', configured = true) {
+  if (source === 'greenhouse') doc.sources.greenhouseConfigured = configured
+  else doc.sources.leverConfigured = configured
+  if (!configured) {
+    if (source === 'greenhouse') doc.sources.greenhouseEnabled = false
+    else doc.sources.leverEnabled = false
+  }
+}
+
 export const mockSettingsApi: SettingsApi = {
   async get() {
     return structuredClone(doc)
