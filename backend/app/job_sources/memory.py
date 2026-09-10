@@ -115,6 +115,21 @@ class InMemoryJobSourceStore:
             rows = [item for item in rows if item.source_id == source_id]
         return [deepcopy(item) for item in rows]
 
+    def delete_tenant(self, tenant_id: str) -> SourceTenant:
+        tenant = self._tenants.get(tenant_id)
+        if tenant is None:
+            raise JobSourceNotFoundError(tenant_id)
+        for raw in list(self._raw.values()):
+            if raw.source_tenant_id == tenant_id and raw.is_current:
+                try:
+                    self.close_posting(tenant_id, raw.source_posting_id)
+                except JobSourceNotFoundError:
+                    continue
+        self._tenants.pop(tenant_id, None)
+        self._schedules.pop(tenant_id, None)
+        self._limits.pop(tenant_id, None)
+        return deepcopy(tenant)
+
     def start_run(self, tenant_id: str, *, status: str = "running") -> SourceFetchRun:
         self.get_tenant(tenant_id)
         if status not in RUN_STATUSES:

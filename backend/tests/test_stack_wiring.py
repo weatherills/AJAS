@@ -104,6 +104,52 @@ def test_persisted_score_creates_review_row(wiring):
     )
     assert again.status_code == 200
     assert len(wiring["review"].list_matches(USER)) == 1
+    assert wiring["review"].list_matches(USER)[0].source == "ai"
+
+
+def test_save_match_below_threshold_lands_on_review_saved(wiring):
+    low_job = "Title: Baker\nCompany: Cakes\nSkills: frosting pastry whisk\nBake cakes daily with fondant"
+    resp = matching_routes.compute_match(
+        _req(
+            "POST",
+            "http://localhost/api/v1/matches/compute",
+            json_body={
+                "resumeId": "resume-1",
+                "resumeText": RESUME,
+                "jobId": "job-baker",
+                "jobText": low_job,
+                "persist": True,
+            },
+        )
+    )
+    assert resp.status_code == 200
+    body = _body(resp)
+    assert body["persisted"] is True
+    assert body["score"] < 70
+    rows = wiring["review"].list_matches(USER)
+    assert len(rows) == 1
+    assert rows[0].job_id == "job-baker"
+    assert rows[0].source == "saved"
+    assert rows[0].status == "PENDING"
+    assert rows[0].ai_score == body["score"]
+    again = matching_routes.compute_match(
+        _req(
+            "POST",
+            "http://localhost/api/v1/matches/compute",
+            json_body={
+                "resumeId": "resume-1",
+                "resumeText": RESUME,
+                "jobId": "job-baker",
+                "jobText": low_job,
+                "persist": True,
+            },
+        )
+    )
+    assert again.status_code == 200
+    updated = wiring["review"].list_matches(USER)
+    assert len(updated) == 1
+    assert updated[0].source == "saved"
+    assert updated[0].ai_score == _body(again)["score"]
 
 
 def test_settings_threshold_updates_matching_prefs(wiring):

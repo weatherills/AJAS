@@ -1,9 +1,10 @@
 import { json, request } from './live'
 import type { AddTenantBody, AddTenantResult, JobDetail, JobListPage, JobListQuery, JobSourceName, JobsApi, SourceStatus } from './jobsTypes'
+import { feedSourcesQueryParam } from '../lib/jobs'
 
 function queryString(query: JobListQuery): string {
   const params = new URLSearchParams()
-  params.set('sources', query.sources.join(',') || 'none')
+  params.set('sources', feedSourcesQueryParam(query.sources))
   if (query.q) params.set('q', query.q)
   if (query.location) params.set('location', query.location)
   if (query.status) params.set('status', query.status)
@@ -35,12 +36,27 @@ export const liveJobsApi: JobsApi = {
     }
     return json<SourceStatus[]>(await request('/api/v1/sources/status'))
   },
+  async refreshTenant(source: JobSourceName, tenantKey: string) {
+    await json(
+      await request(`/api/v1/sources/${source}/tenants/${encodeURIComponent(tenantKey)}/crawl`, {
+        method: 'POST',
+      }),
+    )
+    return json<SourceStatus[]>(await request('/api/v1/sources/status'))
+  },
   async addTenant(source: JobSourceName, body: AddTenantBody) {
     return json<AddTenantResult>(
       await request(`/api/v1/sources/${source}/tenants`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+      }),
+    )
+  },
+  async removeTenant(source: JobSourceName, tenantKey: string) {
+    return json<AddTenantResult>(
+      await request(`/api/v1/sources/${source}/tenants/${encodeURIComponent(tenantKey)}`, {
+        method: 'DELETE',
       }),
     )
   },

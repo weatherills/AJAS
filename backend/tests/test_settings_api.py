@@ -54,11 +54,16 @@ def svc(monkeypatch, queue, exchanger):
     monkeypatch.setenv("MICROSOFT_CLIENT_ID", "client-1")
     monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "secret-1")
     monkeypatch.setenv("AUTH_MODE", "dev")
+    monkeypatch.delenv("COSMOS_CONNECTION_STRING", raising=False)
     get_settings.cache_clear()
+    from app.job_sources.runtime import set_service as set_jobs
+
+    set_jobs(None)
     service = SettingsService(store=InMemorySettingsStore(), queue=queue, exchanger=exchanger)
     set_service(service)
     yield service
     set_service(None)
+    set_jobs(None)
     get_settings.cache_clear()
 
 
@@ -301,8 +306,9 @@ def test_add_tenant_then_enable_source(svc, queue):
         assert created.status_code == 201
         got = _body(routes.get_settings(_req("GET", "http://localhost/api/v1/settings")))
         assert got["sources"]["greenhouseConfigured"] is True
-        assert got["sources"]["greenhouseEnabled"] is False
+        assert got["sources"]["greenhouseEnabled"] is True
         assert got["sources"]["leverConfigured"] is False
+        assert got["sources"]["leverEnabled"] is False
         blocked = routes.patch_settings(
             _req(
                 "PATCH",
@@ -326,6 +332,146 @@ def test_add_tenant_then_enable_source(svc, queue):
         tenants = jobs.store.list_tenants("greenhouse")
         assert tenants and all(item.enabled for item in tenants)
         assert all(item.tenant_key == "acme" for item in tenants)
+    finally:
+        set_jobs(None)
+
+
+def test_delete_last_tenant_reports_unconfigured_and_blocks_enable(svc, queue):
+    from app.features import source_ingestion as jobs_routes
+    from app.job_sources.memory import InMemoryJobSourceStore
+    from app.job_sources.queues import InMemoryJobQueue as JobsQueue
+    from app.job_sources.runtime import set_service as set_jobs
+    from app.job_sources.service import CrawlService
+
+    jobs = CrawlService(store=InMemoryJobSourceStore(), queue=JobsQueue())
+    set_jobs(jobs)
+    try:
+        created = jobs_routes.create_source_tenant(
+            _req(
+                "POST",
+                "http://localhost/api/v1/sources/greenhouse/tenants",
+                json_body={"boardToken": "acme"},
+                route={"id": "greenhouse"},
+            )
+        )
+        assert created.status_code == 201
+        removed = jobs_routes.delete_source_tenant(
+            _req(
+                "DELETE",
+                "http://localhost/api/v1/sources/greenhouse/tenants/acme",
+                route={"id": "greenhouse", "tenant_key": "acme"},
+            )
+        )
+        assert removed.status_code == 200
+        got = _body(routes.get_settings(_req("GET", "http://localhost/api/v1/settings")))
+        assert got["sources"]["greenhouseConfigured"] is False
+        assert got["sources"]["greenhouseEnabled"] is False
+        assert got["sources"]["leverConfigured"] is False
+        blocked = routes.patch_settings(
+            _req(
+                "PATCH",
+                "http://localhost/api/v1/settings",
+                json_body={"sources": {"greenhouseEnabled": True}},
+            )
+        )
+        assert blocked.status_code == 400
+        assert _body(blocked)["error"]["code"] == "SOURCE_NOT_CONFIGURED"
+        assert jobs.store.list_tenants("greenhouse") == []
+    finally:
+        set_jobs(None)
+
+
+def test_effective_source_enabled_defaults_on_until_explicit_off():
+    from app.settings.mapping import effective_source_enabled
+
+    assert effective_source_enabled(stored=False, explicit=False, configured=True) is True
+    assert effective_source_enabled(stored=False, explicit=True, configured=True) is False
+    assert effective_source_enabled(stored=True, explicit=True, configured=True) is True
+    assert effective_source_enabled(stored=True, explicit=True, configured=False) is False
+    assert effective_source_enabled(stored=False, explicit=False, configured=False) is False
+    assert effective_source_enabled(stored=False, explicit=False, configured=None) is False
+
+
+def test_sources_default_on_when_tenants_exist_until_explicit_off(svc):
+    from app.features import source_ingestion as jobs_routes
+    from app.job_sources.feed import seed_demo_feed
+    from app.job_sources.memory import InMemoryJobSourceStore
+    from app.job_sources.queues import InMemoryJobQueue as JobsQueue
+    from app.job_sources.runtime import set_service as set_jobs
+    from app.job_sources.service import CrawlService
+
+    jobs = CrawlService(store=InMemoryJobSourceStore(), queue=JobsQueue())
+    seed_demo_feed(jobs.store)
+    set_jobs(jobs)
+    try:
+        body = _body(routes.get_settings(_req("GET", "http://localhost/api/v1/settings")))
+        assert body["sources"]["greenhouseEnabled"] is True
+        assert body["sources"]["leverEnabled"] is True
+        assert body["sources"]["greenhouseConfigured"] is True
+        assert body["sources"]["leverConfigured"] is True
+        listed = _body(
+            jobs_routes.list_jobs(
+                func.HttpRequest(
+                    method="GET",
+                    url="http://localhost/api/v1/jobs?sources=greenhouse,lever",
+                    headers={"Authorization": f"Bearer {USER}"},
+                    params={"sources": "greenhouse,lever"},
+                    route_params={},
+                    body=b"",
+                )
+            )
+        )
+        assert listed["total"] >= 5
+        off = routes.patch_settings(
+            _req(
+                "PATCH",
+                "http://localhost/api/v1/settings",
+                json_body={"sources": {"greenhouseEnabled": False, "leverEnabled": False}},
+            )
+        )
+        assert off.status_code == 200
+        assert _body(off)["sources"]["greenhouseEnabled"] is False
+        assert _body(off)["sources"]["leverEnabled"] is False
+        again = _body(routes.get_settings(_req("GET", "http://localhost/api/v1/settings")))
+        assert again["sources"]["greenhouseEnabled"] is False
+        assert again["sources"]["leverEnabled"] is False
+        assert again["sources"]["greenhouseConfigured"] is True
+        empty = _body(
+            jobs_routes.list_jobs(
+                func.HttpRequest(
+                    method="GET",
+                    url="http://localhost/api/v1/jobs?sources=none",
+                    headers={"Authorization": f"Bearer {USER}"},
+                    params={"sources": "none"},
+                    route_params={},
+                    body=b"",
+                )
+            )
+        )
+        assert empty["total"] == 0
+        assert empty["items"] == []
+        blank = _body(
+            jobs_routes.list_jobs(
+                func.HttpRequest(
+                    method="GET",
+                    url="http://localhost/api/v1/jobs?sources=",
+                    headers={"Authorization": f"Bearer {USER}"},
+                    params={"sources": ""},
+                    route_params={},
+                    body=b"",
+                )
+            )
+        )
+        assert blank["total"] == 0
+        gh_only = routes.patch_settings(
+            _req(
+                "PATCH",
+                "http://localhost/api/v1/settings",
+                json_body={"sources": {"greenhouseEnabled": True}},
+            )
+        )
+        assert _body(gh_only)["sources"]["greenhouseEnabled"] is True
+        assert _body(gh_only)["sources"]["leverEnabled"] is False
     finally:
         set_jobs(None)
 
