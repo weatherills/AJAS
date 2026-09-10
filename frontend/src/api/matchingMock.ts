@@ -7,6 +7,7 @@ import {
   tokenize,
 } from '../lib/matching'
 import type { MatchingApi, MatchView } from './matchingTypes'
+import { mockLearningSnapshot } from './learningMock'
 
 function now() {
   return new Date().toISOString()
@@ -67,7 +68,8 @@ function scoreOne(
   const seeded = titleSignals(job.text)
   const keyword = Math.max(overlapKeyword, seeded.keyword)
   const semantic = Math.max(overlapSemantic, seeded.semantic)
-  const score = combineScore(keyword, semantic)
+  const weights = mockLearningSnapshot().weights
+  const score = combineScore(keyword, semantic, weights.keyword, weights.semantic)
   const terms = matchedTerms(resumeText, job.text, 8)
   const gaps = tokenize(job.text).filter((term) => !tokenize(resumeText).includes(term)).slice(0, 6)
   const outdated = /designer/i.test(job.text)
@@ -76,7 +78,7 @@ function scoreOne(
     resumeId,
     score,
     state: 'computed',
-    breakdown: { keyword, semantic, weights: { keyword: 0.4, semantic: 0.6 } },
+    breakdown: { keyword, semantic, weights: { keyword: weights.keyword, semantic: weights.semantic } },
     terms,
     explanation: explanationFor(score, terms, gaps),
     versions: outdated ? { ...CURRENT_VERSIONS, algorithm: 'weighted-legacy' } : CURRENT_VERSIONS,

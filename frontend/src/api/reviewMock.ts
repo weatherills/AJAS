@@ -1,5 +1,6 @@
 import type { ReviewDecision, ReviewMatch, ReviewApi } from './reviewTypes'
 import { applyFilters, COMMENT_MAX } from '../lib/review'
+import { recordMockDecision } from './learningMock'
 
 type Row = ReviewMatch & { decisions: ReviewDecision[] }
 
@@ -273,6 +274,7 @@ export const mockReviewApi: ReviewApi = {
     row.scoreAtDecision = row.score
     row.updatedAt = now
     row.etag = String(Number(row.etag || '1') + 1)
+    recordMockDecision(matchId, body.decision)
     return { decisionId: event.decisionId, matchStatus: row.status, version: event.version, occurredAt: now }
   },
   async reopen(matchId) {

@@ -1,7 +1,9 @@
 import type { LearningApi, LearningMetrics, LearningParams } from './learningTypes'
 
+const DEFAULT_WEIGHTS = { keyword: 0.4, semantic: 0.6 }
+
 const params: LearningParams = {
-  weights: { keyword: 0.4, semantic: 0.6 },
+  weights: { ...DEFAULT_WEIGHTS },
   score_threshold: 0.7,
   model_version: 'learning-v1',
   source: 'global',
@@ -10,6 +12,42 @@ const params: LearningParams = {
   strictness: 1,
   updated_at: new Date().toISOString(),
   sample_size: 12,
+}
+
+function roundWeight(value: number) {
+  return Math.round(value * 100) / 100
+}
+
+export function resetMockLearning() {
+  params.weights = { ...DEFAULT_WEIGHTS }
+  params.score_threshold = 0.7
+  params.source = 'global'
+  params.status = 'active'
+  params.tuningMode = 'auto'
+  params.strictness = 1
+  params.sample_size = 12
+  params.updated_at = new Date().toISOString()
+}
+
+export function mockLearningSnapshot() {
+  return {
+    weights: { ...params.weights },
+    score_threshold: params.score_threshold,
+    sample_size: params.sample_size,
+    source: params.source,
+  }
+}
+
+export function recordMockDecision(_matchId: string, decision: string) {
+  params.sample_size += 1
+  params.source = 'personalized'
+  params.updated_at = new Date().toISOString()
+  if (decision === 'approve') {
+    params.weights.keyword = roundWeight(Math.min(0.7, params.weights.keyword + 0.02))
+  } else if (decision === 'reject') {
+    params.weights.keyword = roundWeight(Math.max(0.2, params.weights.keyword - 0.02))
+  }
+  params.weights.semantic = roundWeight(1 - params.weights.keyword)
 }
 
 export const mockLearningApi: LearningApi = {

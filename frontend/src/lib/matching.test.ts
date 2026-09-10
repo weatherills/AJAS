@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { recordMockDecision, resetMockLearning } from '../api/learningMock'
 import { mockMatchingApi } from '../api/matchingMock'
 import {
   chipOverflow,
@@ -59,7 +60,33 @@ describe('matching display helpers', () => {
 })
 
 describe('mock matching api', () => {
+  it('uses learning weights after mock review decisions', async () => {
+    resetMockLearning()
+    const job = {
+      id: 'staff-learn',
+      text: 'Title: Staff Platform Engineer\nCompany: Acme\nSkills: python azure cosmos matching crawlers ingestion kubernetes',
+    }
+    const before = await mockMatchingApi.scoreOne({
+      resumeId: 'seed-ready',
+      resumeText: 'Staff Engineer Python Azure Cosmos APIs matching crawlers kubernetes',
+      threshold: 70,
+      job,
+    })
+    recordMockDecision('match-staff', 'approve')
+    recordMockDecision('match-staff', 'approve')
+    const after = await mockMatchingApi.scoreOne({
+      resumeId: 'seed-ready',
+      resumeText: 'Staff Engineer Python Azure Cosmos APIs matching crawlers kubernetes',
+      threshold: 70,
+      job: { ...job, id: 'staff-learn-after' },
+    })
+    expect(before.breakdown?.weights.keyword).toBe(0.4)
+    expect(after.breakdown?.weights.keyword).toBeGreaterThan(0.4)
+    resetMockLearning()
+  })
+
   it('scores engineer jobs higher than designer jobs', async () => {
+    resetMockLearning()
     const resume = 'Staff Engineer Python Azure Cosmos APIs matching crawlers'
     const rows = await mockMatchingApi.scoreMany({
       resumeId: 'seed-ready',

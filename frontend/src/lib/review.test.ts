@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { mockLearningSnapshot, resetMockLearning } from '../api/learningMock'
 import { mockReviewApi, resetReviewMock, setReviewFailNext } from '../api/reviewMock'
 import {
   applyFilters,
@@ -74,6 +75,23 @@ describe('mock review api', () => {
     const still = await mockReviewApi.get('match-staff', { decisionId: saved.decisionId })
     expect(still.decision?.comment).toBe('Ship it')
     expect(still.match.status).toBe('pending')
+  })
+
+  it('feeds mock decisions into the learning snapshot without auto-applying', async () => {
+    resetReviewMock()
+    resetMockLearning()
+    const before = mockLearningSnapshot()
+    const staff = (await mockReviewApi.list('matches', { ...DEFAULT_FILTERS, source: 'ai' })).items.find(
+      (item) => item.matchId === 'match-staff',
+    )
+    await mockReviewApi.decide('match-staff', { decision: 'approve', comment: 'fit' }, { etag: staff!.etag, idempotencyKey: 'learn-1' })
+    const after = mockLearningSnapshot()
+    expect(after.sample_size).toBe(before.sample_size + 1)
+    expect(after.source).toBe('personalized')
+    expect(after.weights.keyword).toBeGreaterThan(before.weights.keyword)
+    const detail = await mockReviewApi.get('match-staff')
+    expect(detail.match.status).toBe('approved')
+    expect(detail.match.applied).toBe(true)
   })
 
   it('keeps the comment when save fails', async () => {
