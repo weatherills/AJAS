@@ -34,9 +34,11 @@ export function loadFilters(): JobFilters {
     const raw = localStorage.getItem(FILTER_KEY)
     if (!raw) return defaultFilters()
     const parsed = JSON.parse(raw) as Partial<JobFilters>
-    const sources = (parsed.sources || []).filter((item): item is JobSourceName => item === 'greenhouse' || item === 'lever')
+    const sources = Array.isArray(parsed.sources)
+      ? parsed.sources.filter((item): item is JobSourceName => item === 'greenhouse' || item === 'lever')
+      : [...ALL_SOURCES]
     return {
-      sources: sources.length ? sources : [...ALL_SOURCES],
+      sources,
       q: typeof parsed.q === 'string' ? parsed.q : '',
       location: typeof parsed.location === 'string' ? parsed.location : '',
       status: parsed.status === 'new' ? 'new' : 'all',
@@ -119,7 +121,7 @@ export function mergeJobs(items: JobCard[]): JobCard[] {
 }
 
 export function matchesQuery(job: JobCard, query: JobListQuery): boolean {
-  if (query.sources.length && !job.sources.some((item) => query.sources.includes(item.source))) return false
+  if (!job.sources.some((item) => query.sources.includes(item.source))) return false
   const haystack = `${job.title} ${job.location} ${job.company}`.toLowerCase()
   if (query.q && !haystack.includes(query.q.trim().toLowerCase())) return false
   if (query.location && !job.location.toLowerCase().includes(query.location.trim().toLowerCase())) return false

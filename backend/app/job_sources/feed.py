@@ -141,19 +141,19 @@ def feed_cards(store: JobSourceStore) -> list[dict]:
 def filter_cards(
     cards: list[dict],
     *,
-    sources: list[str],
+    sources: list[str] | None,
     q: str,
     location: str,
     status: str,
     since: str | None,
 ) -> list[dict]:
-    wanted = set(sources or ["greenhouse", "lever"])
+    wanted = {"greenhouse", "lever"} if sources is None else set(sources)
     query = (q or "").strip().lower()
     loc = (location or "").strip().lower()
     out: list[dict] = []
     for card in cards:
         card_sources = {item["source"] for item in card["sources"]}
-        if wanted and not (card_sources & wanted):
+        if not (card_sources & wanted):
             continue
         if query:
             blob = f"{card['title']} {card['company']} {card['location']}".lower()

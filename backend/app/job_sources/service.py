@@ -112,7 +112,7 @@ class CrawlService:
     def list_feed(
         self,
         *,
-        sources: list[str],
+        sources: list[str] | None,
         q: str = "",
         location: str = "",
         status: str = "all",

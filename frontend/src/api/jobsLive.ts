@@ -3,7 +3,7 @@ import type { JobDetail, JobListPage, JobListQuery, JobSourceName, JobsApi, Sour
 
 function queryString(query: JobListQuery): string {
   const params = new URLSearchParams()
-  if (query.sources.length) params.set('sources', query.sources.join(','))
+  params.set('sources', query.sources.join(','))
   if (query.q) params.set('q', query.q)
   if (query.location) params.set('location', query.location)
   if (query.status) params.set('status', query.status)

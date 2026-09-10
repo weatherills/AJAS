@@ -60,7 +60,12 @@ def start_crawl(req: func.HttpRequest) -> func.HttpResponse:
 def list_jobs(req: func.HttpRequest) -> func.HttpResponse:
     try:
         _auth(req)
-        sources = [part.strip() for part in (req.params.get("sources") or "").split(",") if part.strip()]
+        raw_sources = req.params.get("sources")
+        sources = (
+            None
+            if raw_sources is None
+            else [part.strip() for part in raw_sources.split(",") if part.strip()]
+        )
         body = get_service().list_feed(
             sources=sources,
             q=req.params.get("q") or "",
