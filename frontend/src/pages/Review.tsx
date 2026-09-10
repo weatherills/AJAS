@@ -3,7 +3,10 @@ import { reviewApi, USE_MOCK } from '../api'
 import type { DecisionValue, ReviewDetail, ReviewFilters, ReviewMatch, ReviewTab } from '../api/reviewTypes'
 import { AppNav } from '../components/AppNav'
 import { ApplyModal } from '../components/ApplyModal'
+import { JobCrossLinks } from '../components/JobCrossLinks'
+import { JobEmailsTab } from '../components/JobEmailsTab'
 import { ToastStack } from '../components/Toast'
+import { hashHref, reviewHref, useHashSearch } from '../lib/routes'
 import {
   COMMENT_MAX,
   companiesFrom,
@@ -53,6 +56,8 @@ export function ReviewPage() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 1023px)').matches)
   const [applyOpen, setApplyOpen] = useState(false)
+  const [pane, setPane] = useState<'details' | 'emails'>('details')
+  const search = useHashSearch()
   const toastId = useRef(1)
   const commentRef = useRef<HTMLTextAreaElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -94,8 +99,9 @@ export function ReviewPage() {
     return () => media.removeEventListener('change', onChange)
   }, [])
 
-  const openRow = useCallback(async (matchId: string, decisionId?: string) => {
+  const openRow = useCallback(async (matchId: string, decisionId?: string, nextPane: 'details' | 'emails' = 'details') => {
     setSelectedId(matchId)
+    setPane(nextPane)
     setDetailLoading(true)
     setPaneError(null)
     try {
@@ -103,6 +109,8 @@ export function ReviewPage() {
       setDetail(next)
       setComment('')
       setCommentError(null)
+      const href = reviewHref({ matchId, pane: nextPane })
+      if (window.location.hash !== href) window.location.hash = href
     } catch (err) {
       setPaneError(err instanceof Error ? err.message : 'Could not load details')
       setDetail(null)
@@ -112,15 +120,36 @@ export function ReviewPage() {
   }, [])
 
   useEffect(() => {
+    if (loading) return
+    const matchId = search.get('match')
+    const jobId = search.get('job')
+    const nextPane = search.get('pane') === 'emails' ? 'emails' : 'details'
+    if (matchId) {
+      if (selectedId !== matchId || pane !== nextPane) {
+        const row = items.find((item) => item.matchId === matchId)
+        void openRow(matchId, historyMode ? row?.latestDecisionId || undefined : undefined, nextPane)
+      }
+      return
+    }
+    if (jobId) {
+      const found = items.find((item) => item.jobId === jobId)
+      if (found && (selectedId !== found.matchId || pane !== nextPane)) {
+        void openRow(found.matchId, historyMode ? found.latestDecisionId || undefined : undefined, nextPane)
+      }
+    }
+  }, [loading, items, search, selectedId, pane, openRow, historyMode])
+
+  useEffect(() => {
     if (!selectedId) {
       setDetail(null)
       return
     }
     if (!items.some((item) => item.matchId === selectedId)) {
+      if (search.get('match') === selectedId) return
       setSelectedId(null)
       setDetail(null)
     }
-  }, [items, selectedId])
+  }, [items, selectedId, search])
 
   const reopenMatch = useCallback(async (matchId: string) => {
     setSaving(true)
@@ -248,6 +277,9 @@ export function ReviewPage() {
           <a className="secondary" href="#/apply">
             Applications
           </a>
+          <a className="secondary" href="#/email">
+            Email
+          </a>
           <button type="button" className="secondary feed-filters-toggle" onClick={() => setFiltersOpen(true)}>
             Filters
           </button>
@@ -268,6 +300,7 @@ export function ReviewPage() {
               setTab(name)
               setSelectedId(null)
               setDetail(null)
+              if (window.location.hash !== '#/review') window.location.hash = '#/review'
               setFilters({
                 ...DEFAULT_FILTERS,
                 status: name === 'history' ? 'all' : 'awaiting',
@@ -489,12 +522,14 @@ export function ReviewPage() {
                 onClick={() => {
                   setSelectedId(null)
                   setDetail(null)
+                  const href = hashHref('/review')
+                  if (window.location.hash !== href) window.location.hash = href
                 }}
               >
                 Back
               </button>
             </div>
-            {detailLoading && <p className="skeleton">Loading details…</p>}
+            {detailLoading && pane === 'details' && <p className="skeleton">Loading details…</p>}
             {paneError && <p className="inline-error">{paneError}</p>}
             {detail && (
               <>
@@ -512,7 +547,42 @@ export function ReviewPage() {
                       </a>
                     )}
                   </div>
+                  {detail.match.jobId && (
+                    <JobCrossLinks jobId={detail.match.jobId} matchId={detail.match.matchId} current="review" />
+                  )}
                 </header>
+                <div className="drawer-tabs" role="tablist" aria-label="Match details">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={pane === 'details'}
+                    className={pane === 'details' ? 'is-selected' : ''}
+                    onClick={() => {
+                      setPane('details')
+                      const href = reviewHref({ matchId: detail.match.matchId, pane: 'details' })
+                      if (window.location.hash !== href) window.location.hash = href
+                    }}
+                  >
+                    Details
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={pane === 'emails'}
+                    className={pane === 'emails' ? 'is-selected' : ''}
+                    onClick={() => {
+                      setPane('emails')
+                      const href = reviewHref({ matchId: detail.match.matchId, pane: 'emails' })
+                      if (window.location.hash !== href) window.location.hash = href
+                    }}
+                    disabled={!detail.match.jobId}
+                  >
+                    Emails
+                  </button>
+                </div>
+                {pane === 'emails' && detail.match.jobId && <JobEmailsTab jobId={detail.match.jobId} />}
+                {pane === 'details' && (
+              <>
                 {detail.snapshotUnavailable && <p className="warn-text">Snapshot unavailable — showing current data.</p>}
                 <section>
                   <h3>Summary</h3>
@@ -631,6 +701,8 @@ export function ReviewPage() {
                     </div>
                     <p className="muted">⌘/Ctrl+Enter saves while the comment box is focused.</p>
                   </div>
+                )}
+              </>
                 )}
               </>
             )}

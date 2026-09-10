@@ -128,3 +128,25 @@ def test_settings_source_toggle_disables_tenants(wiring):
     lv = wiring["jobs"].store.list_tenants("lever")
     assert gh and all(not item.enabled for item in gh)
     assert lv and all(item.enabled for item in lv)
+
+
+def test_demo_review_seed_uses_feed_job_ids(monkeypatch):
+    from app.job_sources.feed import feed_cards, seed_demo_feed
+    from app.job_sources.memory import InMemoryJobSourceStore
+    from app.review.memory import InMemoryReviewStore
+    from app.review import runtime
+
+    jobs = InMemoryJobSourceStore()
+    seed_demo_feed(jobs)
+    cards = feed_cards(jobs)
+    monkeypatch.setattr(runtime, "_feed_cards", lambda: cards)
+    review = InMemoryReviewStore()
+    runtime._seed_demo_matches(review)
+    ids = {card["id"] for card in cards}
+    matches = review.list_matches("local-user")
+    assert matches
+    staff = next(item for item in matches if "staff" in item.job_title.lower())
+    analyst = next(item for item in matches if "analyst" in item.job_title.lower())
+    assert staff.job_id in ids
+    assert analyst.job_id in ids
+    assert staff.company == "Acme"

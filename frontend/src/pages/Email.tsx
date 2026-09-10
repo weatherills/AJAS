@@ -3,12 +3,17 @@ import { emailApi, USE_MOCK } from '../api'
 import type { EmailStatus, EmailThread } from '../api/emailTypes'
 import { AppNav } from '../components/AppNav'
 import { EmailThreadPane } from '../components/EmailThreadPane'
+import { JobCrossLinks } from '../components/JobCrossLinks'
 import { ToastStack } from '../components/Toast'
 import { formatWhen, relativeTime } from '../lib/email'
+import { emailHref, useHashSearch } from '../lib/routes'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
 
 export function EmailPage() {
+  const search = useHashSearch()
+  const jobFilter = search.get('job')
+  const threadFromHash = search.get('thread')
   const [status, setStatus] = useState<EmailStatus | null>(null)
   const [threads, setThreads] = useState<EmailThread[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -30,9 +35,12 @@ export function EmailPage() {
       const nextStatus = await emailApi.status()
       setStatus(nextStatus)
       if (nextStatus.connected) {
-        const page = await emailApi.listThreads()
+        const page = await emailApi.listThreads(jobFilter ? { jobId: jobFilter } : undefined)
         setThreads(page.items)
-        setSelectedId((current) => current || page.items[0]?.id || null)
+        setSelectedId((current) => {
+          if (current && page.items.some((item) => item.id === current)) return current
+          return page.items[0]?.id || null
+        })
       } else {
         setThreads([])
       }
@@ -42,11 +50,16 @@ export function EmailPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [jobFilter])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (!threadFromHash) return
+    if (threads.some((item) => item.id === threadFromHash)) setSelectedId(threadFromHash)
+  }, [threadFromHash, threads])
 
   const selected = threads.find((item) => item.id === selectedId) || null
 
@@ -55,7 +68,7 @@ export function EmailPage() {
     try {
       const next = await emailApi.refresh()
       setStatus(next)
-      const page = await emailApi.listThreads()
+      const page = await emailApi.listThreads(jobFilter ? { jobId: jobFilter } : undefined)
       setThreads(page.items)
       toast('Mailbox refreshed')
     } catch (err) {
@@ -72,6 +85,7 @@ export function EmailPage() {
         <div>
           <h1>Email</h1>
           <p className="tagline">Recruiter threads linked to tracked jobs, with in-app replies.</p>
+          {jobFilter && <JobCrossLinks jobId={jobFilter} current="email" />}
         </div>
         <div className="feed-header-actions">
           {status?.connected && (
@@ -86,6 +100,12 @@ export function EmailPage() {
         <p className="muted">
           From: {status.address} · Last synced {formatWhen(status.lastSyncedAt)}
           {status.demo ? ' · Local demo mailbox' : ''}
+          {jobFilter ? ' · Showing threads for this job. ' : ''}
+          {jobFilter && (
+            <a className="primary-link" href="#/email">
+              All threads
+            </a>
+          )}
         </p>
       )}
       {loading && <p className="skeleton">Loading mailbox…</p>}
@@ -122,7 +142,11 @@ export function EmailPage() {
                 key={item.id}
                 type="button"
                 className={`thread-item ${item.id === selectedId ? 'is-selected' : ''}`}
-                onClick={() => setSelectedId(item.id)}
+                onClick={() => {
+                  setSelectedId(item.id)
+                  const href = emailHref({ jobId: jobFilter, threadId: item.id })
+                  if (window.location.hash !== href) window.location.hash = href
+                }}
                 aria-current={item.id === selectedId}
               >
                 <div className="thread-item-head">

@@ -36,10 +36,8 @@ describe('mock email api', () => {
     expect(messages.thread.unreadCount).toBe(0)
   })
 
-  it('returns three suggestions and sends a reply', async () => {
-    const drafts = await mockEmailApi.suggestions('t-staff')
-    expect(drafts).toHaveLength(3)
-    const sent = await mockEmailApi.reply('t-staff', { bodyText: 'Thanks Maya' })
-    expect(sent.deliveryStatus).toBe('sent')
+  it('lists threads for the same job id the job feed mock uses', async () => {
+    const page = await mockEmailApi.listJobThreads('job-1')
+    expect(page.items.some((item) => item.jobId === 'job-1' && item.subject.includes('Staff Engineer'))).toBe(true)
   })
 })

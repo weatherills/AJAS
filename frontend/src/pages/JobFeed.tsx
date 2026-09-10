@@ -3,6 +3,7 @@ import { jobsApi, matchingApi, resumeApi, settingsApi, USE_MOCK } from '../api'
 import type { JobCard, JobDetail, JobFilters, JobSourceName, SourceStatus } from '../api/jobsTypes'
 import type { MatchView } from '../api/matchingTypes'
 import { AppNav } from '../components/AppNav'
+import { JobCrossLinks } from '../components/JobCrossLinks'
 import { JobEmailsTab } from '../components/JobEmailsTab'
 import { MatchBadge } from '../components/MatchBadge'
 import { MatchMeter } from '../components/MatchMeter'
@@ -10,6 +11,7 @@ import { WhyThisScore, WhyThisScoreInline } from '../components/MatchWhy'
 import { ToastStack } from '../components/Toast'
 import { apiToPercent } from '../lib/settings'
 import { jobHaystack, resumeHaystack } from '../lib/matching'
+import { jobHref, useHashSearch } from '../lib/routes'
 import { preselectReady } from '../lib/status'
 import {
   ALL_SOURCES,
@@ -57,6 +59,7 @@ export function JobFeedPage() {
   const [saveOverride, setSaveOverride] = useState<Record<string, boolean>>({})
   const [listMinHeight, setListMinHeight] = useState(0)
   const [drawerTab, setDrawerTab] = useState<'details' | 'emails'>('details')
+  const search = useHashSearch()
   const toastId = useRef(1)
   const sentinel = useRef<HTMLDivElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -124,6 +127,48 @@ export function JobFeedPage() {
   useEffect(() => {
     void loadStatus()
   }, [loadStatus])
+
+  const selectJob = useCallback(
+    (job: JobCard, tab: 'details' | 'emails' = 'details') => {
+      setSelected(job)
+      setDrawerTab(tab)
+      const href = jobHref(job.id, tab)
+      if (window.location.hash !== href) window.location.hash = href
+    },
+    [],
+  )
+
+  useEffect(() => {
+    const jobId = search.get('job')
+    const tab = search.get('tab') === 'emails' ? 'emails' : 'details'
+    if (!jobId) return
+    if (selected?.id === jobId) {
+      if (drawerTab !== tab) setDrawerTab(tab)
+      return
+    }
+    const listed = items.find((item) => item.id === jobId)
+    if (listed) {
+      setSelected(listed)
+      setDrawerTab(tab)
+      return
+    }
+    if (loading) return
+    let cancelled = false
+    void jobsApi
+      .get(jobId)
+      .then((detail) => {
+        if (cancelled) return
+        setSelected(detail)
+        setDetail(detail)
+        setDrawerTab(tab)
+      })
+      .catch((err) => {
+        if (!cancelled) toast(err instanceof Error ? err.message : 'Job not found', 'error')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [search, items, loading, selected?.id, drawerTab])
 
   useEffect(() => {
     let cancelled = false
@@ -315,10 +360,6 @@ export function JobFeedPage() {
   }, [cursor, filters.pagination, loadPage, loading, loadingMore])
 
   useEffect(() => {
-    setDrawerTab('details')
-  }, [selected?.id])
-
-  useEffect(() => {
     if (!selected) {
       setDetail(null)
       return
@@ -349,7 +390,10 @@ export function JobFeedPage() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setSelected(null)
+      if (event.key === 'Escape') {
+        setSelected(null)
+        if (window.location.hash !== '#/jobs') window.location.hash = '#/jobs'
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -580,7 +624,7 @@ export function JobFeedPage() {
                 return (
                   <li key={job.id} className={hidden ? 'job-slot is-filtered' : 'job-slot'}>
                     <div className="job-card">
-                      <button type="button" className="job-card-hit" onClick={() => setSelected(job)}>
+                      <button type="button" className="job-card-hit" onClick={() => selectJob(job)}>
                         <div className="job-card-top">
                           <h2>{job.title}</h2>
                           <span className={`source-chip source-${job.primarySource}`}>{sourceTitle(job.primarySource)}</span>
@@ -653,7 +697,15 @@ export function JobFeedPage() {
           <aside className="job-drawer" role="dialog" aria-modal="true" aria-labelledby="job-drawer-title">
             <div className="job-drawer-head">
               <h2 id="job-drawer-title">{selected.title}</h2>
-              <button type="button" className="secondary" onClick={() => setSelected(null)} aria-label="Close details">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => {
+                  setSelected(null)
+                  if (window.location.hash !== '#/jobs') window.location.hash = '#/jobs'
+                }}
+                aria-label="Close details"
+              >
                 Close
               </button>
             </div>
@@ -663,7 +715,7 @@ export function JobFeedPage() {
                 role="tab"
                 aria-selected={drawerTab === 'details'}
                 className={drawerTab === 'details' ? 'is-selected' : ''}
-                onClick={() => setDrawerTab('details')}
+                onClick={() => selectJob(selected, 'details')}
               >
                 Details
               </button>
@@ -672,11 +724,12 @@ export function JobFeedPage() {
                 role="tab"
                 aria-selected={drawerTab === 'emails'}
                 className={drawerTab === 'emails' ? 'is-selected' : ''}
-                onClick={() => setDrawerTab('emails')}
+                onClick={() => selectJob(selected, 'emails')}
               >
                 Emails
               </button>
             </div>
+            <JobCrossLinks jobId={selected.id} current="jobs" />
             {drawerTab === 'emails' && <JobEmailsTab jobId={selected.id} />}
             {drawerTab === 'details' && detailLoading && <p className="skeleton">Loading details…</p>}
             {drawerTab === 'details' && !detailLoading && detail && (
@@ -722,7 +775,7 @@ export function JobFeedPage() {
                 </ul>
                 <p>
                   <a className="primary-link" href={detail.applyUrl} target="_blank" rel="noreferrer">
-                    Apply
+                    Apply on posting
                   </a>
                 </p>
               </>

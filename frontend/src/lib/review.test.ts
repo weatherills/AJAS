@@ -39,6 +39,7 @@ describe('mock review api', () => {
     const result = await mockReviewApi.list('matches', { ...DEFAULT_FILTERS, source: 'ai', status: 'awaiting' })
     expect(result.items.every((item) => item.source === 'ai' && item.status === 'pending')).toBe(true)
     expect(result.items[0].jobTitle).toBe('Staff Platform Engineer')
+    expect(result.items[0].jobId).toBe('job-1')
     expect(result.items[0].score).toBe(88)
   })
 

@@ -2,8 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { autoApplyApi, USE_MOCK } from '../api'
 import type { ApplyDetail, ApplySummary } from '../api/autoApplyTypes'
 import { AppNav } from '../components/AppNav'
+import { JobCrossLinks } from '../components/JobCrossLinks'
+import { JobEmailsTab } from '../components/JobEmailsTab'
 import { ToastStack } from '../components/Toast'
 import { canCancel, stateLabel } from '../lib/autoApply'
+import { parseHash } from '../lib/routes'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
 
@@ -42,6 +45,8 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
   useEffect(() => {
     void load()
   }, [load])
+
+  const jobId = detail?.source.job_posting_id || parseHash(window.location.hash).params.get('job')
 
   const cancel = async () => {
     if (!detail || !canCancel(detail.state)) return
@@ -152,6 +157,12 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
                 <button type="button" className="danger" disabled={busy} onClick={() => void cancel()}>
                   {busy ? 'Cancelling…' : 'Cancel request'}
                 </button>
+              )}
+              {jobId && (
+                <>
+                  <JobCrossLinks jobId={jobId} current="apply" />
+                  <JobEmailsTab jobId={jobId} />
+                </>
               )}
             </>
           )}

@@ -34,7 +34,7 @@ let threads: EmailThread[] = [
   thread({
     id: 't-staff',
     subject: 'Staff Engineer at Acme (JOB-SE-1)',
-    jobId: 'job-staff',
+    jobId: 'job-1',
     jobTitle: 'Staff Engineer',
     jobCompany: 'Acme',
     linked: true,
