@@ -45,6 +45,8 @@ class InMemorySettingsStore:
             match_threshold=None,
             greenhouse_enabled=False,
             lever_enabled=False,
+            greenhouse_explicit=False,
+            lever_explicit=False,
             version=1,
             created_at=now,
             updated_at=now,
@@ -56,7 +58,13 @@ class InMemorySettingsStore:
             entity_id=settings.id,
             actor_id=actor_id or user_id,
             field_mask=["created"],
-            detail={"match_threshold": None, "greenhouse_enabled": False, "lever_enabled": False},
+            detail={
+                "match_threshold": None,
+                "greenhouse_enabled": False,
+                "lever_enabled": False,
+                "greenhouse_explicit": False,
+                "lever_explicit": False,
+            },
         )
         return deepcopy(settings)
 
@@ -98,18 +106,20 @@ class InMemorySettingsStore:
         if greenhouse_enabled is not UNSET:
             if not isinstance(greenhouse_enabled, bool):
                 raise SettingsValidationError("greenhouse_enabled must be a boolean", path="greenhouse_enabled")
-            if settings.greenhouse_enabled != greenhouse_enabled:
+            if settings.greenhouse_enabled != greenhouse_enabled or not settings.greenhouse_explicit:
                 changes["greenhouse_enabled"] = {
                     "from": settings.greenhouse_enabled,
                     "to": greenhouse_enabled,
                 }
                 settings.greenhouse_enabled = greenhouse_enabled
+                settings.greenhouse_explicit = True
         if lever_enabled is not UNSET:
             if not isinstance(lever_enabled, bool):
                 raise SettingsValidationError("lever_enabled must be a boolean", path="lever_enabled")
-            if settings.lever_enabled != lever_enabled:
+            if settings.lever_enabled != lever_enabled or not settings.lever_explicit:
                 changes["lever_enabled"] = {"from": settings.lever_enabled, "to": lever_enabled}
                 settings.lever_enabled = lever_enabled
+                settings.lever_explicit = True
         if not changes:
             return deepcopy(settings)
         settings.version += 1

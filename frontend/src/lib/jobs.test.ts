@@ -7,6 +7,7 @@ import {
   boardInputHint,
   canonicalKey,
   defaultFilters,
+  feedSourcesFromSettings,
   formatCountdown,
   mergeJobs,
   matchesQuery,
@@ -81,6 +82,17 @@ describe('job feed helpers', () => {
     expect(formatCountdown(125_000)).toBe('02:05')
     expect(backoffRemainingMs(new Date(Date.now() + 4_000).toISOString(), Date.now())).toBeGreaterThan(0)
     expect(defaultFilters().sources).toEqual(['greenhouse', 'lever'])
+  })
+
+  it('maps Settings source flags onto Job Feed filters without treating a missing configured flag as off', () => {
+    expect(feedSourcesFromSettings({ greenhouseEnabled: true, leverEnabled: true, greenhouseConfigured: true, leverConfigured: true })).toEqual(
+      ['greenhouse', 'lever'],
+    )
+    expect(feedSourcesFromSettings({ greenhouseEnabled: false, leverEnabled: false, greenhouseConfigured: true, leverConfigured: true })).toEqual([])
+    expect(feedSourcesFromSettings({ greenhouseEnabled: true, leverEnabled: false, greenhouseConfigured: true, leverConfigured: false })).toEqual([
+      'greenhouse',
+    ])
+    expect(feedSourcesFromSettings({ greenhouseEnabled: false, leverEnabled: false })).toBeNull()
   })
 })
 

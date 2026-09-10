@@ -212,3 +212,19 @@ export function boardAddPayload(raw: string): { boardToken?: string; boardUrl?: 
 export function sourcesOffCopy(): string {
   return 'Job sources are turned off in Settings, so the feed is empty even if boards are configured.'
 }
+
+export function feedSourcesFromSettings(sources: {
+  greenhouseEnabled?: boolean
+  leverEnabled?: boolean
+  greenhouseConfigured?: boolean
+  leverConfigured?: boolean
+}): JobSourceName[] | null {
+  // Missing configured flags means settings did not see job-source wiring; keep current filters.
+  if (sources.greenhouseConfigured === undefined && sources.leverConfigured === undefined) {
+    return null
+  }
+  const next: JobSourceName[] = []
+  if (sources.greenhouseEnabled) next.push('greenhouse')
+  if (sources.leverEnabled) next.push('lever')
+  return next
+}

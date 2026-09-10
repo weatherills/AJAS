@@ -18,6 +18,7 @@ import {
   alsoFromLabel,
   backoffRemainingMs,
   defaultFilters,
+  feedSourcesFromSettings,
   formatCountdown,
   formatWhen,
   loadFilters,
@@ -179,13 +180,21 @@ export function JobFeedPage() {
     let cancelled = false
     void (async () => {
       try {
+        const rows = await jobsApi.sourceStatus()
+        if (!cancelled) setStatuses(rows)
+      } catch {
+        /* status bar is non-blocking */
+      }
+      try {
         const doc = await settingsApi.get()
         if (!cancelled) {
           setThreshold(apiToPercent(doc.matchThreshold))
-          const sources: JobSourceName[] = []
-          if (doc.sources.greenhouseEnabled) sources.push('greenhouse')
-          if (doc.sources.leverEnabled) sources.push('lever')
-          setFilters((prev) => ({ ...prev, sources }))
+          const next = feedSourcesFromSettings(doc.sources)
+          if (next === null) {
+            setFilters((prev) => (prev.sources.length ? prev : { ...prev, sources: [...ALL_SOURCES] }))
+          } else {
+            setFilters((prev) => ({ ...prev, sources: next }))
+          }
         }
       } catch {
         /* keep default 70 */

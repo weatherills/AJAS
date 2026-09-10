@@ -102,15 +102,15 @@ export function SettingsPage() {
 
   const load = useCallback(async () => {
     try {
+      setSourceStatus(await jobsApi.sourceStatus())
+    } catch {
+      /* source status is additive; settings toggles still render */
+    }
+    try {
       applyDoc(await settingsApi.get())
       setLoadError(null)
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load settings')
-    }
-    try {
-      setSourceStatus(await jobsApi.sourceStatus())
-    } catch {
-      /* source status is additive; settings toggles still render */
     }
   }, [applyDoc])
 
