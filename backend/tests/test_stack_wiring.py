@@ -67,6 +67,9 @@ def wiring(monkeypatch):
     set_matching(None)
     set_settings(None)
     set_jobs(None)
+    from app.resumes.runtime import set_service as set_resume
+
+    set_resume(None)
     get_settings.cache_clear()
 
 
@@ -229,6 +232,42 @@ def test_list_hides_ai_seed_when_saved_duplicate_exists(wiring):
     saved_list = svc.list_matches(USER, source="saved", status="awaiting")
     assert [item["matchId"] for item in saved_list["items"]] == [saved.id]
     assert saved_list["items"][0]["score"] == 48.1
+
+
+def test_successful_crawl_ranks_jobs_into_review(wiring):
+    from app.resumes.demo import DEMO_RESUME_ID, DEMO_USER, seed_demo_resume
+    from app.resumes.memory import InMemoryResumeStore
+    from app.resumes.runtime import set_service as set_resume
+    from app.resumes.service import ResumeService
+
+    resume_store = InMemoryResumeStore()
+    seed_demo_resume(resume_store)
+    set_resume(ResumeService(store=resume_store))
+    jobs = wiring["jobs"]
+    tenant = jobs.store.list_tenants("greenhouse")[0]
+    crawled_job = (
+        "Title: Staff Platform Engineer\nCompany: Acme\nSkills: Python Azure Kubernetes APIs\n"
+        "Built Python services, Azure pipelines, and Kubernetes platforms."
+    )
+    jobs.store.ingest_raw(
+        tenant.id,
+        source_posting_id="rank-after-crawl",
+        title="Staff Platform Engineer",
+        location="Remote",
+        company="Acme",
+        body=crawled_job,
+        payload=crawled_job,
+        namespace="acme",
+    )
+    run = jobs.store.start_run(tenant.id, status="running")
+    jobs._rank_ingested_jobs(run)
+    from app.job_sources.feed import feed_cards
+
+    job_id = next(card["id"] for card in feed_cards(jobs.store) if card["title"] == "Staff Platform Engineer")
+    matched = [row for row in wiring["review"].list_matches(DEMO_USER) if row.job_id == job_id]
+    assert matched
+    assert matched[0].resume_id == DEMO_RESUME_ID
+    assert matched[0].status == "PENDING"
 
 
 def test_settings_threshold_updates_matching_prefs(wiring):

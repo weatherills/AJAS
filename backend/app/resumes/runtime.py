@@ -43,3 +43,7 @@ def get_service() -> ResumeService:
 def set_service(service: ResumeService | None) -> None:
     global _service
     _service = service
+
+
+def try_get_service() -> ResumeService | None:
+    return _service
