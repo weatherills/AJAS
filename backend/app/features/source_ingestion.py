@@ -88,6 +88,28 @@ def list_source_tenants(req: func.HttpRequest) -> func.HttpResponse:
         return _handle(exc)
 
 
+@bp.route(route="v1/sources/{id}/tenants/{tenant_key}/crawl", methods=["POST"])
+def start_tenant_crawl(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        _auth(req)
+        service = get_service()
+        body = service.enqueue_crawl_tenant(req.route_params["id"], req.route_params["tenant_key"])
+        service.drain()
+        return json_response(body, status_code=202)
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/sources/{id}/tenants/{tenant_key}", methods=["DELETE"])
+def delete_source_tenant(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        _auth(req)
+        body = get_service().delete_tenant(req.route_params["id"], req.route_params["tenant_key"])
+        return json_response(body)
+    except Exception as exc:
+        return _handle(exc)
+
+
 @bp.route(route="v1/jobs", methods=["GET"])
 def list_jobs(req: func.HttpRequest) -> func.HttpResponse:
     try:

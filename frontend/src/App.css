@@ -616,6 +616,42 @@ button:disabled {
   margin: 0 0 0.5rem;
 }
 
+.source-board-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.source-board-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.source-board-copy {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.source-board-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.source-board-row .inline-error {
+  margin: 0;
+}
+
+.source-board-row code {
+  font-size: 0.9rem;
+}
+
 .source-add-form {
   display: grid;
   grid-template-columns: 1fr auto auto;
@@ -640,6 +676,7 @@ button:disabled {
 @media (max-width: 700px) {
   .source-row,
   .source-add-form,
+  .source-board-row,
   .slider-row,
   .two-col,
   .library-header,
@@ -739,15 +776,36 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
-  align-items: center;
+  align-items: flex-start;
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
   padding: 0.85rem 1rem;
   background: rgba(148, 163, 184, 0.05);
 }
 
+.feed-source > button {
+  flex-shrink: 0;
+  align-self: center;
+}
+
 .feed-source p {
   margin: 0.15rem 0 0;
+}
+
+.feed-source-boards {
+  list-style: none;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.feed-source-boards li {
+  margin: 0;
+}
+
+.feed-source-boards code {
+  font-size: 0.85rem;
 }
 
 .feed-source-syncing {

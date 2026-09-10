@@ -21,6 +21,10 @@ import {
   refreshToastForStatuses,
   sourceChipPatch,
   sourceErrorCopy,
+  addBoardToast,
+  boardErrorCopy,
+  feedErrorLines,
+  sourceBoardErrors,
   sourceIsConfiguredStatus,
   sourceUnconfiguredCopy,
   sourcesOffCopy,
@@ -211,6 +215,23 @@ describe('mock jobs api', () => {
     expect(sourceErrorCopy(greenhouse!)).toMatch(/not found/i)
     expect(sourceErrorCopy({ source: 'lever', status: 'ok', errorMessage: null })).toBeNull()
     expect(statusLabel(greenhouse!)).toBe('Board not found')
+    const named = greenhouse?.boards?.find((item) => item.tenantKey === 'acme')
+    expect(boardErrorCopy(named!, greenhouse!, greenhouse?.boards?.length || 1)).toMatch(/not found/i)
+    expect(feedErrorLines(after).some((item) => /not found/i.test(item.message))).toBe(true)
+    expect(
+      boardErrorCopy(
+        { tenantKey: 'keep-board', enabled: true, status: 'ok', errorMessage: null },
+        greenhouse!,
+        2,
+      ),
+    ).toBeNull()
+    expect(
+      boardErrorCopy(
+        { tenantKey: 'no-such-board', enabled: true, status: 'ok', errorMessage: null },
+        greenhouse!,
+        2,
+      ),
+    ).toMatch(/no-such-board/)
     const toast = refreshToastForStatuses('all', after, 0)
     expect(toast.tone).toBe('error')
     expect(toast.text).toMatch(/not found/i)
@@ -248,5 +269,102 @@ describe('mock jobs api', () => {
     expect(boardAddPayload('acme')).toEqual({ boardToken: 'acme' })
     expect(boardInputHint('greenhouse')).toMatch(/boards.greenhouse.io/i)
     expect(sourcesOffCopy()).toMatch(/turned off in Settings/i)
+  })
+
+  it('crawls a healthy first add so the feed is not empty until Refresh', async () => {
+    resetMockJobs()
+    simulateUnconfigured('greenhouse')
+    const created = await mockJobsApi.addTenant('greenhouse', { boardToken: 'stripe' })
+    expect(addBoardToast('greenhouse', created).tone).toBe('info')
+    const board = created.status?.boards?.find((item) => item.tenantKey === 'stripe')
+    expect(board?.status).toBe('ok')
+    expect(board?.lastSyncAt).toBeTruthy()
+    expect(created.status?.lastSyncAt).toBeTruthy()
+    const retried = await mockJobsApi.refreshTenant('greenhouse', created.tenantKey)
+    const greenhouse = retried.find((item) => item.source === 'greenhouse')
+    expect(greenhouse?.status).not.toBe('unconfigured')
+    expect(greenhouse?.boards?.find((item) => item.tenantKey === 'stripe')?.lastSyncAt).toBeTruthy()
+  })
+
+  it('stamps a missing-board crawl error on that Settings board row', async () => {
+    resetMockJobs()
+    simulateUnconfigured('greenhouse')
+    const created = await mockJobsApi.addTenant('greenhouse', { boardToken: 'no-such-board' })
+    const row = created.status
+    expect(row?.configured).toBe(true)
+    expect(row?.status).toBe('error')
+    const board = row?.boards?.find((item) => item.tenantKey === 'no-such-board')
+    expect(boardErrorCopy(board!, row!, row?.boards?.length || 1)).toMatch(/not found/i)
+    expect(boardErrorCopy(board!, row!, row?.boards?.length || 1)).toMatch(/no-such-board/)
+    await mockJobsApi.addTenant('greenhouse', { boardToken: 'keep-board' })
+    const after = await mockJobsApi.sourceStatus()
+    const greenhouse = after.find((item) => item.source === 'greenhouse')
+    const bad = greenhouse?.boards?.find((item) => item.tenantKey === 'no-such-board')
+    const good = greenhouse?.boards?.find((item) => item.tenantKey === 'keep-board')
+    expect(boardErrorCopy(bad!, greenhouse!, greenhouse?.boards?.length || 2)).toMatch(/no-such-board/)
+    expect(boardErrorCopy(good!, greenhouse!, greenhouse?.boards?.length || 2)).toBeNull()
+  })
+
+  it('lists every failed board instead of collapsing to the last tenant', async () => {
+    resetMockJobs()
+    simulateUnconfigured('greenhouse')
+    const first = await mockJobsApi.addTenant('greenhouse', { boardToken: 'no-such-board' })
+    expect(addBoardToast('greenhouse', first).tone).toBe('error')
+    expect(addBoardToast('greenhouse', first).text).toMatch(/no-such-board/)
+    await mockJobsApi.addTenant('greenhouse', { boardToken: 'missing-board' })
+    const after = await mockJobsApi.sourceStatus()
+    const greenhouse = after.find((item) => item.source === 'greenhouse')
+    expect(sourceBoardErrors(greenhouse!).map((item) => item.tenantKey).sort()).toEqual(['missing-board', 'no-such-board'])
+    const lines = feedErrorLines(after)
+    expect(lines.some((item) => /no-such-board/.test(item.message))).toBe(true)
+    expect(lines.some((item) => /missing-board/.test(item.message))).toBe(true)
+    const toast = refreshToastForStatuses('all', after, 0)
+    expect(toast.tone).toBe('error')
+    expect(toast.text).toMatch(/no-such-board/)
+    expect(toast.text).toMatch(/missing-board/)
+  })
+
+  it('toasts a successful board add and retries one tenant without clearing the other', async () => {
+    resetMockJobs()
+    simulateUnconfigured('greenhouse')
+    const created = await mockJobsApi.addTenant('greenhouse', { boardToken: 'stripe' })
+    expect(addBoardToast('greenhouse', created)).toEqual({
+      text: 'Greenhouse board “stripe” added',
+      tone: 'info',
+    })
+    await mockJobsApi.addTenant('greenhouse', { boardToken: 'no-such-board' })
+    const retried = await mockJobsApi.refreshTenant('greenhouse', 'no-such-board')
+    const greenhouse = retried.find((item) => item.source === 'greenhouse')
+    const bad = greenhouse?.boards?.find((item) => item.tenantKey === 'no-such-board')
+    const good = greenhouse?.boards?.find((item) => item.tenantKey === 'stripe')
+    expect(boardErrorCopy(bad!, greenhouse!, greenhouse?.boards?.length || 2)).toMatch(/no-such-board/)
+    expect(boardErrorCopy(good!, greenhouse!, greenhouse?.boards?.length || 2)).toBeNull()
+    await expect(mockJobsApi.refreshTenant('greenhouse', 'not-on-file')).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('removes a board and flips the last tenant back to unconfigured', async () => {
+    resetMockJobs()
+    resetMockSettings()
+    simulateUnconfigured('greenhouse')
+    await mockJobsApi.addTenant('greenhouse', { boardToken: 'no-such-board' })
+    await mockJobsApi.addTenant('greenhouse', { boardToken: 'keep-board' })
+    const dropped = await mockJobsApi.removeTenant('greenhouse', 'no-such-board')
+    expect(dropped.deleted).toBe(true)
+    expect(dropped.status?.configured).toBe(true)
+    expect(dropped.status?.boards?.map((item) => item.tenantKey)).toEqual(['keep-board'])
+    const last = await mockJobsApi.removeTenant('greenhouse', 'keep-board')
+    expect(last.status?.configured).toBe(false)
+    expect(last.status?.status).toBe('unconfigured')
+    expect(last.status?.boards).toEqual([])
+    const after = await mockJobsApi.sourceStatus()
+    const greenhouse = after.find((item) => item.source === 'greenhouse')
+    expect(sourceIsConfiguredStatus(greenhouse)).toBe(false)
+    expect(statusLabel(greenhouse!)).toBe('Not configured')
+    const settings = await mockSettingsApi.get()
+    expect(settings.sources.greenhouseConfigured).toBe(false)
+    expect(settings.sources.greenhouseEnabled).toBe(false)
+    await expect(persistFeedSourceChip(mockSettingsApi, 'greenhouse', true)).rejects.toMatchObject({
+      code: 'SOURCE_NOT_CONFIGURED',
+    })
   })
 })

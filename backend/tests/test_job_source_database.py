@@ -83,6 +83,12 @@ class FakeContainer:
             rows = [r for r in rows if r.get(self.pk_field) == partition_key]
         return rows
 
+    def delete_item(self, item: str, partition_key: str) -> None:
+        key = (partition_key, item)
+        if key not in self.items:
+            raise _not_found()
+        del self.items[key]
+
 
 class FakeDatabase:
     def __init__(self) -> None:
@@ -198,6 +204,29 @@ def test_tenant_unique_per_source_and_key(store):
         store.upsert_tenant("unknown", "acme")
     with pytest.raises(JobSourceValidationError):
         store.upsert_tenant("greenhouse", "   ")
+
+
+def test_delete_tenant_drops_board_and_closes_postings(store):
+    tenant = store.upsert_tenant("greenhouse", "bad-board", config={"board_token": "bad-board"})
+    keep = store.upsert_tenant("greenhouse", "keep-board", config={"board_token": "keep-board"})
+    store.ingest_raw(tenant.id, **_posting(source_posting_id="gone", namespace="bad-board", company="Bad"))
+    store.ingest_raw(
+        keep.id,
+        **_posting(source_posting_id="stay", namespace="keep-board", company="Keep", title="Keep Role"),
+    )
+    deleted = store.delete_tenant(tenant.id)
+    assert deleted.id == tenant.id
+    assert deleted.tenant_key == "bad-board"
+    remaining = store.list_tenants("greenhouse")
+    assert [item.tenant_key for item in remaining] == ["keep-board"]
+    with pytest.raises(JobSourceNotFoundError):
+        store.get_tenant(tenant.id)
+    with pytest.raises(JobSourceNotFoundError):
+        store.delete_tenant(tenant.id)
+    assert store.list_raw(tenant.id, current_only=True) == []
+    assert store.list_raw(keep.id, current_only=True)
+    store.delete_tenant(keep.id)
+    assert store.list_tenants("greenhouse") == []
 
 
 def test_cursor_unique_per_endpoint_and_reset_logs_run(store):
