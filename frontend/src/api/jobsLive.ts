@@ -45,4 +45,11 @@ export const liveJobsApi: JobsApi = {
       }),
     )
   },
+  async removeTenant(source: JobSourceName, tenantKey: string) {
+    return json<AddTenantResult>(
+      await request(`/api/v1/sources/${source}/tenants/${encodeURIComponent(tenantKey)}`, {
+        method: 'DELETE',
+      }),
+    )
+  },
 }

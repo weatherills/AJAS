@@ -544,7 +544,8 @@ export function JobFeedPage() {
                 <p className="muted">Last sync {formatWhen(row?.lastSyncAt ?? null)}</p>
                 {row?.status === 'error' && (
                   <p className="inline-error" role="alert">
-                    {sourceErrorCopy(row) || `${sourceTitle(name)} fetch failed.`}
+                    {sourceErrorCopy(row) || `${sourceTitle(name)} fetch failed.`}{' '}
+                    <a href="#/settings">Remove the board in Settings</a>
                   </p>
                 )}
                 {row && !sourceIsConfiguredStatus(row) && (

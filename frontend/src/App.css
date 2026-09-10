@@ -616,6 +616,25 @@ button:disabled {
   margin: 0 0 0.5rem;
 }
 
+.source-board-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.source-board-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.source-board-row code {
+  font-size: 0.9rem;
+}
+
 .source-add-form {
   display: grid;
   grid-template-columns: 1fr auto auto;
@@ -640,6 +659,7 @@ button:disabled {
 @media (max-width: 700px) {
   .source-row,
   .source-add-form,
+  .source-board-row,
   .slider-row,
   .two-col,
   .library-header,

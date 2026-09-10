@@ -68,6 +68,8 @@ export function SettingsPage() {
   const [leverBoard, setLeverBoard] = useState('')
   const [ghAddStatus, setGhAddStatus] = useState<SaveStatus>('idle')
   const [leverAddStatus, setLeverAddStatus] = useState<SaveStatus>('idle')
+  const [removingKey, setRemovingKey] = useState<string | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState<{ name: JobSourceName; tenantKey: string } | null>(null)
   const [connecting, setConnecting] = useState(false)
   const [popupBlocked, setPopupBlocked] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
@@ -246,6 +248,31 @@ export function SettingsPage() {
     } catch (err) {
       setAddStatus('error')
       setSourceError(err instanceof Error ? err.message : `Couldn’t add the ${sourceTitle(name)} board.`)
+    }
+  }
+
+  async function removeBoard(name: JobSourceName, tenantKey: string) {
+    const setAddStatus = name === 'greenhouse' ? setGhAddStatus : setLeverAddStatus
+    const setToggleStatus = name === 'greenhouse' ? setGhStatus : setLeverStatus
+    setConfirmRemove(null)
+    setRemovingKey(`${name}:${tenantKey}`)
+    setSourceError(null)
+    setSourceRetry(null)
+    try {
+      const removed = await jobsApi.removeTenant(name, tenantKey)
+      try {
+        applyDoc(await settingsApi.get())
+      } catch {
+        /* source status still updates the Not configured badge */
+      }
+      setSourceStatus(removed.sources?.length ? removed.sources : await jobsApi.sourceStatus())
+      setAddStatus('idle')
+      setToggleStatus('saved')
+      toast(`${sourceTitle(name)} board “${removed.tenantKey}” removed`)
+    } catch (err) {
+      setSourceError(err instanceof Error ? err.message : `Couldn’t remove the ${sourceTitle(name)} board.`)
+    } finally {
+      setRemovingKey(null)
     }
   }
 
@@ -609,7 +636,7 @@ export function SettingsPage() {
 
       <section className="editor-section" aria-labelledby="sources-heading">
         <h2 id="sources-heading">Sources</h2>
-        <p className="muted">Turn Greenhouse and Lever on or off. Job Feed source chips save the same setting. Add a public board token or company URL when a source is not configured.</p>
+        <p className="muted">Turn Greenhouse and Lever on or off. Job Feed source chips save the same setting. Add a public board token or company URL, or remove a board that should no longer be crawled.</p>
         {(['greenhouse', 'lever'] as const).map((name) => {
           const enabledKey = name === 'greenhouse' ? 'greenhouseEnabled' : 'leverEnabled'
           const configured = sourceConfigured(name)
@@ -643,9 +670,28 @@ export function SettingsPage() {
                 </span>
               </div>
               {boards.length > 0 && (
-                <p className="muted source-boards">
-                  Boards: {boards.map((item) => item.tenantKey).join(', ')}
-                </p>
+                <ul className="source-board-list">
+                  {boards.map((item) => {
+                    const busy = removingKey === `${name}:${item.tenantKey}`
+                    return (
+                      <li key={item.tenantKey} className="source-board-row">
+                        <span>
+                          <span className="sr-only">{label} board </span>
+                          <code>{item.tenantKey}</code>
+                        </span>
+                        <button
+                          type="button"
+                          className="link-btn danger"
+                          disabled={busy || removingKey !== null}
+                          aria-label={`Remove ${label} board ${item.tenantKey}`}
+                          onClick={() => setConfirmRemove({ name, tenantKey: item.tenantKey })}
+                        >
+                          {busy ? 'Removing…' : 'Remove'}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
               )}
               {!configured && (
                 <div className="oauth-unconfigured source-unconfigured" role="status">
@@ -696,6 +742,33 @@ export function SettingsPage() {
           </div>
         )}
       </section>
+
+      {confirmRemove && (
+        <Modal
+          title={`Remove ${sourceTitle(confirmRemove.name)} board?`}
+          onClose={() => setConfirmRemove(null)}
+        >
+          <p>
+            Remove <strong>{confirmRemove.tenantKey}</strong> from {sourceTitle(confirmRemove.name)}. Job Feed
+            stops listing jobs from this board.
+            {(sourceStatus.find((item) => item.source === confirmRemove.name)?.boards || []).length <= 1
+              ? ` ${sourceTitle(confirmRemove.name)} goes back to Not configured.`
+              : ''}
+          </p>
+          <div className="modal-actions">
+            <button type="button" className="secondary" onClick={() => setConfirmRemove(null)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="danger"
+              onClick={() => void removeBoard(confirmRemove.name, confirmRemove.tenantKey)}
+            >
+              Remove board
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {confirmDisconnect && (
         <Modal title="Disconnect Microsoft 365?" onClose={() => setConfirmDisconnect(false)}>

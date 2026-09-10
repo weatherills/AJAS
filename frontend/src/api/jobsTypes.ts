@@ -84,6 +84,7 @@ export type AddTenantResult = {
   sourceId: JobSourceName
   tenantKey: string
   enabled: boolean
+  deleted?: boolean
   status: SourceStatus | null
   sources: SourceStatus[]
 }
@@ -94,4 +95,5 @@ export type JobsApi = {
   sourceStatus(): Promise<SourceStatus[]>
   refresh(source: JobSourceName | 'all'): Promise<SourceStatus[]>
   addTenant(source: JobSourceName, body: AddTenantBody): Promise<AddTenantResult>
+  removeTenant(source: JobSourceName, tenantKey: string): Promise<AddTenantResult>
 }

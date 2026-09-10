@@ -306,4 +306,35 @@ export const mockJobsApi: JobsApi = {
     }
     return result
   },
+  async removeTenant(source, tenantKey) {
+    const key = tenantKey.trim()
+    statuses = currentStatuses()
+    const row = statuses.find((item) => item.source === source)
+    if (!row) throw Object.assign(new Error('not found'), { code: 'NOT_FOUND' })
+    const boards = (row.boards || []).filter((item) => item.tenantKey !== key)
+    if (boards.length === (row.boards || []).length) {
+      throw Object.assign(new Error('not found'), { code: 'NOT_FOUND' })
+    }
+    row.boards = boards
+    row.tenantCount = boards.length
+    if (boards.length === 0) {
+      row.configured = false
+      row.status = 'unconfigured'
+      row.lastSyncAt = null
+      row.backoffUntil = null
+      row.errorMessage = `${source === 'greenhouse' ? 'Greenhouse' : 'Lever'} is not configured. Add a board token before turning this source on, or Job Feed stays empty.`
+      row.progress = null
+      markMockSourceConfigured(source, false)
+    }
+    const sources = structuredClone(statuses)
+    return {
+      id: `tenant-${source}-${key}`,
+      sourceId: source,
+      tenantKey: key,
+      enabled: false,
+      deleted: true,
+      status: structuredClone(row),
+      sources,
+    }
+  },
 }

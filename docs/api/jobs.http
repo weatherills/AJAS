@@ -56,6 +56,14 @@ Content-Type: application/json
 GET {{base}}/api/v1/sources/greenhouse/tenants
 Authorization: Bearer {{token}}
 
+### Remove a Greenhouse board (last tenant returns unconfigured)
+DELETE {{base}}/api/v1/sources/greenhouse/tenants/no-such-board
+Authorization: Bearer {{token}}
+
+### Remove a Lever board
+DELETE {{base}}/api/v1/sources/lever/tenants/acme
+Authorization: Bearer {{token}}
+
 ### Start a Greenhouse crawl (202)
 POST {{base}}/api/v1/sources/greenhouse/crawl
 Authorization: Bearer {{token}}

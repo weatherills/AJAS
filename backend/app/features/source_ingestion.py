@@ -88,6 +88,16 @@ def list_source_tenants(req: func.HttpRequest) -> func.HttpResponse:
         return _handle(exc)
 
 
+@bp.route(route="v1/sources/{id}/tenants/{tenant_key}", methods=["DELETE"])
+def delete_source_tenant(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        _auth(req)
+        body = get_service().delete_tenant(req.route_params["id"], req.route_params["tenant_key"])
+        return json_response(body)
+    except Exception as exc:
+        return _handle(exc)
+
+
 @bp.route(route="v1/jobs", methods=["GET"])
 def list_jobs(req: func.HttpRequest) -> func.HttpResponse:
     try:

@@ -222,6 +222,28 @@ class CrawlService:
         tenants = self.store.list_tenants(source_id)
         return {"sourceId": source_id, "items": [tenant_payload(item) for item in tenants]}
 
+    def delete_tenant(self, source_id: str, tenant_key: str) -> dict:
+        if source_id not in {"greenhouse", "lever"}:
+            raise JobSourceNotFoundError(source_id)
+        key = (tenant_key or "").strip()
+        if not key:
+            raise JobSourceValidationError("tenant key is required", path="tenantKey")
+        tenant = next(
+            (item for item in self.store.list_tenants(source_id) if item.tenant_key == key or item.id == key),
+            None,
+        )
+        if tenant is None:
+            raise JobSourceNotFoundError(key)
+        deleted = self.store.delete_tenant(tenant.id)
+        status_rows = self.source_status()
+        row = next((item for item in status_rows if item["source"] == source_id), None)
+        return {
+            **tenant_payload(deleted),
+            "deleted": True,
+            "status": row,
+            "sources": status_rows,
+        }
+
     def get_run(self, source_id: str, run_id: str) -> dict:
         run = self.store.get_run(run_id)
         if source_id in {"greenhouse", "lever"}:
