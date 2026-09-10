@@ -82,6 +82,7 @@ export function formatCountdown(ms: number): string {
 }
 
 export function statusLabel(row: SourceStatus, now = Date.now()): string {
+  if (row.status === 'unconfigured' || row.configured === false) return 'Not configured'
   if (row.status === 'syncing') return row.progress ? `Syncing… ${row.progress}` : 'Syncing…'
   if (row.status === 'rate_limited') {
     const left = backoffRemainingMs(row.backoffUntil, now)
@@ -94,6 +95,19 @@ export function statusLabel(row: SourceStatus, now = Date.now()): string {
     return 'Error'
   }
   return 'OK'
+}
+
+export function sourceIsConfiguredStatus(row: Pick<SourceStatus, 'status' | 'configured'> | undefined): boolean {
+  if (!row) return true
+  if (row.status === 'unconfigured') return false
+  return row.configured !== false
+}
+
+export function sourceUnconfiguredCopy(row: Pick<SourceStatus, 'source' | 'status' | 'errorMessage' | 'configured'>): string | null {
+  if (sourceIsConfiguredStatus(row)) return null
+  const raw = (row.errorMessage || '').trim()
+  if (raw) return raw
+  return `${sourceTitle(row.source)} is not configured. Add a board token before turning this source on, or Job Feed stays empty.`
 }
 
 export function sourceErrorCopy(row: Pick<SourceStatus, 'source' | 'status' | 'errorMessage'>): string | null {
@@ -110,6 +124,11 @@ export function refreshToastForStatuses(
   added: number,
 ): { text: string; tone: 'info' | 'error'; live: string } {
   const targeted = rows.filter((item) => source === 'all' || item.source === source)
+  const missing = targeted.filter((item) => !sourceIsConfiguredStatus(item))
+  if (missing.length) {
+    const text = missing.map((item) => sourceUnconfiguredCopy(item) || `${sourceTitle(item.source)} is not configured.`).join(' ')
+    return { text, tone: 'error', live: 'Source not configured' }
+  }
   const failed = targeted.filter((item) => item.status === 'error')
   if (failed.length) {
     const text = failed.map((item) => sourceErrorCopy(item) || `${sourceTitle(item.source)} fetch failed.`).join(' ')

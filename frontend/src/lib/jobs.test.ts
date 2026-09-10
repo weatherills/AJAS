@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mockJobsApi, resetMockJobs, simulateLeverRateLimit, simulateSourceError } from '../api/jobsMock'
+import { mockJobsApi, resetMockJobs, simulateLeverRateLimit, simulateSourceError, simulateUnconfigured } from '../api/jobsMock'
 import {
   alsoFromLabel,
   backoffRemainingMs,
@@ -12,6 +12,8 @@ import {
   PAGE_SIZE,
   refreshToastForStatuses,
   sourceErrorCopy,
+  sourceIsConfiguredStatus,
+  sourceUnconfiguredCopy,
   statusLabel,
 } from './jobs'
 import type { JobCard } from '../api/jobsTypes'
@@ -126,5 +128,22 @@ describe('mock jobs api', () => {
     const toast = refreshToastForStatuses('all', after, 0)
     expect(toast.tone).toBe('error')
     expect(toast.text).toMatch(/not found/i)
+  })
+
+  it('keeps an unconfigured source from looking like a successful refresh', async () => {
+    resetMockJobs()
+    simulateUnconfigured('greenhouse')
+    const after = await mockJobsApi.refresh('all')
+    const greenhouse = after.find((item) => item.source === 'greenhouse')
+    expect(greenhouse?.status).toBe('unconfigured')
+    expect(greenhouse?.configured).toBe(false)
+    expect(sourceIsConfiguredStatus(greenhouse)).toBe(false)
+    expect(statusLabel(greenhouse!)).toBe('Not configured')
+    expect(sourceUnconfiguredCopy(greenhouse!)).toMatch(/board token/i)
+    expect(sourceErrorCopy(greenhouse!)).toBeNull()
+    const toast = refreshToastForStatuses('greenhouse', after, 0)
+    expect(toast.tone).toBe('error')
+    expect(toast.text).toMatch(/not configured/i)
+    expect(toast.live).toBe('Source not configured')
   })
 })

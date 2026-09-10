@@ -97,6 +97,8 @@ let statuses: SourceStatus[] = [
     backoffUntil: null,
     errorMessage: null,
     progress: null,
+    configured: true,
+    tenantCount: 1,
   },
   {
     source: 'lever',
@@ -105,6 +107,8 @@ let statuses: SourceStatus[] = [
     backoffUntil: null,
     errorMessage: null,
     progress: null,
+    configured: true,
+    tenantCount: 1,
   },
 ]
 let extraAdded = false
@@ -120,6 +124,8 @@ export function resetMockJobs() {
       backoffUntil: null,
       errorMessage: null,
       progress: null,
+      configured: true,
+      tenantCount: 1,
     },
     {
       source: 'lever',
@@ -128,8 +134,27 @@ export function resetMockJobs() {
       backoffUntil: null,
       errorMessage: null,
       progress: null,
+      configured: true,
+      tenantCount: 1,
     },
   ]
+}
+
+export function simulateUnconfigured(source: JobSourceName) {
+  statuses = statuses.map((item) =>
+    item.source === source
+      ? {
+          ...item,
+          status: 'unconfigured',
+          lastSyncAt: null,
+          backoffUntil: null,
+          errorMessage: `${source === 'greenhouse' ? 'Greenhouse' : 'Lever'} is not configured. Add a board token before turning this source on, or Job Feed stays empty.`,
+          progress: null,
+          configured: false,
+          tenantCount: 0,
+        }
+      : item,
+  )
 }
 
 export function simulateSourceError(source: JobSourceName, message: string) {
@@ -198,7 +223,7 @@ export const mockJobsApi: JobsApi = {
     for (const name of targets) {
       const row = statuses.find((item) => item.source === name)
       if (!row) continue
-      if (row.status === 'error') continue
+      if (row.status === 'error' || row.status === 'unconfigured' || row.configured === false) continue
       if (row.status === 'rate_limited' && row.backoffUntil && new Date(row.backoffUntil).getTime() > Date.now()) {
         continue
       }
@@ -234,7 +259,7 @@ export const mockJobsApi: JobsApi = {
           description: 'New Greenhouse posting after a manual refresh.',
         })
       }
-      if (row.status === 'error') continue
+      if (row.status === 'error' || row.status === 'unconfigured' || row.configured === false) continue
       row.status = 'ok'
       row.lastSyncAt = new Date().toISOString()
       row.progress = null

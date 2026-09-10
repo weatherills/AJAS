@@ -14,6 +14,7 @@ import {
   clampPercent,
   emailUiState,
   isOAuthNotConfiguredError,
+  isSourceNotConfiguredError,
   OAUTH_MESSAGE_TYPE,
   oauthIsConfigured,
   percentToApi,
@@ -21,6 +22,8 @@ import {
   SLIDER_MAX,
   SLIDER_MIN,
   SLIDER_STEP,
+  sourceIsConfigured,
+  sourceUnconfiguredCopy,
 } from '../lib/settings'
 import { LearningPanel } from './Learning'
 
@@ -164,6 +167,11 @@ export function SettingsPage() {
 
   async function saveSource(key: 'greenhouseEnabled' | 'leverEnabled', value: boolean) {
     if (!doc) return
+    const configuredKey = key === 'greenhouseEnabled' ? 'greenhouseConfigured' : 'leverConfigured'
+    if (value && !sourceIsConfigured(doc.sources[configuredKey])) {
+      setSourceError(sourceUnconfiguredCopy(key === 'greenhouseEnabled' ? 'greenhouse' : 'lever'))
+      return
+    }
     const previous = doc.sources[key]
     const setStatus = key === 'greenhouseEnabled' ? setGhStatus : setLeverStatus
     setDoc({ ...doc, sources: { ...doc.sources, [key]: value } })
@@ -174,9 +182,14 @@ export function SettingsPage() {
       const next = await settingsApi.patch({ sources: { [key]: value } })
       applyDoc(next)
       setStatus('saved')
-    } catch {
+    } catch (err) {
       setDoc({ ...doc, sources: { ...doc.sources, [key]: previous } })
       setStatus('error')
+      if (isSourceNotConfiguredError(err)) {
+        setSourceError(err instanceof Error ? err.message : sourceUnconfiguredCopy(key === 'greenhouseEnabled' ? 'greenhouse' : 'lever'))
+        setSourceRetry(null)
+        return
+      }
       setSourceError('Couldn’t save source toggle. Try again.')
       setSourceRetry({ key, value })
     }
@@ -535,44 +548,50 @@ export function SettingsPage() {
       <section className="editor-section" aria-labelledby="sources-heading">
         <h2 id="sources-heading">Sources</h2>
         <p className="muted">Turn ingestion on or off. Credentials are not entered here.</p>
-        <div className="source-row">
-          <div>
-            <div className="phase-name">Greenhouse</div>
-            <div className="muted">Public job board listings</div>
-          </div>
-          <label className="toggle">
-            <span className="sr-only">Greenhouse</span>
-            <input
-              type="checkbox"
-              checked={Boolean(doc?.sources.greenhouseEnabled)}
-              onChange={(event) => void saveSource('greenhouseEnabled', event.target.checked)}
-            />
-            <span>{doc?.sources.greenhouseEnabled ? 'On' : 'Off'}</span>
-          </label>
-          <span className="save-status" aria-live="polite">
-            {ghStatus === 'saving' && 'Saving…'}
-            {ghStatus === 'saved' && 'Saved'}
-          </span>
-        </div>
-        <div className="source-row">
-          <div>
-            <div className="phase-name">Lever</div>
-            <div className="muted">Public job board listings</div>
-          </div>
-          <label className="toggle">
-            <span className="sr-only">Lever</span>
-            <input
-              type="checkbox"
-              checked={Boolean(doc?.sources.leverEnabled)}
-              onChange={(event) => void saveSource('leverEnabled', event.target.checked)}
-            />
-            <span>{doc?.sources.leverEnabled ? 'On' : 'Off'}</span>
-          </label>
-          <span className="save-status" aria-live="polite">
-            {leverStatus === 'saving' && 'Saving…'}
-            {leverStatus === 'saved' && 'Saved'}
-          </span>
-        </div>
+        {(['greenhouse', 'lever'] as const).map((name) => {
+          const enabledKey = name === 'greenhouse' ? 'greenhouseEnabled' : 'leverEnabled'
+          const configuredKey = name === 'greenhouse' ? 'greenhouseConfigured' : 'leverConfigured'
+          const configured = sourceIsConfigured(doc?.sources[configuredKey])
+          const enabled = Boolean(doc?.sources[enabledKey]) && configured
+          const status = name === 'greenhouse' ? ghStatus : leverStatus
+          const label = name === 'greenhouse' ? 'Greenhouse' : 'Lever'
+          return (
+            <div key={name}>
+              <div className={`source-row ${configured ? '' : 'is-unconfigured'}`}>
+                <div>
+                  <div className="phase-name">{label}</div>
+                  <div className="muted">Public job board listings</div>
+                </div>
+                <label className={`toggle ${configured ? '' : 'is-disabled'}`} title={configured ? undefined : 'Not configured'}>
+                  <span className="sr-only">{label}</span>
+                  <input
+                    type="checkbox"
+                    checked={enabled}
+                    disabled={!configured}
+                    onChange={(event) => void saveSource(enabledKey, event.target.checked)}
+                  />
+                  <span>{enabled ? 'On' : 'Off'}</span>
+                </label>
+                <span className="save-status" aria-live="polite">
+                  {status === 'saving' && 'Saving…'}
+                  {status === 'saved' && 'Saved'}
+                </span>
+              </div>
+              {!configured && (
+                <div className="oauth-unconfigured source-unconfigured" role="status">
+                  <p>
+                    <span className="status-badge status-needs-review">Not configured</span>
+                  </p>
+                  <p>{sourceUnconfiguredCopy(name)}</p>
+                  <p className="muted">
+                    Turning this source on would not start a crawl. An operator needs to add a {label}{' '}
+                    board token first.
+                  </p>
+                </div>
+              )}
+            </div>
+          )
+        })}
         {sourceError && (
           <div>
             <p className="inline-error" role="alert">

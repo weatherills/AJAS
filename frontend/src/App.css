@@ -599,6 +599,19 @@ button:disabled {
   color: #e2e8f0;
 }
 
+.toggle.is-disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.toggle input:disabled {
+  cursor: not-allowed;
+}
+
+.source-unconfigured {
+  margin: 0 0 0.75rem;
+}
+
 .email-connected p {
   margin: 0.35rem 0;
 }
@@ -725,6 +738,10 @@ button:disabled {
 
 .feed-source-error {
   border-color: #f87171;
+}
+
+.feed-source-unconfigured {
+  border-color: #f59e0b;
 }
 
 .feed-layout {

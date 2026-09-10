@@ -1,6 +1,6 @@
 export type JobSourceName = 'greenhouse' | 'lever'
 
-export type SourceSyncStatus = 'ok' | 'syncing' | 'rate_limited' | 'error'
+export type SourceSyncStatus = 'ok' | 'syncing' | 'rate_limited' | 'error' | 'unconfigured'
 
 export type JobSourceRef = {
   source: JobSourceName
@@ -36,6 +36,8 @@ export type SourceStatus = {
   backoffUntil: string | null
   errorMessage: string | null
   progress: string | null
+  configured?: boolean
+  tenantCount?: number
 }
 
 export type JobStatusFilter = 'all' | 'new'

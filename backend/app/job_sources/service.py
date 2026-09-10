@@ -53,6 +53,14 @@ def source_display_name(source_id: str) -> str:
     return "Greenhouse" if source_id == "greenhouse" else "Lever"
 
 
+def source_not_configured_message(source_id: str) -> str:
+    name = source_display_name(source_id)
+    return (
+        f"{name} is not configured. Add a board token before turning this source on, "
+        "or Job Feed stays empty."
+    )
+
+
 def public_crawl_error(source_id: str, error: str | None, *, board: str | None = None) -> str:
     """Stable, user-facing crawl failure copy for the Job Feed status bar."""
     name = source_display_name(source_id)
@@ -129,7 +137,7 @@ class CrawlService:
         tenants = self._resolve_tenants(source_id)
         if not tenants:
             if source_id in {"greenhouse", "lever"}:
-                return {"runs": [], "status": "skipped"}
+                return {"runs": [], "status": "skipped", "reason": "not_configured"}
             raise JobSourceNotFoundError(source_id)
         cfg = get_app_settings()
         runs = []
@@ -195,6 +203,20 @@ class CrawlService:
         rows = []
         for source_id in ("greenhouse", "lever"):
             tenants = self.store.list_tenants(source_id)
+            if not tenants:
+                rows.append(
+                    {
+                        "source": source_id,
+                        "status": "unconfigured",
+                        "lastSyncAt": None,
+                        "backoffUntil": None,
+                        "errorMessage": source_not_configured_message(source_id),
+                        "progress": None,
+                        "configured": False,
+                        "tenantCount": 0,
+                    }
+                )
+                continue
             last_sync = None
             error = None
             progress = None
@@ -237,6 +259,8 @@ class CrawlService:
                     "backoffUntil": backoff_until,
                     "errorMessage": error,
                     "progress": progress,
+                    "configured": True,
+                    "tenantCount": len(tenants),
                 }
             )
         return rows

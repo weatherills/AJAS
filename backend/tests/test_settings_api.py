@@ -203,6 +203,82 @@ def test_source_toggle_enqueues_discovery_and_is_idempotent(svc, queue):
     assert queue.of("source-discovery") == [{"userId": USER, "source": "greenhouse"}]
 
 
+def test_get_reports_sources_unconfigured_when_no_tenants(svc):
+    from app.job_sources.memory import InMemoryJobSourceStore
+    from app.job_sources.queues import InMemoryJobQueue as JobsQueue
+    from app.job_sources.runtime import set_service as set_jobs
+    from app.job_sources.service import CrawlService
+
+    set_jobs(CrawlService(store=InMemoryJobSourceStore(), queue=JobsQueue()))
+    try:
+        body = _body(routes.get_settings(_req("GET", "http://localhost/api/v1/settings")))
+        assert body["sources"]["greenhouseEnabled"] is False
+        assert body["sources"]["leverEnabled"] is False
+        assert body["sources"]["greenhouseConfigured"] is False
+        assert body["sources"]["leverConfigured"] is False
+    finally:
+        set_jobs(None)
+
+
+def test_enable_source_without_tenants_is_source_not_configured(svc, queue):
+    from app.job_sources.memory import InMemoryJobSourceStore
+    from app.job_sources.queues import InMemoryJobQueue as JobsQueue
+    from app.job_sources.runtime import set_service as set_jobs
+    from app.job_sources.service import CrawlService
+
+    jobs = CrawlService(store=InMemoryJobSourceStore(), queue=JobsQueue())
+    set_jobs(jobs)
+    try:
+        resp = routes.patch_settings(
+            _req(
+                "PATCH",
+                "http://localhost/api/v1/settings",
+                json_body={"sources": {"greenhouseEnabled": True}},
+            )
+        )
+        assert resp.status_code == 400
+        body = _body(resp)
+        assert body["error"]["code"] == "SOURCE_NOT_CONFIGURED"
+        assert "not configured" in body["error"]["message"].lower()
+        assert "board" in body["error"]["message"].lower()
+        got = _body(routes.get_settings(_req("GET", "http://localhost/api/v1/settings")))
+        assert got["sources"]["greenhouseEnabled"] is False
+        assert got["sources"]["greenhouseConfigured"] is False
+        assert queue.of("source-discovery") == []
+        assert jobs.store.list_tenants("greenhouse") == []
+    finally:
+        set_jobs(None)
+
+
+def test_enable_source_with_tenants_still_toggles(svc, queue):
+    from app.job_sources.memory import InMemoryJobSourceStore
+    from app.job_sources.queues import InMemoryJobQueue as JobsQueue
+    from app.job_sources.runtime import set_service as set_jobs
+    from app.job_sources.service import CrawlService
+
+    jobs = CrawlService(store=InMemoryJobSourceStore(), queue=JobsQueue())
+    jobs.store.upsert_tenant("greenhouse", "acme", config={"board_token": "acme"})
+    set_jobs(jobs)
+    try:
+        on = routes.patch_settings(
+            _req(
+                "PATCH",
+                "http://localhost/api/v1/settings",
+                json_body={"sources": {"greenhouseEnabled": True}},
+            )
+        )
+        assert on.status_code == 200
+        body = _body(on)
+        assert body["sources"]["greenhouseEnabled"] is True
+        assert body["sources"]["greenhouseConfigured"] is True
+        assert body["sources"]["leverConfigured"] is False
+        tenants = jobs.store.list_tenants("greenhouse")
+        assert tenants and all(item.enabled for item in tenants)
+        assert queue.of("source-discovery") == [{"userId": USER, "source": "greenhouse"}]
+    finally:
+        set_jobs(None)
+
+
 def test_unknown_source_is_400(svc):
     resp = routes.patch_settings(
         _req("PATCH", "http://localhost/api/v1/settings", json_body={"sources": {"fooEnabled": True}})

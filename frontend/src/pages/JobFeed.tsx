@@ -25,7 +25,9 @@ import {
   refreshToastForStatuses,
   saveFilters,
   sourceErrorCopy,
+  sourceIsConfiguredStatus,
   sourceTitle,
+  sourceUnconfiguredCopy as feedSourceUnconfiguredCopy,
   statusLabel,
   takeLastVisit,
 } from '../lib/jobs'
@@ -434,9 +436,17 @@ export function JobFeedPage() {
   const lever = statuses.find((item) => item.source === 'lever')
   const greenhouse = statuses.find((item) => item.source === 'greenhouse')
   const sourceErrors = statuses.filter((item) => item.status === 'error')
+  const sourceUnconfigured = statuses.filter((item) => !sourceIsConfiguredStatus(item))
 
   function sourceBlocked(row: SourceStatus | undefined) {
-    return !row || offline || row.status === 'syncing' || backoffRemainingMs(row.backoffUntil, now) > 0
+    return (
+      !row ||
+      offline ||
+      row.status === 'syncing' ||
+      row.status === 'unconfigured' ||
+      row.configured === false ||
+      backoffRemainingMs(row.backoffUntil, now) > 0
+    )
   }
 
   return (
@@ -468,6 +478,11 @@ export function JobFeedPage() {
 
       {USE_MOCK && <p className="banner">Demo data (mock API). Filters stay in this browser.</p>}
       {offline && <p className="unsaved-banner">Offline — cached jobs only. Refresh is disabled until you reconnect.</p>}
+      {sourceUnconfigured.length > 0 && (
+        <p className="banner" role="status">
+          {sourceUnconfigured.map((item) => feedSourceUnconfiguredCopy(item) || `${sourceTitle(item.source)} is not configured.`).join(' ')}
+        </p>
+      )}
       {sourceErrors.length > 0 && (
         <p className="unsaved-banner" role="alert">
           {sourceErrors.map((item) => sourceErrorCopy(item) || `${sourceTitle(item.source)} fetch failed.`).join(' ')}
@@ -491,11 +506,22 @@ export function JobFeedPage() {
                     {sourceErrorCopy(row) || `${sourceTitle(name)} fetch failed.`}
                   </p>
                 )}
+                {row && !sourceIsConfiguredStatus(row) && (
+                  <p className="muted" role="status">
+                    {feedSourceUnconfiguredCopy(row)}
+                  </p>
+                )}
               </div>
               <button
                 type="button"
                 disabled={blocked}
-                title={left > 0 ? `Cooling down ${formatCountdown(left)} after a rate limit` : `Refresh ${sourceTitle(name)}`}
+                title={
+                  !row || !sourceIsConfiguredStatus(row)
+                    ? `${sourceTitle(name)} is not configured`
+                    : left > 0
+                      ? `Cooling down ${formatCountdown(left)} after a rate limit`
+                      : `Refresh ${sourceTitle(name)}`
+                }
                 aria-label={`Refresh ${sourceTitle(name)}`}
                 onClick={() => void refresh(name)}
               >
@@ -625,13 +651,30 @@ export function JobFeedPage() {
                     </p>
                   ))}
                 </>
+              ) : sourceUnconfigured.length > 0 ? (
+                <>
+                  <p>Job sources are not configured</p>
+                  {sourceUnconfigured.map((item) => (
+                    <p key={item.source} className="muted">
+                      {feedSourceUnconfiguredCopy(item)}
+                    </p>
+                  ))}
+                  <p className="muted">
+                    Add a board token, then enable the source in <a href="#/settings">Settings</a>.
+                  </p>
+                </>
               ) : (
                 <>
                   <p>No jobs found</p>
                   <p className="muted">Adjust filters or refresh Greenhouse and Lever.</p>
                 </>
               )}
-              <button type="button" className="primary" disabled={offline} onClick={() => void refresh('all')}>
+              <button
+                type="button"
+                className="primary"
+                disabled={offline || (sourceBlocked(greenhouse) && sourceBlocked(lever))}
+                onClick={() => void refresh('all')}
+              >
                 Retry refresh
               </button>
             </div>

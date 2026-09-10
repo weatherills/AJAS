@@ -61,6 +61,31 @@ def api_email(connection: EmailConnection | None) -> dict:
     return body
 
 
+def _source_payload(settings: UserSettings) -> dict:
+    """Include configured flags when job sources are wired so Settings can hide empty toggles."""
+    gh_enabled = settings.greenhouse_enabled
+    lv_enabled = settings.lever_enabled
+    body = {
+        "greenhouseEnabled": gh_enabled,
+        "leverEnabled": lv_enabled,
+    }
+    try:
+        from app.job_sources.runtime import tenant_counts_or_none
+
+        counts = tenant_counts_or_none()
+    except Exception:
+        counts = None
+    if counts is None:
+        return body
+    gh_ok = counts.get("greenhouse", 0) > 0
+    lv_ok = counts.get("lever", 0) > 0
+    body["greenhouseConfigured"] = gh_ok
+    body["leverConfigured"] = lv_ok
+    body["greenhouseEnabled"] = bool(gh_enabled and gh_ok)
+    body["leverEnabled"] = bool(lv_enabled and lv_ok)
+    return body
+
+
 def settings_response(
     settings: UserSettings,
     connection: EmailConnection | None,
@@ -71,10 +96,7 @@ def settings_response(
         "matchThreshold": api_threshold(settings.match_threshold),
         "emailConnection": api_email(connection),
         "oauthConfigured": microsoft_oauth_configured(),
-        "sources": {
-            "greenhouseEnabled": settings.greenhouse_enabled,
-            "leverEnabled": settings.lever_enabled,
-        },
+        "sources": _source_payload(settings),
         "audit": {
             "createdAt": settings.created_at,
             "updatedAt": settings.updated_at,

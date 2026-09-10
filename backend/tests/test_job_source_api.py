@@ -456,6 +456,12 @@ def test_feed_lists_merged_jobs_and_status(svc, store):
     assert all("greenhouse" in {ref["source"] for ref in item["sources"]} for item in greenhouse["items"])
     status = _body(routes.list_source_status(_req("GET", "http://localhost/api/v1/sources/status")))
     assert {row["source"] for row in status} == {"greenhouse", "lever"}
+    greenhouse = next(row for row in status if row["source"] == "greenhouse")
+    lever = next(row for row in status if row["source"] == "lever")
+    assert greenhouse["configured"] is True
+    assert lever["configured"] is True
+    assert greenhouse["status"] != "unconfigured"
+    assert lever["status"] != "unconfigured"
 
 
 def test_demo_seed_crawl_skips_http(svc, store, fetcher):
@@ -469,17 +475,29 @@ def test_demo_seed_crawl_skips_http(svc, store, fetcher):
     status = _body(routes.list_source_status(_req("GET", "http://localhost/api/v1/sources/status")))
     greenhouse = next(row for row in status if row["source"] == "greenhouse")
     assert greenhouse["status"] != "error"
+    assert greenhouse["configured"] is True
+    assert greenhouse["status"] != "unconfigured"
 
 
 def test_named_source_without_tenants_is_skipped_not_404(svc):
     resp = routes.start_crawl(_req("POST", "http://localhost/api/v1/sources/greenhouse/crawl", route={"id": "greenhouse"}))
     assert resp.status_code == 202
-    assert _body(resp)["status"] == "skipped"
-    assert _body(resp)["runs"] == []
+    body = _body(resp)
+    assert body["status"] == "skipped"
+    assert body["runs"] == []
+    assert body["reason"] == "not_configured"
+    status = _body(routes.list_source_status(_req("GET", "http://localhost/api/v1/sources/status")))
+    greenhouse = next(row for row in status if row["source"] == "greenhouse")
+    assert greenhouse["status"] == "unconfigured"
+    assert greenhouse["configured"] is False
+    assert greenhouse["tenantCount"] == 0
+    assert "not configured" in (greenhouse["errorMessage"] or "").lower()
+    lever = next(row for row in status if row["source"] == "lever")
+    assert lever["status"] == "unconfigured"
 
 
 def test_public_crawl_error_maps_404_and_timeout():
-    from app.job_sources.service import public_crawl_error
+    from app.job_sources.service import public_crawl_error, source_not_configured_message
 
     missing = public_crawl_error("greenhouse", "404", board="no-such-board")
     assert "not found" in missing.lower()
@@ -488,6 +506,9 @@ def test_public_crawl_error_maps_404_and_timeout():
     assert "unreachable" in timeout.lower()
     already = public_crawl_error("greenhouse", missing)
     assert already == missing
+    bare = source_not_configured_message("greenhouse")
+    assert "not configured" in bare.lower()
+    assert "board" in bare.lower()
 
 
 def test_non_demo_missing_board_sets_durable_status_error(svc, store, fetcher):
@@ -506,6 +527,7 @@ def test_non_demo_missing_board_sets_durable_status_error(svc, store, fetcher):
     assert greenhouse["errorMessage"]
     assert "not found" in greenhouse["errorMessage"].lower()
     assert "no-such-board" in greenhouse["errorMessage"]
+    assert greenhouse["configured"] is True
 
 
 def test_unreachable_timeout_sets_durable_status_error(svc, store, fetcher):

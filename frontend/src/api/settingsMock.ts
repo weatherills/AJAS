@@ -17,7 +17,7 @@ function blank(): SettingsDoc {
       scopes: [],
       lastVerifiedAt: null,
     },
-    sources: { greenhouseEnabled: false, leverEnabled: false },
+    sources: { greenhouseEnabled: false, leverEnabled: false, greenhouseConfigured: true, leverConfigured: true },
     audit: { createdAt: stamp, updatedAt: stamp, updatedBy: 'local-user' },
   }
 }
@@ -36,8 +36,22 @@ export const mockSettingsApi: SettingsApi = {
   },
   async patch(body) {
     if (body.matchThreshold != null) doc.matchThreshold = body.matchThreshold
-    if (body.sources?.greenhouseEnabled != null) doc.sources.greenhouseEnabled = body.sources.greenhouseEnabled
-    if (body.sources?.leverEnabled != null) doc.sources.leverEnabled = body.sources.leverEnabled
+    if (body.sources?.greenhouseEnabled != null) {
+      if (body.sources.greenhouseEnabled && doc.sources.greenhouseConfigured === false) {
+        throw Object.assign(new Error('Greenhouse is not configured. Add a board token before turning this source on, or Job Feed stays empty.'), {
+          code: 'SOURCE_NOT_CONFIGURED',
+        })
+      }
+      doc.sources.greenhouseEnabled = body.sources.greenhouseEnabled
+    }
+    if (body.sources?.leverEnabled != null) {
+      if (body.sources.leverEnabled && doc.sources.leverConfigured === false) {
+        throw Object.assign(new Error('Lever is not configured. Add a board token before turning this source on, or Job Feed stays empty.'), {
+          code: 'SOURCE_NOT_CONFIGURED',
+        })
+      }
+      doc.sources.leverEnabled = body.sources.leverEnabled
+    }
     doc.audit.updatedAt = now()
     return structuredClone(doc)
   },
