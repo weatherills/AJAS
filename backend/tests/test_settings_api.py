@@ -52,6 +52,7 @@ def exchanger():
 @pytest.fixture
 def svc(monkeypatch, queue, exchanger):
     monkeypatch.setenv("MICROSOFT_CLIENT_ID", "client-1")
+    monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "secret-1")
     monkeypatch.setenv("AUTH_MODE", "dev")
     get_settings.cache_clear()
     service = SettingsService(store=InMemorySettingsStore(), queue=queue, exchanger=exchanger)
@@ -119,6 +120,7 @@ def test_get_defaults_without_secrets(svc):
     assert body["matchThreshold"] == 0.7
     assert body["sources"] == {"greenhouseEnabled": False, "leverEnabled": False}
     assert body["emailConnection"]["status"] == "disconnected"
+    assert body["oauthConfigured"] is True
     assert "secure" not in body["emailConnection"]
     assert "refreshTokenEnc" not in json.dumps(body)
     assert body["audit"]["updatedBy"]
@@ -224,6 +226,75 @@ def test_email_connect_returns_pkce_url(svc):
     assert "offline_access" in body["authUrl"]
     pending = _body(routes.get_settings(_req("GET", "http://localhost/api/v1/settings")))
     assert pending["emailConnection"]["status"] == "pending"
+    assert pending["oauthConfigured"] is True
+
+
+def test_get_reports_oauth_unconfigured_when_env_missing(monkeypatch, queue, exchanger):
+    monkeypatch.setenv("AUTH_MODE", "dev")
+    monkeypatch.delenv("MICROSOFT_CLIENT_ID", raising=False)
+    monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
+    get_settings.cache_clear()
+    service = SettingsService(store=InMemorySettingsStore(), queue=queue, exchanger=exchanger)
+    set_service(service)
+    try:
+        body = _body(routes.get_settings(_req("GET", "http://localhost/api/v1/settings")))
+        assert body["oauthConfigured"] is False
+        assert body["emailConnection"]["status"] == "disconnected"
+    finally:
+        set_service(None)
+        get_settings.cache_clear()
+
+
+def test_connect_without_oauth_env_is_oauth_not_configured(monkeypatch, queue, exchanger):
+    monkeypatch.setenv("AUTH_MODE", "dev")
+    monkeypatch.setenv("MICROSOFT_CLIENT_ID", "  ")
+    monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
+    get_settings.cache_clear()
+    store = InMemorySettingsStore()
+    service = SettingsService(store=store, queue=queue, exchanger=exchanger)
+    set_service(service)
+    try:
+        resp = routes.connect_email(
+            _req(
+                "POST",
+                "http://localhost/api/v1/settings/email/connect",
+                json_body={"redirectUri": "http://localhost:3000/oauth-callback.html"},
+            )
+        )
+        assert resp.status_code == 400
+        body = _body(resp)
+        assert body["error"]["code"] == "OAUTH_NOT_CONFIGURED"
+        assert "Microsoft OAuth is not configured" in body["error"]["message"]
+        assert body["error"].get("details") in (None, [])
+        assert store.get_active_connection(USER) is None
+        got = _body(routes.get_settings(_req("GET", "http://localhost/api/v1/settings")))
+        assert got["oauthConfigured"] is False
+        assert got["emailConnection"]["status"] == "disconnected"
+    finally:
+        set_service(None)
+        get_settings.cache_clear()
+
+
+def test_connect_without_client_secret_is_oauth_not_configured(monkeypatch, queue, exchanger):
+    monkeypatch.setenv("AUTH_MODE", "dev")
+    monkeypatch.setenv("MICROSOFT_CLIENT_ID", "client-1")
+    monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "")
+    get_settings.cache_clear()
+    service = SettingsService(store=InMemorySettingsStore(), queue=queue, exchanger=exchanger)
+    set_service(service)
+    try:
+        resp = routes.connect_email(
+            _req(
+                "POST",
+                "http://localhost/api/v1/settings/email/connect",
+                json_body={"redirectUri": "https://ajas.example/callback"},
+            )
+        )
+        assert resp.status_code == 400
+        assert _body(resp)["error"]["code"] == "OAUTH_NOT_CONFIGURED"
+    finally:
+        set_service(None)
+        get_settings.cache_clear()
 
 
 def test_email_callback_stores_encrypted_refresh(svc, exchanger):
@@ -271,6 +342,7 @@ def test_email_callback_invalid_state_is_400(svc):
 def test_email_callback_graph_error_sets_error_status(svc, monkeypatch, queue):
     failing = FakeExchanger(fail=True)
     monkeypatch.setenv("MICROSOFT_CLIENT_ID", "client-1")
+    monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "secret-1")
     get_settings.cache_clear()
     service = SettingsService(store=InMemorySettingsStore(), queue=queue, exchanger=failing)
     set_service(service)
@@ -403,3 +475,20 @@ def test_jwt_claims_extracts_account_without_raw_token():
     claims = jwt_claims(token)
     assert claims["preferred_username"] == "jane@contoso.com"
     assert claims["tid"] == "tenant-1"
+
+
+def test_microsoft_oauth_configured_requires_id_and_secret(monkeypatch):
+    from app.config import microsoft_oauth_configured
+
+    monkeypatch.delenv("MICROSOFT_CLIENT_ID", raising=False)
+    monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
+    get_settings.cache_clear()
+    assert microsoft_oauth_configured() is False
+    monkeypatch.setenv("MICROSOFT_CLIENT_ID", "client-1")
+    monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "  ")
+    get_settings.cache_clear()
+    assert microsoft_oauth_configured() is False
+    monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "secret-1")
+    get_settings.cache_clear()
+    assert microsoft_oauth_configured() is True
+    get_settings.cache_clear()

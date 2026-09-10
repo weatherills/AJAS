@@ -42,6 +42,9 @@ Content-Type: application/json
 }
 
 ### Microsoft 365 connect (PKCE authorize URL)
+# When MICROSOFT_CLIENT_ID / MICROSOFT_CLIENT_SECRET are unset, this returns
+# 400 { "error": { "code": "OAUTH_NOT_CONFIGURED", "message": "Microsoft OAuth is not configured" } }
+# GET /api/v1/settings includes oauthConfigured: false in that case.
 POST {{base}}/api/v1/settings/email/connect
 Authorization: Bearer {{token}}
 Content-Type: application/json

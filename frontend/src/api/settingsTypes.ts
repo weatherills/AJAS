@@ -2,6 +2,7 @@ import type { EmailApiStatus } from '../lib/settings'
 
 export type SettingsDoc = {
   matchThreshold: number
+  oauthConfigured?: boolean
   emailConnection: {
     status: EmailApiStatus
     provider: string | null

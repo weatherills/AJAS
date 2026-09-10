@@ -3,6 +3,8 @@ import {
   apiToPercent,
   clampPercent,
   emailUiState,
+  isOAuthNotConfiguredError,
+  oauthIsConfigured,
   percentToApi,
   previewCopy,
 } from './settings'
@@ -31,6 +33,23 @@ describe('settings mapping', () => {
     expect(emailUiState('error', 'expired')).toBe('action_required')
     expect(emailUiState('error', 'GRAPH_ERROR')).toBe('error')
     expect(emailUiState('disconnected', null, true)).toBe('connecting')
+    expect(emailUiState('disconnected', null, false, false)).toBe('unconfigured')
+    expect(emailUiState('connected', null, false, false)).toBe('connected')
+    expect(emailUiState('error', 'expired', false, false)).toBe('unconfigured')
+  })
+
+  it('treats oauthConfigured false as unconfigured, missing as configured', () => {
+    expect(oauthIsConfigured(false)).toBe(false)
+    expect(oauthIsConfigured(true)).toBe(true)
+    expect(oauthIsConfigured(undefined)).toBe(true)
+  })
+
+  it('detects OAuth-not-configured API errors without treating them as generic failures', () => {
+    expect(isOAuthNotConfiguredError({ code: 'OAUTH_NOT_CONFIGURED', message: 'Microsoft OAuth is not configured' })).toBe(
+      true,
+    )
+    expect(isOAuthNotConfiguredError(new Error('Microsoft OAuth is not configured'))).toBe(true)
+    expect(isOAuthNotConfiguredError(new Error('Request failed (400)'))).toBe(false)
   })
 
   it('shows fewer-matches copy near 100', () => {

@@ -8,6 +8,7 @@ const mailbox: EmailStatus = {
   unreadCount: 1,
   demo: true,
   provider: 'demo',
+  oauthConfigured: true,
 }
 
 const templates: EmailTemplate[] = [

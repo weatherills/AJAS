@@ -13,7 +13,9 @@ import {
   apiToPercent,
   clampPercent,
   emailUiState,
+  isOAuthNotConfiguredError,
   OAUTH_MESSAGE_TYPE,
+  oauthIsConfigured,
   percentToApi,
   previewCopy,
   SLIDER_MAX,
@@ -54,6 +56,7 @@ export function SettingsPage() {
   const [connecting, setConnecting] = useState(false)
   const [popupBlocked, setPopupBlocked] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
+  const [oauthBlocked, setOauthBlocked] = useState(false)
   const [pendingAuthUrl, setPendingAuthUrl] = useState<string | null>(null)
   const [confirmDisconnect, setConfirmDisconnect] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -78,6 +81,8 @@ export function SettingsPage() {
     const value = apiToPercent(next.matchThreshold)
     setPercent(value)
     setSavedPercent(value)
+    if (next.oauthConfigured === false) setOauthBlocked(true)
+    else if (next.oauthConfigured === true) setOauthBlocked(false)
   }, [])
 
   const load = useCallback(async () => {
@@ -216,6 +221,12 @@ export function SettingsPage() {
   async function startConnect(authUrl?: string | null) {
     setEmailError(null)
     setPopupBlocked(false)
+    const configured = oauthIsConfigured(doc?.oauthConfigured) && !oauthBlocked
+    if (!configured && !authUrl) {
+      setOauthBlocked(true)
+      setEmailError(null)
+      return
+    }
     try {
       let url = authUrl
       let state = oauthState.current
@@ -249,6 +260,12 @@ export function SettingsPage() {
       toast('Microsoft 365 connected')
     } catch (err) {
       setConnecting(false)
+      if (isOAuthNotConfiguredError(err)) {
+        setOauthBlocked(true)
+        setEmailError(null)
+        await load()
+        return
+      }
       setEmailError(err instanceof Error ? err.message : 'Could not connect Microsoft 365')
       await load()
     }
@@ -265,7 +282,8 @@ export function SettingsPage() {
   }
 
   const email = doc?.emailConnection
-  const ui = emailUiState(email?.status ?? 'disconnected', email?.errorCode, connecting)
+  const configured = oauthIsConfigured(doc?.oauthConfigured) && !oauthBlocked
+  const ui = emailUiState(email?.status ?? 'disconnected', email?.errorCode, connecting, configured)
 
   return (
     <div className="page library-page">
@@ -433,7 +451,22 @@ export function SettingsPage() {
       <section className="editor-section" aria-labelledby="email-heading">
         <h2 id="email-heading">Email connection</h2>
         <p className="muted">Read-only access to your mailbox (Mail.Read and offline_access).</p>
-        {ui === 'disconnected' && (
+        {ui === 'unconfigured' && (
+          <div className="oauth-unconfigured" role="status">
+            <p>
+              <span className="status-badge status-needs-review">OAuth not configured</span>
+            </p>
+            <p>
+              Microsoft 365 sign-in is not available on this server. Graph app credentials are
+              missing, so Connect cannot open a real Microsoft login.
+            </p>
+            <p className="muted">
+              This is not a mailbox problem. Email still shows a local demo inbox until an operator
+              sets MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET.
+            </p>
+          </div>
+        )}
+        {doc && ui === 'disconnected' && (
           <button type="button" className="primary" onClick={() => void startConnect()}>
             Connect Microsoft 365
           </button>
@@ -450,9 +483,13 @@ export function SettingsPage() {
             </p>
             {email?.lastVerifiedAt && <p className="muted">Last verified {formatWhen(email.lastVerifiedAt)}</p>}
             <div className="actions">
-              <button type="button" onClick={() => void startConnect()}>
-                Reconnect
-              </button>
+              {configured ? (
+                <button type="button" onClick={() => void startConnect()}>
+                  Reconnect
+                </button>
+              ) : (
+                <p className="muted">Reconnect is unavailable until Graph OAuth is configured on this server.</p>
+              )}
               <button type="button" className="danger" onClick={() => setConfirmDisconnect(true)}>
                 Disconnect
               </button>

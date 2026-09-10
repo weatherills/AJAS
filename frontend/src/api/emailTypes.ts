@@ -7,6 +7,7 @@ export type EmailStatus = {
   demo: boolean
   provider?: 'microsoft365' | 'demo' | null
   lastSyncError?: string | null
+  oauthConfigured?: boolean
 }
 
 export type EmailThread = {

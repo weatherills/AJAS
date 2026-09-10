@@ -8,6 +8,7 @@ function blank(): SettingsDoc {
   const stamp = now()
   return {
     matchThreshold: 0.7,
+    oauthConfigured: true,
     emailConnection: {
       status: 'disconnected',
       provider: null,

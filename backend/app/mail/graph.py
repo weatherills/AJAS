@@ -123,9 +123,9 @@ def pending_followup(account_id: str, mailbox: str) -> GraphMessage:
 
 
 def default_graph_client() -> GraphClient:
-    from app.config import get_settings
+    from app.config import get_settings, microsoft_oauth_configured
 
     settings = get_settings()
-    if not (settings.microsoft_client_id or "").strip() or not (settings.microsoft_client_secret or "").strip():
+    if not microsoft_oauth_configured(settings):
         return LocalGraphClient()
     return LocalGraphClient()

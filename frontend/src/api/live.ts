@@ -17,12 +17,24 @@ export async function request(path: string, init: RequestInit = {}): Promise<Res
   return fetch(path, { ...init, headers })
 }
 
+export class ApiError extends Error {
+  readonly status: number
+  readonly code: string | null
+
+  constructor(message: string, status: number, code: string | null = null) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.code = code
+  }
+}
+
 export async function json<T>(resp: Response): Promise<T> {
   if (resp.status === 204) return undefined as T
   const body = await resp.json().catch(() => ({}))
   if (!resp.ok) {
     const message = body?.error?.message || `Request failed (${resp.status})`
-    throw new Error(message)
+    throw new ApiError(message, resp.status, body?.error?.code ?? null)
   }
   return body as T
 }

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.config import microsoft_oauth_configured
 from app.settings.constants import DEFAULT_MATCH_THRESHOLD
 from app.settings.errors import SettingsValidationError
 from app.settings.models import EmailConnection, UserSettings
@@ -69,6 +70,7 @@ def settings_response(
     return {
         "matchThreshold": api_threshold(settings.match_threshold),
         "emailConnection": api_email(connection),
+        "oauthConfigured": microsoft_oauth_configured(),
         "sources": {
             "greenhouseEnabled": settings.greenhouse_enabled,
             "leverEnabled": settings.lever_enabled,
