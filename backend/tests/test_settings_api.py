@@ -336,6 +336,51 @@ def test_add_tenant_then_enable_source(svc, queue):
         set_jobs(None)
 
 
+def test_delete_last_tenant_reports_unconfigured_and_blocks_enable(svc, queue):
+    from app.features import source_ingestion as jobs_routes
+    from app.job_sources.memory import InMemoryJobSourceStore
+    from app.job_sources.queues import InMemoryJobQueue as JobsQueue
+    from app.job_sources.runtime import set_service as set_jobs
+    from app.job_sources.service import CrawlService
+
+    jobs = CrawlService(store=InMemoryJobSourceStore(), queue=JobsQueue())
+    set_jobs(jobs)
+    try:
+        created = jobs_routes.create_source_tenant(
+            _req(
+                "POST",
+                "http://localhost/api/v1/sources/greenhouse/tenants",
+                json_body={"boardToken": "acme"},
+                route={"id": "greenhouse"},
+            )
+        )
+        assert created.status_code == 201
+        removed = jobs_routes.delete_source_tenant(
+            _req(
+                "DELETE",
+                "http://localhost/api/v1/sources/greenhouse/tenants/acme",
+                route={"id": "greenhouse", "tenant_key": "acme"},
+            )
+        )
+        assert removed.status_code == 200
+        got = _body(routes.get_settings(_req("GET", "http://localhost/api/v1/settings")))
+        assert got["sources"]["greenhouseConfigured"] is False
+        assert got["sources"]["greenhouseEnabled"] is False
+        assert got["sources"]["leverConfigured"] is False
+        blocked = routes.patch_settings(
+            _req(
+                "PATCH",
+                "http://localhost/api/v1/settings",
+                json_body={"sources": {"greenhouseEnabled": True}},
+            )
+        )
+        assert blocked.status_code == 400
+        assert _body(blocked)["error"]["code"] == "SOURCE_NOT_CONFIGURED"
+        assert jobs.store.list_tenants("greenhouse") == []
+    finally:
+        set_jobs(None)
+
+
 def test_effective_source_enabled_defaults_on_until_explicit_off():
     from app.settings.mapping import effective_source_enabled
 

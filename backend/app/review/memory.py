@@ -205,6 +205,40 @@ class InMemoryReviewStore:
         self._matches[match.id] = match
         return self._copy_match(match)
 
+    def update_pending_match(
+        self,
+        user_id: str,
+        match_id: str,
+        *,
+        ai_score: float | None = None,
+        suggestion: str | None = None,
+        why: str | None = None,
+        summary: str | None = None,
+        job_title: str | None = None,
+        company: str | None = None,
+        location: str | None = None,
+    ) -> ReviewMatch:
+        match = self._get_owned_match(match_id, user_id)
+        if match.status != "PENDING":
+            raise ReviewConflictError("match already has a decision")
+        if ai_score is not None:
+            match.ai_score = _validate_score(ai_score)
+        if suggestion is not None:
+            match.suggestion = _normalize_suggestion(suggestion)
+        if why is not None:
+            match.why = _optional_str(why)
+        if summary is not None:
+            match.summary = _optional_str(summary)
+        if job_title:
+            match.job_title = _require_str(job_title, field_name="job_title")
+        if company:
+            match.company = _require_str(company, field_name="company")
+        if location:
+            match.location = _require_str(location, field_name="location")
+        match.updated_at = utc_now()
+        match.etag = next_etag(match.etag)
+        return self._copy_match(match)
+
     def get_match(self, match_id: str, *, user_id: str) -> ReviewMatch:
         return self._copy_match(self._get_owned_match(match_id, user_id))
 
