@@ -99,4 +99,14 @@ describe('mock jobs api', () => {
     expect(staff.title).toBe('Staff Engineer')
     expect(staff.company).toBe('Acme')
   })
+
+  it('skips Lever refresh while rate-limited', async () => {
+    resetMockJobs()
+    simulateLeverRateLimit(30)
+    const before = await mockJobsApi.sourceStatus()
+    expect(before.find((item) => item.source === 'lever')?.status).toBe('rate_limited')
+    const after = await mockJobsApi.refresh('all')
+    expect(after.find((item) => item.source === 'lever')?.status).toBe('rate_limited')
+    expect(after.find((item) => item.source === 'greenhouse')?.status).toBe('ok')
+  })
 })
