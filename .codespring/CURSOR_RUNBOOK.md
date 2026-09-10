@@ -9,7 +9,7 @@
 4. Only move to the next phase when verification passes
 
 ## Project Overview
-The AI Job Application System (AJAS) is designed to streamline the job application process for job seekers by leveraging AI to match resumes with job postings. It provides features such as resume management, job source integration, and an auto-apply function, making the application process efficient and user-friendly.
+The AI Job Application System (AJAS) is designed to streamline the job application process for job seekers by leveraging AI to match resumes with job postings, manage applications, and facilitate communication with recruiters. It provides a user-friendly interface for reviewing job matches, applying to jobs, and managing resumes.
 
 ## Tech Stack
 - React + TypeScript (Frontend)
@@ -45,41 +45,41 @@ The setup failed with this error: [paste error here]. Fix it without changing th
 ---
 
 ## Phase 1: Review & Decision UI
-**What this phase does:** Build a user interface for reviewing AI-generated job matches, allowing users to approve or reject with comments.
+**What this phase does:** Build a UI for users to review AI-generated job matches, approve or reject them, and leave comments.
 
 **Say this to Cursor:**
 ```
-Create a Review & Decision UI that allows users to review job matches, view summaries, and make approve/reject decisions with comments. Use React and TypeScript for the frontend.
+Implement the Review & Decision UI based on the frontend PRD. Use React and TypeScript to create a simple interface for reviewing job matches, displaying summaries, and allowing users to approve or reject with comments.
 ```
 
 **How to verify it worked:**
-- [ ] Users can see a list of job matches with summaries.
-- [ ] Users can approve or reject matches and leave comments.
-- [ ] The decisions are saved and can be viewed later.
+- [ ] Users can view a list of job matches with summaries.
+- [ ] Users can approve or reject job matches and leave comments.
+- [ ] The UI updates to reflect user decisions.
 
 **If something breaks, say this to Cursor:**
 ```
-The Review & Decision UI failed with this error: [paste error here]. Fix it without changing other features.
+The Review & Decision UI has an issue: [paste error here]. Diagnose and fix it without altering previous phases.
 ```
 
 ---
 
 ## Phase 2: Auto-Apply
-**What this phase does:** Implement the auto-apply feature that allows users to submit job applications automatically for approved matches.
+**What this phase does:** Enable users to automatically apply to jobs they approve, filling out necessary information via APIs.
 
 **Say this to Cursor:**
 ```
-Build the Auto-Apply feature that enables users to submit applications directly from the Review & Decision UI for approved jobs. Ensure it integrates with Greenhouse and Lever APIs.
+Develop the Auto-Apply feature according to the frontend PRD. Implement functionality that allows users to auto-fill and submit applications for approved jobs through Greenhouse and Lever APIs.
 ```
 
 **How to verify it worked:**
-- [ ] Users can submit applications for approved jobs.
-- [ ] The application status is tracked and displayed.
-- [ ] Users receive confirmation of their submissions.
+- [ ] Users can submit applications for approved jobs automatically.
+- [ ] The system tracks the status of each application.
+- [ ] Users receive confirmation of application submissions.
 
 **If something breaks, say this to Cursor:**
 ```
-The Auto-Apply feature failed with this error: [paste error here]. Fix it without changing other features.
+The Auto-Apply feature has an issue: [paste error here]. Diagnose and fix it without altering previous phases.
 ```
 
 ---
@@ -89,117 +89,117 @@ The Auto-Apply feature failed with this error: [paste error here]. Fix it withou
 
 **Say this to Cursor:**
 ```
-Develop a Settings page that allows users to adjust their AI match threshold, connect their Microsoft 365 email, and toggle job source integrations (Greenhouse, Lever).
+Implement the Settings feature based on the frontend PRD. Create a page where users can adjust their match threshold, connect their Microsoft 365 email, and enable or disable job sources.
 ```
 
 **How to verify it worked:**
 - [ ] Users can adjust the match threshold and save changes.
 - [ ] Users can connect their Microsoft 365 email account.
-- [ ] Users can enable or disable job source integrations.
+- [ ] Users can toggle job sources on and off.
 
 **If something breaks, say this to Cursor:**
 ```
-The Settings feature failed with this error: [paste error here]. Fix it without changing other features.
+The Settings feature has an issue: [paste error here]. Diagnose and fix it without altering previous phases.
 ```
 
 ---
 
 ## Phase 4: Resume Management
-**What this phase does:** Implement the resume management system, allowing users to upload, parse, and manage their resumes.
+**What this phase does:** Allow users to upload and manage their resumes, parsing them into a structured format.
 
 **Say this to Cursor:**
 ```
-Create the Resume Management feature that allows users to upload resumes (PDF/DOCX), parse them into a structured schema, and manage their resume library. Ensure it supports editing and selecting active resumes.
+Build the Resume Management feature according to the frontend PRD. Enable users to upload resumes, parse them into a structured schema, and manage their resume library.
 ```
 
 **How to verify it worked:**
-- [ ] Users can upload resumes and see them listed in their library.
-- [ ] Users can edit parsed resume fields.
-- [ ] Users can select an active resume for job applications.
+- [ ] Users can upload resumes in PDF/DOCX format.
+- [ ] The system parses resumes into a structured format.
+- [ ] Users can edit parsed fields and select an active resume.
 
 **If something breaks, say this to Cursor:**
 ```
-The Resume Management feature failed with this error: [paste error here]. Fix it without changing other features.
+The Resume Management feature has an issue: [paste error here]. Diagnose and fix it without altering previous phases.
 ```
 
 ---
 
 ## Phase 5: Job Source Integration
-**What this phase does:** Integrate with job sources (Greenhouse and Lever) to fetch job postings.
+**What this phase does:** Integrate with job sources like Greenhouse and Lever to fetch job postings.
 
 **Say this to Cursor:**
 ```
-Build the Job Source Integration feature that fetches job postings from Greenhouse and Lever, normalizes the data, and ensures no duplicates are shown to users.
+Implement the Job Source Integration feature based on the backend PRD. Set up a system to fetch job postings from Greenhouse and Lever, ensuring deduplication and rate limiting.
 ```
 
 **How to verify it worked:**
-- [ ] Users can see a list of job postings from both sources.
-- [ ] No duplicate job postings are displayed.
-- [ ] The job postings refresh correctly without errors.
+- [ ] The system fetches job postings from both sources.
+- [ ] Job postings are deduplicated and stored correctly.
+- [ ] Users can view a unified list of job postings.
 
 **If something breaks, say this to Cursor:**
 ```
-The Job Source Integration feature failed with this error: [paste error here]. Fix it without changing other features.
+The Job Source Integration feature has an issue: [paste error here]. Diagnose and fix it without altering previous phases.
 ```
 
 ---
 
 ## Phase 6: Matching & Ranking
-**What this phase does:** Implement the AI-driven matching and ranking system for resumes against job postings.
+**What this phase does:** Implement AI-driven matching to compare resumes with job postings.
 
 **Say this to Cursor:**
 ```
-Create the Matching & Ranking feature that computes an AI match percentage between resumes and job postings, providing a summary and rationale for the scores.
+Develop the Matching & Ranking feature according to the backend PRD. Create an AI model to compute match percentages between resumes and job postings, providing summaries and explanations.
 ```
 
 **How to verify it worked:**
-- [ ] Users can see match percentages for their resumes against job postings.
-- [ ] Summaries and rationales are provided for each match.
+- [ ] The system calculates match percentages for job postings.
+- [ ] Users can see summaries and explanations for each match.
 - [ ] Users can configure the minimum match threshold.
 
 **If something breaks, say this to Cursor:**
 ```
-The Matching & Ranking feature failed with this error: [paste error here]. Fix it without changing other features.
+The Matching & Ranking feature has an issue: [paste error here]. Diagnose and fix it without altering previous phases.
 ```
 
 ---
 
 ## Phase 7: Email Ingestion & Reply
-**What this phase does:** Enable users to ingest emails related to job applications and reply to them within the app.
+**What this phase does:** Enable users to pull in relevant emails and reply to them within the app.
 
 **Say this to Cursor:**
 ```
-Build the Email Ingestion & Reply feature that pulls relevant emails via Microsoft Graph and allows users to reply directly from the app with templates and AI suggestions.
+Implement the Email Ingestion & Reply feature based on the frontend PRD. Allow users to ingest emails from Microsoft Graph and reply to them directly in the app.
 ```
 
 **How to verify it worked:**
-- [ ] Users can see a list of relevant emails linked to job applications.
+- [ ] Users can view relevant emails linked to job applications.
 - [ ] Users can reply to emails using templates and AI suggestions.
-- [ ] All email interactions are logged correctly.
+- [ ] All interactions are logged and linked to the appropriate job postings.
 
 **If something breaks, say this to Cursor:**
 ```
-The Email Ingestion & Reply feature failed with this error: [paste error here]. Fix it without changing other features.
+The Email Ingestion & Reply feature has an issue: [paste error here]. Diagnose and fix it without altering previous phases.
 ```
 
 ---
 
 ## Phase 8: Learning Loop
-**What this phase does:** Implement a learning loop that captures user feedback to improve future job matches.
+**What this phase does:** Implement a feedback system to learn from user decisions and improve matching over time.
 
 **Say this to Cursor:**
 ```
-Create the Learning Loop feature that captures user decisions on job matches and adjusts the AI's matching weights and thresholds based on this feedback.
+Develop the Learning Loop feature according to the backend PRD. Capture user feedback on job matches and adjust matching weights and thresholds based on this feedback.
 ```
 
 **How to verify it worked:**
-- [ ] User decisions on job matches are logged and used to adjust future recommendations.
-- [ ] Users can see how their feedback impacts match quality over time.
-- [ ] The system adapts to user preferences without manual intervention.
+- [ ] The system captures user decisions on job matches.
+- [ ] The matching algorithm adjusts based on user feedback.
+- [ ] Users can see how their feedback influences future matches.
 
 **If something breaks, say this to Cursor:**
 ```
-The Learning Loop feature failed with this error: [paste error here]. Fix it without changing other features.
+The Learning Loop feature has an issue: [paste error here]. Diagnose and fix it without altering previous phases.
 ```
 
 ---
@@ -211,8 +211,8 @@ Review the entire codebase. Fix any TypeScript errors, broken imports, or missin
 ```
 
 **How to verify the full app works:**
-- [ ] All features are accessible and functional without errors.
-- [ ] Users can complete the job application process from start to finish.
-- [ ] The app performs well without significant delays or crashes.
-- [ ] All user settings persist correctly across sessions.
+- [ ] All features function correctly without errors.
+- [ ] Users can seamlessly navigate between features.
+- [ ] The application is responsive and performs well under load.
+- [ ] All user settings persist across sessions.
 - [ ] The system accurately reflects user feedback in job matching.
