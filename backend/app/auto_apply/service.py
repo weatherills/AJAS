@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, Callable
 from uuid import uuid4
 
@@ -12,10 +13,13 @@ from app.auto_apply.constants import (
     SAS_TTL_MINUTES,
     VENDORS,
 )
+from app.auto_apply.cover import generate_cover_letter
 from app.auto_apply.errors import AutoApplyConflictError, AutoApplyNotFoundError, AutoApplyValidationError
 from app.auto_apply.models import AutoApplyAttempt
+from app.auto_apply.package import build_manual_package_zip
 from app.auto_apply.queues import InMemoryJobQueue, JobQueue
 from app.auto_apply.store import AutoApplyStore, get_auto_apply_store
+from app.auto_apply.submitters import HttpPoster, map_vendor_fields, submit_to_vendor
 from app.config import get_settings
 
 Clock = Callable[[], str]
@@ -81,12 +85,18 @@ class AutoApplyService:
         store: AutoApplyStore | None = None,
         queue: JobQueue | None = None,
         blobs: AutoApplyBlobStore | None = None,
+        poster: HttpPoster | None = None,
     ) -> None:
         self.store = store or get_auto_apply_store()
         self.queue = queue or InMemoryJobQueue()
         self.blobs = blobs or InMemoryBlobStore()
+        self.poster = poster
         self.processed = 0
         self.poisoned = 0
+        try:
+            self.store.seed_default_mappings()
+        except Exception:
+            pass
 
     def create_request(self, user_id: str, body: dict[str, Any], *, idempotency_key: str | None = None) -> tuple[int, dict[str, Any]]:
         vendor = _vendor(body.get("job_source") or body.get("vendor"))
@@ -132,18 +142,28 @@ class AutoApplyService:
         )
         cover = None
         if cover_mode == "generate":
+            letter = generate_cover_letter(attempt, PROFILE)
+            cover_path = f"cover_letters/{user_id}/{attempt.id}.txt"
+            self.blobs.put(cover_path, letter.encode("utf-8"))
             cover = self.store.create_cover_letter(
                 user_id,
                 source="ai",
-                body_text=self._generate_cover(attempt),
+                body_text=letter,
+                blob_uri=cover_path,
                 auto_apply_id=attempt.id,
             )
         elif cover_mode == "upload":
             blob_ref = body.get("cover_letter_blob_ref")
+            uploaded = body.get("cover_letter_text")
+            body_text = uploaded.strip() if isinstance(uploaded, str) and uploaded.strip() else None
+            cover_path = str(blob_ref) if blob_ref else f"cover_letters/{user_id}/{attempt.id}.txt"
+            if body_text:
+                self.blobs.put(cover_path, body_text.encode("utf-8"))
             cover = self.store.create_cover_letter(
                 user_id,
                 source="upload",
-                blob_uri=str(blob_ref) if blob_ref else f"cover_letters/{user_id}/{attempt.id}.pdf",
+                body_text=body_text,
+                blob_uri=cover_path,
                 auto_apply_id=attempt.id,
             )
         self._seed_autofill(user_id, attempt, vendor, answers)
@@ -242,6 +262,15 @@ class AutoApplyService:
 
     def _package_manual(self, user_id: str, attempt: AutoApplyAttempt) -> None:
         package_uri = f"packages/{user_id}/{attempt.id}.zip"
+        cover_text = self._cover_text(user_id, attempt.id)
+        fields = {row.field_key: row.value for row in self.store.list_autofill(user_id, attempt.id)}
+        archive = build_manual_package_zip(
+            deep_link=attempt.posting_url,
+            resume_id=attempt.resume_id,
+            cover_text=cover_text,
+            fields=fields,
+        )
+        self.blobs.put(package_uri, archive)
         try:
             self.store.put_package(user_id, attempt.id, package_blob_uri=package_uri, deep_link_url=attempt.posting_url)
         except AutoApplyConflictError:
@@ -251,29 +280,67 @@ class AutoApplyService:
 
     def _submit_programmatic(self, user_id: str, attempt: AutoApplyAttempt) -> None:
         self.store.transition(user_id, attempt.id, "submitting")
+        payload_uri = f"provider_payloads/{user_id}/{attempt.id}.json"
         submit = self.store.create_submit_request(
             user_id,
             attempt.id,
             vendor=attempt.vendor,
             idempotency_key=f"{attempt.id}:{attempt.vendor}",
+            request_blob_uri=payload_uri,
         )
-        if "429" in (attempt.posting_url or ""):
+        mappings = self.store.list_vendor_mappings(attempt.vendor)
+        fields = map_vendor_fields(
+            attempt.vendor,
+            profile=PROFILE,
+            answers={},
+            autofill=self.store.list_autofill(user_id, attempt.id),
+            mappings=mappings,
+        )
+        cover_text = self._cover_text(user_id, attempt.id)
+        if cover_text:
+            fields["comments"] = cover_text
+            fields["cover_letter"] = cover_text
+        settings = get_settings()
+        api_key = (
+            settings.greenhouse_submit_api_key if attempt.vendor == "greenhouse" else settings.lever_submit_api_key
+        )
+        outcome = submit_to_vendor(
+            attempt,
+            fields,
+            live=bool(settings.auto_apply_live_submit),
+            api_key=api_key,
+            poster=self.poster,
+        )
+        self.blobs.put(
+            payload_uri,
+            json.dumps({"endpoint": outcome.endpoint, "fields": outcome.fields, "status": outcome.status}).encode("utf-8"),
+        )
+        if outcome.status == "rate_limited":
             self.store.complete_submit(
                 user_id,
                 submit.id,
                 status="retrying",
                 error_code="rate_limited",
-                error_message="Provider rate limited the request",
+                error_message=outcome.error_message,
             )
             self.store.transition(user_id, attempt.id, "rate_limited")
             return
-        vendor_app = f"{attempt.vendor}-{attempt.id[:8]}"
+        if outcome.status != "succeeded":
+            self.store.complete_submit(
+                user_id,
+                submit.id,
+                status="failed",
+                error_code=outcome.error_code,
+                error_message=outcome.error_message,
+            )
+            return
+        vendor_app = outcome.vendor_application_id or f"{attempt.vendor}-{attempt.id[:8]}"
         self.store.complete_submit(
             user_id,
             submit.id,
             status="succeeded",
             vendor_application_id=vendor_app,
-            vendor_request_id=str(uuid4()),
+            vendor_request_id=outcome.vendor_request_id or str(uuid4()),
         )
         self.store.transition(user_id, attempt.id, "submitted", payload={"vendor_application_id": vendor_app})
         self.store.transition(user_id, attempt.id, "succeeded", payload={"vendor_application_id": vendor_app})
@@ -293,11 +360,18 @@ class AutoApplyService:
                 source="profile" if key in PROFILE else "user_input",
             )
 
-    def _generate_cover(self, attempt: AutoApplyAttempt) -> str:
-        return (
-            f"Dear hiring team,\n\nI am applying for the role at this {attempt.vendor} posting. "
-            "This letter was generated by AJAS.\n\nSincerely,\nAlex Jobseeker"
-        )
+    def _cover_text(self, user_id: str, attempt_id: str) -> str | None:
+        try:
+            package = self.store.get_package(attempt_id, user_id=user_id)
+        except AutoApplyNotFoundError:
+            return None
+        if not package.cover_letter_id:
+            return None
+        try:
+            cover = self.store.get_cover_letter(package.cover_letter_id, user_id=user_id)
+        except AutoApplyNotFoundError:
+            return None
+        return cover.body_text
 
     def _in_flight(self, user_id: str, job_id: str | None, posting_url: str | None):
         for row in self.store.list_attempts(user_id):
@@ -338,6 +412,17 @@ class AutoApplyService:
             {"field_key": row.field_key, "value": row.value, "required": row.required, "source": row.source}
             for row in self.store.list_autofill(user_id, attempt.id)
         ]
+        cover_text = None
+        cover_source = None
+        cover_blob = f"cover_letters/{user_id}/{attempt.id}.txt"
+        if package and package.cover_letter_id:
+            try:
+                cover = self.store.get_cover_letter(package.cover_letter_id, user_id=user_id)
+                cover_text = cover.body_text
+                cover_source = cover.source
+                cover_blob = cover.blob_uri or cover_blob
+            except AutoApplyNotFoundError:
+                cover_text = None
         return {
             "request_id": attempt.id,
             "state": _api_state(attempt, cancelled=cancelled),
@@ -352,7 +437,7 @@ class AutoApplyService:
             },
             "artifacts": {
                 "resume_blob_sas": self.blobs.sas_url(f"resumes/{user_id}/{attempt.resume_id or 'resume'}.pdf", minutes=minutes),
-                "cover_letter_blob_sas": self.blobs.sas_url(f"cover_letters/{user_id}/{attempt.id}.pdf", minutes=minutes)
+                "cover_letter_blob_sas": self.blobs.sas_url(cover_blob, minutes=minutes)
                 if package and package.cover_letter_id
                 else None,
                 "package_blob_sas": self.blobs.sas_url(package.package_blob_uri, minutes=minutes)
@@ -361,6 +446,8 @@ class AutoApplyService:
                 "deep_link_url": package.deep_link_url if package else attempt.posting_url,
             },
             "autofill": autofill,
+            "cover_letter_text": cover_text,
+            "cover_letter_source": cover_source,
             "validation_errors": None,
             "failure_reason": attempt.last_error_message,
             "submitted_at": next((event.created_ts for event in events if event.event_type == "submission_succeeded"), None),

@@ -283,6 +283,12 @@ class InMemoryAutoApplyStore:
         self._covers[row.id] = row
         return deepcopy(row)
 
+    def get_cover_letter(self, cover_id: str, *, user_id: str) -> CoverLetter:
+        row = self._covers.get(cover_id)
+        if row is None or row.user_id != user_id:
+            raise AutoApplyNotFoundError("cover letter not found")
+        return deepcopy(row)
+
     def put_package(
         self,
         user_id: str,

@@ -40,4 +40,19 @@ describe('mock auto-apply api', () => {
     const listed = await mockAutoApplyApi.list()
     expect(listed.items).toHaveLength(2)
   })
+
+  it('stores a generated cover letter on the request', async () => {
+    resetAutoApplyMock()
+    const created = await mockAutoApplyApi.create({
+      job_source: 'greenhouse',
+      job_posting_id: 'job-staff',
+      posting_url: 'https://boards.greenhouse.io/demo/jobs/job-staff',
+      cover_letter_mode: 'generate',
+      consent_approved: true,
+    })
+    const detail = await mockAutoApplyApi.get(created.request_id)
+    expect(detail.cover_letter_source).toBe('ai')
+    expect(detail.cover_letter_text).toMatch(/Alex Jobseeker/)
+    expect(detail.artifacts.cover_letter_blob_sas).toBeTruthy()
+  })
 })

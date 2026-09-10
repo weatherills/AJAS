@@ -94,6 +94,9 @@ class CosmosAutoApplyStore:
         self._persist_working(working)
         return saved
 
+    def get_cover_letter(self, cover_id: str, *, user_id: str):
+        return self._hydrate().get_cover_letter(cover_id, user_id=user_id)
+
     def put_package(self, user_id: str, auto_apply_id: str, **kwargs: Any):
         working = self._hydrate()
         saved = working.put_package(user_id, auto_apply_id, **kwargs)

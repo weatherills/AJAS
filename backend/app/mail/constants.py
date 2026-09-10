@@ -4,7 +4,7 @@ from typing import Final, Literal
 
 DeliveryStatus = Literal["received", "queued", "sending", "sent", "failed", "draft"]
 LinkSource = Literal["auto", "manual", "rule"]
-AttachmentStatus = Literal["stored", "skipped_oversize", "pending"]
+AttachmentStatus = Literal["stored", "skipped_oversize", "skipped_scan", "pending"]
 SyncMode = Literal["webhook", "poll", "both"]
 
 DELIVERY_STATUSES: Final[frozenset[str]] = frozenset(
