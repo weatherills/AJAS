@@ -183,3 +183,18 @@ export function parseThresholdInput(raw: string): { value: number | null; error:
   if (value < 0 || value > 100) return { value: null, error: 'Enter an integer from 0 to 100' }
   return { value, error: null }
 }
+
+export function storedMatchesForJobs<T extends { jobId: string }>(
+  jobIds: string[],
+  stored: T[],
+): { known: T[]; missingIds: string[] } {
+  const byId = new Map(stored.map((row) => [row.jobId, row]))
+  const known: T[] = []
+  const missingIds: string[] = []
+  for (const jobId of jobIds) {
+    const row = byId.get(jobId)
+    if (row) known.push(row)
+    else missingIds.push(jobId)
+  }
+  return { known, missingIds }
+}

@@ -12,6 +12,8 @@ function now() {
   return new Date().toISOString()
 }
 
+const persisted: Record<string, MatchView> = {}
+
 function titleSignals(text: string): { keyword: number; semantic: number } {
   const title = (text.split('\n')[0] || text).toLowerCase()
   if (title.includes('designer')) return { keyword: 14, semantic: 10 }
@@ -69,7 +71,7 @@ function scoreOne(
   const terms = matchedTerms(resumeText, job.text, 8)
   const gaps = tokenize(job.text).filter((term) => !tokenize(resumeText).includes(term)).slice(0, 6)
   const outdated = /designer/i.test(job.text)
-  return {
+  const row: MatchView = {
     jobId: job.id,
     resumeId,
     score,
@@ -82,6 +84,8 @@ function scoreOne(
     persisted: score >= threshold || persist,
     matchId: score >= threshold || persist ? `match-${job.id}` : undefined,
   }
+  if (row.persisted) persisted[`${resumeId}:${job.id}`] = row
+  return row
 }
 
 export const mockMatchingApi: MatchingApi = {
@@ -92,5 +96,11 @@ export const mockMatchingApi: MatchingApi = {
   async scoreOne(query) {
     await new Promise((resolve) => setTimeout(resolve, 40))
     return scoreOne(query.resumeText, query.resumeId, query.job, query.threshold, query.persist === true)
+  },
+  async listResults(query) {
+    const wanted = query.jobIds ? new Set(query.jobIds) : null
+    return Object.values(persisted)
+      .filter((row) => row.resumeId === query.resumeId)
+      .filter((row) => (wanted ? wanted.has(row.jobId) : true))
   },
 }
