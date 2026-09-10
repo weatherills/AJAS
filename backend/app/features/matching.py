@@ -131,7 +131,7 @@ def warmup_matches(req: func.HttpRequest) -> func.HttpResponse:
         return _handle(exc)
 
 
-@bp.route(route="v1/matches/ab-variant", methods=["GET"])
+@bp.route(route="v1/matching/ab-variant", methods=["GET"])
 def match_ab_variant(req: func.HttpRequest) -> func.HttpResponse:
     try:
         principal = _auth(req)

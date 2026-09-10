@@ -50,7 +50,7 @@ POST {{base}}/api/v1/matches/warmup
 Authorization: Bearer {{token}}
 
 ### A/B weight assignment (control unless MATCH_AB_TEST=true)
-GET {{base}}/api/v1/matches/ab-variant
+GET {{base}}/api/v1/matching/ab-variant
 Authorization: Bearer {{token}}
 
 ### p95 SLO snapshot

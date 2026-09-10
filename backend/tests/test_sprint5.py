@@ -123,7 +123,7 @@ def test_matching_timeout_falls_back_to_keyword_only(monkeypatch, matching):
 def test_matching_warmup_and_slo(matching):
     warm = _body(match_routes.warmup_matches(_req("POST", "http://localhost/api/v1/matches/warmup")))
     assert warm["warm"] is True
-    variant = _body(match_routes.match_ab_variant(_req("GET", "http://localhost/api/v1/matches/ab-variant")))
+    variant = _body(match_routes.match_ab_variant(_req("GET", "http://localhost/api/v1/matching/ab-variant")))
     assert variant["variant"] == "control"
     record_latency("POST /v1/matches/compute", 10)
     slo = _body(match_routes.matching_slo(_req("GET", "http://localhost/api/v1/ops/slo")))
