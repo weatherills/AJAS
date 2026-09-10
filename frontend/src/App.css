@@ -645,6 +645,20 @@ button:disabled {
     background: #4f46e5;
     color: #fff;
   }
+
+  a.primary {
+    color: #fff;
+  }
+
+  .email-graph-notice {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+  }
+
+  .banner {
+    color: #312e81;
+    background: rgba(99, 102, 241, 0.1);
+  }
 }
 
 .sr-only {
@@ -1445,6 +1459,44 @@ select:focus-visible {
   border-radius: 999px;
   background: #818cf8;
   display: inline-block;
+}
+
+.email-graph-notice {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  margin: 1rem 0;
+  background: rgba(148, 163, 184, 0.06);
+}
+
+.email-graph-notice h2 {
+  margin: 0 0 0.45rem;
+  font-size: 1.15rem;
+}
+
+.email-graph-notice .primary {
+  display: inline-block;
+  margin-top: 0.75rem;
+  text-decoration: none;
+  border: 1px solid #4f46e5;
+  border-radius: 8px;
+  padding: 0.45rem 0.8rem;
+  background: #4f46e5;
+  color: #fff;
+}
+
+.email-graph-notice.is-compact {
+  text-align: left;
+  padding: 0.9rem 1rem;
+}
+
+.email-graph-notice.is-compact h2 {
+  font-size: 1rem;
+}
+
+.email-demo-banner {
+  margin: 0.75rem 0;
 }
 
 .email-pane {

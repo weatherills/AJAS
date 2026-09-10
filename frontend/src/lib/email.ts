@@ -1,5 +1,21 @@
+import type { EmailStatus } from '../api/emailTypes'
+
 export const TEMPLATE_VARS = ['firstName', 'company', 'role', 'jobRef'] as const
 export type TemplateVars = (typeof TEMPLATE_VARS)[number]
+
+export function graphConnected(status: EmailStatus | null | undefined): boolean {
+  if (!status) return false
+  if (typeof status.graphConnected === 'boolean') return status.graphConnected
+  return status.connected && !status.demo
+}
+
+export function demoMailbox(status: EmailStatus | null | undefined): boolean {
+  return Boolean(status?.demo && !graphConnected(status))
+}
+
+export function mailboxReadable(status: EmailStatus | null | undefined): boolean {
+  return graphConnected(status) || demoMailbox(status)
+}
 
 const TOKEN = /\{(firstName|company|role|jobRef)\}/g
 
