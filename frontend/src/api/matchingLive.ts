@@ -1,4 +1,4 @@
-import { CURRENT_VERSIONS } from '../lib/matching'
+import { CURRENT_VERSIONS, matchedTerms } from '../lib/matching'
 import { json, request } from './live'
 import type { MatchingApi, MatchView } from './matchingTypes'
 
@@ -16,7 +16,12 @@ type ComputeBody = {
   error?: string
 }
 
-function mapResult(jobId: string, resumeId: string | null, row: ComputeBody): MatchView {
+function mapResult(
+  jobId: string,
+  resumeId: string | null,
+  row: ComputeBody,
+  extras: { terms?: string[] } = {},
+): MatchView {
   if (row.error) {
     return {
       jobId,
@@ -24,7 +29,7 @@ function mapResult(jobId: string, resumeId: string | null, row: ComputeBody): Ma
       score: null,
       state: 'error',
       breakdown: null,
-      terms: [],
+      terms: extras.terms || [],
       explanation: '',
       versions: row.versions || CURRENT_VERSIONS,
       computedAt: new Date().toISOString(),
@@ -41,7 +46,7 @@ function mapResult(jobId: string, resumeId: string | null, row: ComputeBody): Ma
     breakdown: row.breakdown
       ? { keyword: row.breakdown.keyword, semantic: row.breakdown.semantic, weights }
       : null,
-    terms: [],
+    terms: extras.terms || [],
     explanation: row.explanation || '',
     versions: row.versions || CURRENT_VERSIONS,
     computedAt: new Date().toISOString(),
@@ -92,6 +97,7 @@ export const liveMatchingApi: MatchingApi = {
         threshold: query.threshold,
         explanation: query.explanation !== false,
         persist: query.persist === true,
+        saveMatch: query.persist === true,
       }),
     })
     if (resp.status === 202) {
@@ -100,16 +106,22 @@ export const liveMatchingApi: MatchingApi = {
       const results = op.results || (op.result ? [op.result] : [])
       return query.jobs.map((job, index) => {
         const row = results.find((item) => item.jobId === job.id || item.idx === index) || results[index]
+        const extras = { terms: matchedTerms(query.resumeText, job.text, 8) }
         if (!row) {
-          return mapResult(job.id, query.resumeId, { score: 0, persisted: false, error: 'No score' })
+          return mapResult(job.id, query.resumeId, { score: 0, persisted: false, error: 'No score' }, extras)
         }
-        return mapResult(job.id, query.resumeId, row)
+        return mapResult(job.id, query.resumeId, row, extras)
       })
     }
     const body = await json<{ results: ComputeBody[] }>(resp)
     return query.jobs.map((job, index) => {
       const row = body.results?.find((item) => item.jobId === job.id || item.idx === index) || body.results?.[index]
-      return mapResult(job.id, query.resumeId, row || { score: 0, persisted: false, error: 'No score' })
+      return mapResult(
+        job.id,
+        query.resumeId,
+        row || { score: 0, persisted: false, error: 'No score' },
+        { terms: matchedTerms(query.resumeText, job.text, 8) },
+      )
     })
   },
   async scoreOne(query) {

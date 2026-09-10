@@ -369,10 +369,15 @@ export const mockJobsApi: JobsApi = {
           enabled: body.enabled !== false,
           status: listingError ? 'error' : 'ok',
           errorMessage: listingError,
+          lastSyncAt: listingError ? undefined : new Date().toISOString(),
         })
       }
       row.boards = boards
       Object.assign(row, syncSourceFromBoards(row))
+      if (!listingError) {
+        row.lastSyncAt = boards.find((item) => item.tenantKey === key)?.lastSyncAt || row.lastSyncAt
+        row.progress = null
+      }
     }
     markMockSourceConfigured(source, true)
     const sources = structuredClone(statuses)

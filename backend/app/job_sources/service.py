@@ -234,7 +234,8 @@ class CrawlService:
             merged.update(config)
             config = merged
         tenant = self.store.upsert_tenant(source_id, tenant_key, config=config, enabled=enabled)
-        self._preflight_listing(tenant)
+        if self._preflight_listing(tenant):
+            self._crawl_new_tenant(tenant)
         status_rows = self.source_status()
         row = next((item for item in status_rows if item["source"] == source_id), None)
         return {
@@ -415,10 +416,15 @@ class CrawlService:
             "backoffUntil": backoff_until,
         }
 
-    def _preflight_listing(self, tenant: SourceTenant) -> None:
-        """Cheap public listing GET so a 404 token shows on the Settings board row."""
+    def _preflight_listing(self, tenant: SourceTenant) -> bool:
+        """Cheap public listing GET so a 404 token shows on the Settings board row.
+
+        Returns True when the board looks reachable and is safe to crawl.
+        Demo-seed tenants skip live HTTP. A preflight error is stamped and must
+        not enqueue a second listing that would 404 again.
+        """
         if (tenant.config or {}).get("demo_seed"):
-            return
+            return False
         url = self._list_url(tenant, cursor=None, skip=0)
         assert_https_allowlisted(url, tenant.source_id)
         error: str | None = None
@@ -434,13 +440,24 @@ class CrawlService:
             if latest is not None and latest.status in {"failed", "partial_success"}:
                 run = self.store.start_run(tenant.id, status="running")
                 self.store.finish_run(run.id, status="succeeded")
-            return
+            return True
         run = self.store.start_run(tenant.id, status="running")
         self.store.finish_run(
             run.id,
             status="failed",
             error_summary=public_crawl_error(tenant.source_id, error, board=tenant.tenant_key),
         )
+        return False
+
+    def _crawl_new_tenant(self, tenant: SourceTenant) -> None:
+        """Enqueue this board immediately so Job Feed is not empty until Refresh."""
+        if not tenant.enabled or (tenant.config or {}).get("demo_seed"):
+            return
+        try:
+            self.enqueue_crawl(tenant.id)
+            self.drain()
+        except Exception:
+            pass
 
     def schedule_due(self) -> list[dict]:
         cfg = get_app_settings()
