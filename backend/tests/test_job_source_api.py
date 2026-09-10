@@ -145,6 +145,7 @@ def test_function_app_registers_job_source_routes(function_names):
     assert "create_source_tenant" in function_names
     assert "list_source_tenants" in function_names
     assert "delete_source_tenant" in function_names
+    assert "start_tenant_crawl" in function_names
     assert "get_crawl_run" in function_names
     assert "crawl_scheduler" in function_names
     assert "crawl_run_job" in function_names
@@ -581,6 +582,40 @@ def test_demo_seed_does_not_hide_non_demo_board_error(svc, store, fetcher):
     assert by_key["no-such-board"]["status"] == "error"
     assert "not found" in (by_key["no-such-board"]["errorMessage"] or "").lower()
     assert "no-such-board" in (by_key["no-such-board"]["errorMessage"] or "")
+
+
+def test_tenant_crawl_retries_one_board_without_touching_the_other(svc, store, fetcher):
+    from app.job_sources.feed import seed_demo_feed
+
+    seed_demo_feed(store)
+    store.upsert_tenant("greenhouse", "no-such-board")
+    before = list(fetcher.calls)
+    missing = routes.start_tenant_crawl(
+        _req(
+            "POST",
+            "http://localhost/api/v1/sources/greenhouse/tenants/missing-board/crawl",
+            route={"id": "greenhouse", "tenant_key": "missing-board"},
+        )
+    )
+    assert missing.status_code == 404
+    resp = routes.start_tenant_crawl(
+        _req(
+            "POST",
+            "http://localhost/api/v1/sources/greenhouse/tenants/no-such-board/crawl",
+            route={"id": "greenhouse", "tenant_key": "no-such-board"},
+        )
+    )
+    assert resp.status_code == 202
+    new_calls = fetcher.calls[len(before) :]
+    assert any("no-such-board" in url for url in new_calls)
+    assert not any("/boards/acme/" in url for url in new_calls)
+    status = _body(routes.list_source_status(_req("GET", "http://localhost/api/v1/sources/status")))
+    greenhouse = next(row for row in status if row["source"] == "greenhouse")
+    by_key = {item["tenantKey"]: item for item in greenhouse["boards"]}
+    assert by_key["no-such-board"]["status"] == "error"
+    assert "not found" in (by_key["no-such-board"]["errorMessage"] or "").lower()
+    assert by_key["acme"]["status"] != "error"
+    assert not by_key["acme"].get("errorMessage")
 
 
 def test_create_tenant_from_board_token_flips_unconfigured(svc, store):

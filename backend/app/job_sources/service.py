@@ -178,6 +178,20 @@ class CrawlService:
             body["runId"] = runs[0]["runId"]
         return body
 
+    def enqueue_crawl_tenant(self, source_id: str, tenant_key: str) -> dict:
+        if source_id not in {"greenhouse", "lever"}:
+            raise JobSourceNotFoundError(source_id)
+        key = (tenant_key or "").strip()
+        if not key:
+            raise JobSourceValidationError("tenant key is required", path="tenantKey")
+        tenant = next(
+            (item for item in self.store.list_tenants(source_id) if item.tenant_key == key or item.id == key),
+            None,
+        )
+        if tenant is None:
+            raise JobSourceNotFoundError(key)
+        return self.enqueue_crawl(tenant.id)
+
     def create_tenant(self, source_id: str, body: dict | None) -> dict:
         if source_id not in {"greenhouse", "lever"}:
             raise JobSourceNotFoundError(source_id)

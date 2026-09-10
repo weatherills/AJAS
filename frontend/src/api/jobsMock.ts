@@ -327,6 +327,28 @@ export const mockJobsApi: JobsApi = {
     }
     return structuredClone(statuses)
   },
+  async refreshTenant(source, tenantKey) {
+    statuses = currentStatuses()
+    const row = statuses.find((item) => item.source === source)
+    if (!row) throw Object.assign(new Error('not found'), { code: 'NOT_FOUND' })
+    const boards = [...(row.boards || [])]
+    const index = boards.findIndex((item) => item.tenantKey === tenantKey)
+    if (index < 0) throw Object.assign(new Error('not found'), { code: 'NOT_FOUND' })
+    const listingError = mockListingError(source, tenantKey)
+    boards[index] = {
+      ...boards[index],
+      status: listingError ? 'error' : 'ok',
+      errorMessage: listingError,
+      lastSyncAt: new Date().toISOString(),
+    }
+    row.boards = boards
+    Object.assign(row, syncSourceFromBoards(row))
+    if (!listingError) {
+      row.lastSyncAt = boards[index].lastSyncAt || row.lastSyncAt
+      row.progress = null
+    }
+    return structuredClone(statuses)
+  },
   async addTenant(source, body) {
     const raw = (body.boardToken || body.boardUrl || '').trim()
     if (!raw) throw Object.assign(new Error('board token or URL is required'), { code: 'VALIDATION_ERROR' })

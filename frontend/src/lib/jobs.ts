@@ -1,4 +1,13 @@
-import type { JobCard, JobFilters, JobListQuery, JobSourceName, JobSourceRef, SourceBoard, SourceStatus } from '../api/jobsTypes'
+import type {
+  AddTenantResult,
+  JobCard,
+  JobFilters,
+  JobListQuery,
+  JobSourceName,
+  JobSourceRef,
+  SourceBoard,
+  SourceStatus,
+} from '../api/jobsTypes'
 import type { SettingsApi } from '../api/settingsTypes'
 
 const FILTER_KEY = 'ajas.jobFeed.filters'
@@ -143,6 +152,52 @@ export function boardErrorCopy(
   return null
 }
 
+export function sourceBoardErrors(
+  row: Pick<SourceStatus, 'source' | 'status' | 'errorMessage' | 'boards'>,
+): { tenantKey: string; message: string }[] {
+  const boards = row.boards || []
+  const lines: { tenantKey: string; message: string }[] = []
+  for (const board of boards) {
+    const message = boardErrorCopy(board, row, boards.length)
+    if (message) lines.push({ tenantKey: board.tenantKey, message })
+  }
+  return lines
+}
+
+export function feedErrorLines(rows: SourceStatus[]): { key: string; message: string }[] {
+  const lines: { key: string; message: string }[] = []
+  for (const row of rows) {
+    const boards = sourceBoardErrors(row)
+    if (boards.length) {
+      for (const board of boards) {
+        lines.push({ key: `${row.source}:${board.tenantKey}`, message: board.message })
+      }
+      continue
+    }
+    const copy = sourceErrorCopy(row)
+    if (copy) lines.push({ key: row.source, message: copy })
+  }
+  return lines
+}
+
+export function addBoardToast(
+  source: JobSourceName,
+  result: Pick<AddTenantResult, 'tenantKey' | 'status'>,
+): { text: string; tone: 'info' | 'error' } {
+  const row = result.status
+  const boards = row?.boards || []
+  const board = boards.find((item) => item.tenantKey === result.tenantKey)
+  if (row && board) {
+    const err = boardErrorCopy(board, row, boards.length)
+    if (err) return { text: err, tone: 'error' }
+  }
+  if (row) {
+    const err = sourceErrorCopy(row)
+    if (err) return { text: err, tone: 'error' }
+  }
+  return { text: `${sourceTitle(source)} board “${result.tenantKey}” added`, tone: 'info' }
+}
+
 export function refreshToastForStatuses(
   source: JobSourceName | 'all',
   rows: SourceStatus[],
@@ -156,8 +211,14 @@ export function refreshToastForStatuses(
   }
   const failed = targeted.filter((item) => item.status === 'error')
   if (failed.length) {
-    const text = failed.map((item) => sourceErrorCopy(item) || `${sourceTitle(item.source)} fetch failed.`).join(' ')
-    return { text, tone: 'error', live: 'Sync error' }
+    const text = feedErrorLines(failed)
+      .map((item) => item.message)
+      .join(' ')
+    return {
+      text: text || failed.map((item) => sourceErrorCopy(item) || `${sourceTitle(item.source)} fetch failed.`).join(' '),
+      tone: 'error',
+      live: 'Sync error',
+    }
   }
   const label = source === 'all' ? 'Sources' : sourceTitle(source)
   const text = added > 0 ? `${label} updated: ${added} new job${added === 1 ? '' : 's'}` : `${label}: no new jobs.`

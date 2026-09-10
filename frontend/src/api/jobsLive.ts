@@ -36,6 +36,14 @@ export const liveJobsApi: JobsApi = {
     }
     return json<SourceStatus[]>(await request('/api/v1/sources/status'))
   },
+  async refreshTenant(source: JobSourceName, tenantKey: string) {
+    await json(
+      await request(`/api/v1/sources/${source}/tenants/${encodeURIComponent(tenantKey)}/crawl`, {
+        method: 'POST',
+      }),
+    )
+    return json<SourceStatus[]>(await request('/api/v1/sources/status'))
+  },
   async addTenant(source: JobSourceName, body: AddTenantBody) {
     return json<AddTenantResult>(
       await request(`/api/v1/sources/${source}/tenants`, {
