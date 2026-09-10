@@ -65,6 +65,7 @@ export function JobFeedPage() {
   const [saveOverride, setSaveOverride] = useState<Record<string, boolean>>({})
   const [listMinHeight, setListMinHeight] = useState(0)
   const [drawerTab, setDrawerTab] = useState<'details' | 'emails'>('details')
+  const [sourcesReady, setSourcesReady] = useState(false)
   const search = useHashSearch()
   const toastId = useRef(1)
   const sentinel = useRef<HTMLDivElement | null>(null)
@@ -125,10 +126,11 @@ export function JobFeedPage() {
   }, [])
 
   useEffect(() => {
+    if (!sourcesReady) return
     saveFilters(filters)
     setPage(1)
     void loadPage(null, false)
-  }, [filters, loadPage])
+  }, [filters, loadPage, sourcesReady])
 
   useEffect(() => {
     void loadStatus()
@@ -197,7 +199,9 @@ export function JobFeedPage() {
           }
         }
       } catch {
-        /* keep default 70 */
+        /* keep default 70 and local filters */
+      } finally {
+        if (!cancelled) setSourcesReady(true)
       }
       try {
         const list = await resumeApi.list()
