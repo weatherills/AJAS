@@ -34,6 +34,14 @@ class SettingsOAuthNotConfiguredError(Exception):
         super().__init__(message)
 
 
+class SettingsSourceNotConfiguredError(Exception):
+    def __init__(self, source_id: str):
+        from app.job_sources.service import source_not_configured_message
+
+        self.source_id = source_id
+        super().__init__(source_not_configured_message(source_id))
+
+
 class SettingsService:
     def __init__(
         self,
@@ -70,6 +78,7 @@ class SettingsService:
         old_threshold = api_threshold(settings.match_threshold)
         old_gh = settings.greenhouse_enabled
         old_lv = settings.lever_enabled
+        self._reject_unconfigured_enable(sources)
 
         kwargs: dict = {"actor_id": user_id, "expected_version": settings.version}
         if "matchThreshold" in body:
@@ -298,6 +307,22 @@ class SettingsService:
             store.update_prefs(user_id, threshold_pct=max(0, min(100, pct)))
         except Exception:
             pass
+
+    def _reject_unconfigured_enable(self, sources: dict) -> None:
+        if sources.get("greenhouseEnabled") is not True and sources.get("leverEnabled") is not True:
+            return
+        try:
+            from app.job_sources.runtime import tenant_counts_or_none
+
+            counts = tenant_counts_or_none()
+        except Exception:
+            counts = None
+        if counts is None:
+            return
+        if sources.get("greenhouseEnabled") is True and counts.get("greenhouse", 0) == 0:
+            raise SettingsSourceNotConfiguredError("greenhouse")
+        if sources.get("leverEnabled") is True and counts.get("lever", 0) == 0:
+            raise SettingsSourceNotConfiguredError("lever")
 
     def apply_source_discovery(self, payload: dict) -> None:
         try:

@@ -29,7 +29,11 @@ Content-Type: application/json
   "matchThreshold": 1.2
 }
 
-### Enable Greenhouse (enqueues source-discovery)
+### Enable Greenhouse (enqueues source-discovery when a board/tenant exists)
+# When no Greenhouse tenants exist, this returns
+# 400 { "error": { "code": "SOURCE_NOT_CONFIGURED", "message": "Greenhouse is not configured. ..." } }
+# GET /api/v1/settings includes greenhouseConfigured: false in that case.
+# POST /api/v1/sources/greenhouse/tenants with a board token first, then enable.
 PATCH {{base}}/api/v1/settings
 Authorization: Bearer {{token}}
 Content-Type: application/json

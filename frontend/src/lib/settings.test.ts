@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
+import { mockSettingsApi, resetMockSettings, markMockSourceConfigured } from '../api/settingsMock'
 import {
   apiToPercent,
   clampPercent,
   emailUiState,
   isOAuthNotConfiguredError,
+  isSourceNotConfiguredError,
   oauthIsConfigured,
   percentToApi,
   previewCopy,
+  sourceIsConfigured,
+  sourceUnconfiguredCopy,
 } from './settings'
 
 describe('settings mapping', () => {
@@ -44,12 +48,50 @@ describe('settings mapping', () => {
     expect(oauthIsConfigured(undefined)).toBe(true)
   })
 
+  it('treats sourceConfigured false as unconfigured, missing as configured', () => {
+    expect(sourceIsConfigured(false)).toBe(false)
+    expect(sourceIsConfigured(true)).toBe(true)
+    expect(sourceIsConfigured(undefined)).toBe(true)
+  })
+
+  it('defaults Greenhouse and Lever on when mock boards are configured, and keeps an explicit off', async () => {
+    resetMockSettings()
+    const first = await mockSettingsApi.get()
+    expect(first.sources.greenhouseEnabled).toBe(true)
+    expect(first.sources.leverEnabled).toBe(true)
+    const off = await mockSettingsApi.patch({ sources: { greenhouseEnabled: false } })
+    expect(off.sources.greenhouseEnabled).toBe(false)
+    expect(off.sources.leverEnabled).toBe(true)
+    markMockSourceConfigured('greenhouse', true)
+    const again = await mockSettingsApi.get()
+    expect(again.sources.greenhouseEnabled).toBe(false)
+    expect(again.sources.leverEnabled).toBe(true)
+  })
+
   it('detects OAuth-not-configured API errors without treating them as generic failures', () => {
     expect(isOAuthNotConfiguredError({ code: 'OAUTH_NOT_CONFIGURED', message: 'Microsoft OAuth is not configured' })).toBe(
       true,
     )
     expect(isOAuthNotConfiguredError(new Error('Microsoft OAuth is not configured'))).toBe(true)
     expect(isOAuthNotConfiguredError(new Error('Request failed (400)'))).toBe(false)
+  })
+
+  it('detects source-not-configured API errors and keeps add-tenant copy', () => {
+    expect(
+      isSourceNotConfiguredError({
+        code: 'SOURCE_NOT_CONFIGURED',
+        message: 'Greenhouse is not configured. Add a board token before turning this source on, or Job Feed stays empty.',
+      }),
+    ).toBe(true)
+    expect(
+      isSourceNotConfiguredError(
+        new Error('Lever is not configured. Add a board token before turning this source on, or Job Feed stays empty.'),
+      ),
+    ).toBe(true)
+    expect(isSourceNotConfiguredError(new Error('Couldn’t save source toggle. Try again.'))).toBe(false)
+    expect(sourceUnconfiguredCopy('greenhouse')).toMatch(/board token/i)
+    expect(sourceUnconfiguredCopy('lever')).toMatch(/Lever/)
+    expect(sourceUnconfiguredCopy('greenhouse')).toMatch(/turn this source on/i)
   })
 
   it('shows fewer-matches copy near 100', () => {

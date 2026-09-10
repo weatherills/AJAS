@@ -18,6 +18,7 @@ export type EmailUiState =
   | 'unconfigured'
 
 export const OAUTH_NOT_CONFIGURED = 'OAUTH_NOT_CONFIGURED'
+export const SOURCE_NOT_CONFIGURED = 'SOURCE_NOT_CONFIGURED'
 
 export function clampPercent(value: number): number {
   if (!Number.isFinite(value)) return DEFAULT_PERCENT
@@ -63,6 +64,22 @@ export function isOAuthNotConfiguredError(err: unknown): boolean {
   const code = 'code' in err ? String((err as { code?: unknown }).code || '') : ''
   if (code === OAUTH_NOT_CONFIGURED) return true
   return err instanceof Error && /Microsoft OAuth is not configured/i.test(err.message)
+}
+
+export function sourceIsConfigured(value: boolean | null | undefined): boolean {
+  return value !== false
+}
+
+export function isSourceNotConfiguredError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const code = 'code' in err ? String((err as { code?: unknown }).code || '') : ''
+  if (code === SOURCE_NOT_CONFIGURED) return true
+  return err instanceof Error && /is not configured\. Add a board token/i.test(err.message)
+}
+
+export function sourceUnconfiguredCopy(source: 'greenhouse' | 'lever'): string {
+  const name = source === 'greenhouse' ? 'Greenhouse' : 'Lever'
+  return `No ${name} board is configured. Add a board token or public board URL, then turn this source on.`
 }
 
 export const OAUTH_MESSAGE_TYPE = 'ajas-ms-oauth'

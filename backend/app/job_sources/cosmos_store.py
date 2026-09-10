@@ -69,6 +69,15 @@ class CosmosJobSourceStore:
     def list_tenants(self, source_id: str | None = None) -> list[SourceTenant]:
         return self._hydrate().list_tenants(source_id)
 
+    def delete_tenant(self, tenant_id: str) -> SourceTenant:
+        working = self._hydrate()
+        saved = working.delete_tenant(tenant_id)
+        self._persist_working(working)
+        self._delete(self._tenants, saved.id, saved.source_id)
+        self._delete(self._schedules, saved.id, saved.id)
+        self._delete(self._limits, saved.id, saved.id)
+        return saved
+
     def start_run(self, tenant_id: str, **kwargs: Any) -> SourceFetchRun:
         working = self._hydrate()
         saved = working.start_run(tenant_id, **kwargs)
@@ -202,6 +211,12 @@ class CosmosJobSourceStore:
             client.replace_item(item=payload["id"], body=payload)
         except CosmosResourceNotFoundError:
             client.create_item(body=payload)
+
+    def _delete(self, client: Any, item: str, partition_key: str) -> None:
+        try:
+            client.delete_item(item=item, partition_key=partition_key)
+        except CosmosResourceNotFoundError:
+            return
 
     def _persist_working(self, working: InMemoryJobSourceStore) -> None:
         for row in working._sources.values():

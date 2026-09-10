@@ -33,6 +33,7 @@ from app.job_sources.urls import (
     greenhouse_list_url,
     lever_detail_url,
     lever_list_url,
+    parse_board_input,
     with_query,
 )
 
@@ -51,6 +52,14 @@ def _sleep_noop(_seconds: float) -> None:
 
 def source_display_name(source_id: str) -> str:
     return "Greenhouse" if source_id == "greenhouse" else "Lever"
+
+
+def source_not_configured_message(source_id: str) -> str:
+    name = source_display_name(source_id)
+    return (
+        f"{name} is not configured. Add a board token before turning this source on, "
+        "or Job Feed stays empty."
+    )
 
 
 def public_crawl_error(source_id: str, error: str | None, *, board: str | None = None) -> str:
@@ -110,6 +119,31 @@ def run_payload(run: SourceFetchRun, *, tenant_id: str | None = None) -> dict:
     }
 
 
+def tenant_payload(tenant: SourceTenant) -> dict:
+    return {
+        "id": tenant.id,
+        "sourceId": tenant.source_id,
+        "tenantKey": tenant.tenant_key,
+        "enabled": tenant.enabled,
+    }
+
+
+def _board_payload(
+    tenant: SourceTenant,
+    *,
+    status: str = "ok",
+    error_message: str | None = None,
+    last_sync_at: str | None = None,
+) -> dict:
+    return {
+        "tenantKey": tenant.tenant_key,
+        "enabled": tenant.enabled,
+        "status": status,
+        "errorMessage": error_message,
+        "lastSyncAt": last_sync_at,
+    }
+
+
 class CrawlService:
     def __init__(
         self,
@@ -129,7 +163,7 @@ class CrawlService:
         tenants = self._resolve_tenants(source_id)
         if not tenants:
             if source_id in {"greenhouse", "lever"}:
-                return {"runs": [], "status": "skipped"}
+                return {"runs": [], "status": "skipped", "reason": "not_configured"}
             raise JobSourceNotFoundError(source_id)
         cfg = get_app_settings()
         runs = []
@@ -143,6 +177,100 @@ class CrawlService:
         if len(runs) == 1:
             body["runId"] = runs[0]["runId"]
         return body
+
+    def enqueue_crawl_tenant(self, source_id: str, tenant_key: str) -> dict:
+        if source_id not in {"greenhouse", "lever"}:
+            raise JobSourceNotFoundError(source_id)
+        key = (tenant_key or "").strip()
+        if not key:
+            raise JobSourceValidationError("tenant key is required", path="tenantKey")
+        tenant = next(
+            (item for item in self.store.list_tenants(source_id) if item.tenant_key == key or item.id == key),
+            None,
+        )
+        if tenant is None:
+            raise JobSourceNotFoundError(key)
+        return self.enqueue_crawl(tenant.id)
+
+    def create_tenant(self, source_id: str, body: dict | None) -> dict:
+        if source_id not in {"greenhouse", "lever"}:
+            raise JobSourceNotFoundError(source_id)
+        payload = body or {}
+        if not isinstance(payload, dict):
+            raise JobSourceValidationError("JSON object required")
+        token = payload.get("boardToken") or payload.get("board_token") or payload.get("tenantKey") or payload.get(
+            "tenant_key"
+        )
+        url = (
+            payload.get("boardUrl")
+            or payload.get("board_url")
+            or payload.get("companyUrl")
+            or payload.get("company_url")
+        )
+        company = payload.get("company")
+        enabled = payload.get("enabled", True)
+        if enabled is None:
+            enabled = True
+        if not isinstance(enabled, bool):
+            raise JobSourceValidationError("enabled must be a boolean", path="enabled")
+        tenant_key = parse_board_input(
+            source_id,
+            token=token if isinstance(token, str) else None,
+            url=url if isinstance(url, str) else None,
+        )
+        config: dict[str, Any] = {"namespace": tenant_key}
+        if source_id == "greenhouse":
+            config["board_token"] = tenant_key
+        else:
+            config["site"] = tenant_key
+        if isinstance(company, str) and company.strip():
+            config["company"] = company.strip()
+        existing = next(
+            (item for item in self.store.list_tenants(source_id) if item.tenant_key == tenant_key),
+            None,
+        )
+        if existing is not None:
+            merged = dict(existing.config or {})
+            merged.update(config)
+            config = merged
+        tenant = self.store.upsert_tenant(source_id, tenant_key, config=config, enabled=enabled)
+        if self._preflight_listing(tenant):
+            self._crawl_new_tenant(tenant)
+        status_rows = self.source_status()
+        row = next((item for item in status_rows if item["source"] == source_id), None)
+        return {
+            **tenant_payload(tenant),
+            "status": row,
+            "sources": status_rows,
+        }
+
+    def list_source_tenants(self, source_id: str) -> dict:
+        if source_id not in {"greenhouse", "lever"}:
+            raise JobSourceNotFoundError(source_id)
+        tenants = self.store.list_tenants(source_id)
+        return {"sourceId": source_id, "items": [tenant_payload(item) for item in tenants]}
+
+    def delete_tenant(self, source_id: str, tenant_key: str) -> dict:
+        if source_id not in {"greenhouse", "lever"}:
+            raise JobSourceNotFoundError(source_id)
+        key = (tenant_key or "").strip()
+        if not key:
+            raise JobSourceValidationError("tenant key is required", path="tenantKey")
+        tenant = next(
+            (item for item in self.store.list_tenants(source_id) if item.tenant_key == key or item.id == key),
+            None,
+        )
+        if tenant is None:
+            raise JobSourceNotFoundError(key)
+        deleted = self.store.delete_tenant(tenant.id)
+        status_rows = self.source_status()
+        row = next((item for item in status_rows if item["source"] == source_id), None)
+        return {
+            **tenant_payload(deleted),
+            "deleted": True,
+            "status": row,
+            "sources": status_rows,
+        }
 
     def get_run(self, source_id: str, run_id: str) -> dict:
         run = self.store.get_run(run_id)
@@ -195,32 +323,43 @@ class CrawlService:
         rows = []
         for source_id in ("greenhouse", "lever"):
             tenants = self.store.list_tenants(source_id)
+            if not tenants:
+                rows.append(
+                    {
+                        "source": source_id,
+                        "status": "unconfigured",
+                        "lastSyncAt": None,
+                        "backoffUntil": None,
+                        "errorMessage": source_not_configured_message(source_id),
+                        "progress": None,
+                        "configured": False,
+                        "tenantCount": 0,
+                        "boards": [],
+                    }
+                )
+                continue
             last_sync = None
             error = None
             progress = None
             backoff_until = None
             saw_syncing = False
             saw_error = False
+            boards: list[dict] = []
             for tenant in tenants:
-                try:
-                    limit = self.store.get_rate_limit(tenant.id)
-                    if limit.backoff_until and (not backoff_until or limit.backoff_until > backoff_until):
-                        backoff_until = limit.backoff_until
-                except Exception:
-                    pass
-                runs = self.store.list_runs(tenant.id)
-                if not runs:
-                    continue
-                latest = runs[-1]
-                if latest.updated_at and (not last_sync or latest.updated_at > last_sync):
-                    last_sync = latest.finished_at or latest.updated_at
-                if latest.status == "running":
+                board = self._board_status(tenant)
+                boards.append(board)
+                if board.get("backoffUntil") and (not backoff_until or board["backoffUntil"] > backoff_until):
+                    backoff_until = board["backoffUntil"]
+                if board.get("lastSyncAt") and (not last_sync or board["lastSyncAt"] > last_sync):
+                    last_sync = board["lastSyncAt"]
+                if board["status"] == "syncing":
                     saw_syncing = True
-                    if latest.expected_count:
-                        progress = f"{latest.completed_count}/{latest.expected_count}"
-                elif latest.status in {"failed", "partial_success"}:
+                    if board.get("progress"):
+                        progress = board["progress"]
+                elif board["status"] == "error":
                     saw_error = True
-                    error = public_crawl_error(source_id, latest.error_summary, board=tenant.tenant_key)
+                    if board.get("errorMessage"):
+                        error = board["errorMessage"]
             if saw_syncing:
                 status = "syncing"
             elif backoff_until:
@@ -237,9 +376,88 @@ class CrawlService:
                     "backoffUntil": backoff_until,
                     "errorMessage": error,
                     "progress": progress,
+                    "configured": True,
+                    "tenantCount": len(tenants),
+                    "boards": [{k: v for k, v in item.items() if k != "progress" and k != "backoffUntil"} for item in boards],
                 }
             )
         return rows
+
+    def _board_status(self, tenant: SourceTenant) -> dict:
+        last_sync = None
+        error = None
+        progress = None
+        backoff_until = None
+        status = "ok"
+        try:
+            limit = self.store.get_rate_limit(tenant.id)
+            if limit.backoff_until:
+                backoff_until = limit.backoff_until
+        except Exception:
+            pass
+        runs = self.store.list_runs(tenant.id)
+        if runs:
+            latest = runs[-1]
+            last_sync = latest.finished_at or latest.updated_at
+            if latest.status in {"running", "queued"}:
+                status = "syncing"
+                if latest.expected_count:
+                    progress = f"{latest.completed_count}/{latest.expected_count}"
+            elif latest.status in {"failed", "partial_success"}:
+                status = "error"
+                error = public_crawl_error(tenant.source_id, latest.error_summary, board=tenant.tenant_key)
+            elif backoff_until:
+                status = "rate_limited"
+        elif backoff_until:
+            status = "rate_limited"
+        return {
+            **_board_payload(tenant, status=status, error_message=error, last_sync_at=last_sync),
+            "progress": progress,
+            "backoffUntil": backoff_until,
+        }
+
+    def _preflight_listing(self, tenant: SourceTenant) -> bool:
+        """Cheap public listing GET so a 404 token shows on the Settings board row.
+
+        Returns True when the board looks reachable and is safe to crawl.
+        Demo-seed tenants skip live HTTP. A preflight error is stamped and must
+        not enqueue a second listing that would 404 again.
+        """
+        if (tenant.config or {}).get("demo_seed"):
+            return False
+        url = self._list_url(tenant, cursor=None, skip=0)
+        assert_https_allowlisted(url, tenant.source_id)
+        error: str | None = None
+        try:
+            response = self.fetcher.get(url, timeout=(3.0, 5.0))
+            if response.status_code >= 400:
+                error = str(response.status_code)
+        except Exception as exc:
+            error = str(exc)
+        runs = self.store.list_runs(tenant.id)
+        latest = runs[-1] if runs else None
+        if error is None:
+            if latest is not None and latest.status in {"failed", "partial_success"}:
+                run = self.store.start_run(tenant.id, status="running")
+                self.store.finish_run(run.id, status="succeeded")
+            return True
+        run = self.store.start_run(tenant.id, status="running")
+        self.store.finish_run(
+            run.id,
+            status="failed",
+            error_summary=public_crawl_error(tenant.source_id, error, board=tenant.tenant_key),
+        )
+        return False
+
+    def _crawl_new_tenant(self, tenant: SourceTenant) -> None:
+        """Enqueue this board immediately so Job Feed is not empty until Refresh."""
+        if not tenant.enabled or (tenant.config or {}).get("demo_seed"):
+            return
+        try:
+            self.enqueue_crawl(tenant.id)
+            self.drain()
+        except Exception:
+            pass
 
     def schedule_due(self) -> list[dict]:
         cfg = get_app_settings()
