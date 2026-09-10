@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getUserId, learningApi, setUserId, settingsApi, USE_MOCK } from '../api'
+import { getUserId, jobsApi, learningApi, setUserId, settingsApi, USE_MOCK } from '../api'
 import type { SettingsDoc } from '../api/settingsTypes'
+import type { JobSourceName, SourceStatus } from '../api/jobsTypes'
 import { AppNav } from '../components/AppNav'
 import { Modal } from '../components/Modal'
 import { ToastStack } from '../components/Toast'
@@ -25,6 +26,7 @@ import {
   sourceIsConfigured,
   sourceUnconfiguredCopy,
 } from '../lib/settings'
+import { sourceIsConfiguredStatus } from '../lib/jobs'
 import { LearningPanel } from './Learning'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
@@ -56,6 +58,7 @@ export function SettingsPage() {
     key: 'greenhouseEnabled' | 'leverEnabled'
     value: boolean
   } | null>(null)
+  const [sourceStatus, setSourceStatus] = useState<SourceStatus[]>([])
   const [connecting, setConnecting] = useState(false)
   const [popupBlocked, setPopupBlocked] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
@@ -94,6 +97,11 @@ export function SettingsPage() {
       setLoadError(null)
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Could not load settings')
+    }
+    try {
+      setSourceStatus(await jobsApi.sourceStatus())
+    } catch {
+      /* source status is additive; settings toggles still render */
     }
   }, [applyDoc])
 
@@ -167,9 +175,9 @@ export function SettingsPage() {
 
   async function saveSource(key: 'greenhouseEnabled' | 'leverEnabled', value: boolean) {
     if (!doc) return
-    const configuredKey = key === 'greenhouseEnabled' ? 'greenhouseConfigured' : 'leverConfigured'
-    if (value && !sourceIsConfigured(doc.sources[configuredKey])) {
-      setSourceError(sourceUnconfiguredCopy(key === 'greenhouseEnabled' ? 'greenhouse' : 'lever'))
+    const name = key === 'greenhouseEnabled' ? 'greenhouse' : 'lever'
+    if (value && !sourceConfigured(name)) {
+      setSourceError(sourceUnconfiguredCopy(name))
       return
     }
     const previous = doc.sources[key]
@@ -297,6 +305,14 @@ export function SettingsPage() {
   const email = doc?.emailConnection
   const configured = oauthIsConfigured(doc?.oauthConfigured) && !oauthBlocked
   const ui = emailUiState(email?.status ?? 'disconnected', email?.errorCode, connecting, configured)
+
+  function sourceConfigured(name: JobSourceName): boolean {
+    const key = name === 'greenhouse' ? 'greenhouseConfigured' : 'leverConfigured'
+    const fromSettings = sourceIsConfigured(doc?.sources[key])
+    const row = sourceStatus.find((item) => item.source === name)
+    if (row && !sourceIsConfiguredStatus(row)) return false
+    return fromSettings
+  }
 
   return (
     <div className="page library-page">
@@ -550,8 +566,7 @@ export function SettingsPage() {
         <p className="muted">Turn ingestion on or off. Credentials are not entered here.</p>
         {(['greenhouse', 'lever'] as const).map((name) => {
           const enabledKey = name === 'greenhouse' ? 'greenhouseEnabled' : 'leverEnabled'
-          const configuredKey = name === 'greenhouse' ? 'greenhouseConfigured' : 'leverConfigured'
-          const configured = sourceIsConfigured(doc?.sources[configuredKey])
+          const configured = sourceConfigured(name)
           const enabled = Boolean(doc?.sources[enabledKey]) && configured
           const status = name === 'greenhouse' ? ghStatus : leverStatus
           const label = name === 'greenhouse' ? 'Greenhouse' : 'Lever'
