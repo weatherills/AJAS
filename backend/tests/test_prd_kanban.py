@@ -290,6 +290,54 @@ def test_http_graph_poll_ingests_and_reply_hits_graph():
         set_service(None)
 
 
+def test_poll_all_creates_missing_subscription_when_graph_connected():
+    store = InMemoryEmailStore(seed=False)
+    settings_store = InMemorySettingsStore()
+    now = utc_now()
+    expires = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat().replace("+00:00", "Z")
+    settings_store.upsert_connection(
+        USER,
+        EmailConnection.model_validate(
+            {
+                "user_id": USER,
+                "provider": "microsoft_365",
+                "status": "expired",
+                "account_email": "jane@contoso.com",
+                "access_token_enc": "stale-access",
+                "refresh_token_enc": "refresh-plain",
+                "expires_at": (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat().replace("+00:00", "Z"),
+                "created_at": now,
+                "updated_at": now,
+            }
+        ),
+        actor_id=USER,
+    )
+    graph = LocalGraphClient()
+    svc = EmailService(
+        store=store,
+        queue=InMemoryJobQueue(),
+        graph=graph,
+        local_mode=True,
+        settings_store=settings_store,
+    )
+    from app.settings.runtime import set_service as set_settings
+    from app.settings.queues import InMemoryJobQueue as SettingsQueue
+    from app.settings.service import SettingsService
+
+    set_settings(SettingsService(store=settings_store, queue=SettingsQueue()))
+    try:
+        account = store.ensure_account(USER, address="jane@contoso.com", demo=False)
+        assert store.get_subscription(account.id) is None
+        svc.poll_all()
+        saved = store.get_subscription(account.id)
+        assert saved is not None
+        linked = settings_store.list_connections(USER)[0]
+        assert linked.webhook_subscription_id == saved.graph_subscription_id
+        assert graph._subscriptions
+    finally:
+        set_settings(None)
+
+
 def test_poll_all_renews_subscription_before_expiry():
     store = InMemoryEmailStore(seed=False)
     graph = LocalGraphClient()

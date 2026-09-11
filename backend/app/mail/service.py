@@ -304,17 +304,15 @@ class EmailService:
         )
         saved = self.store.upsert_subscription(row)
         try:
-            from app.settings.runtime import try_get_service as try_settings
-
-            settings_svc = try_settings()
-            if settings_svc is not None:
-                connections = settings_svc.store.list_connections(user_id)
+            settings_store = self._settings_store()
+            if settings_store is not None:
+                connections = settings_store.list_connections(user_id)
                 if connections:
                     connection = connections[0]
                     connection.webhook_subscription_id = saved.graph_subscription_id
                     connection.subscription_expires_at = saved.expires_at
                     connection.updated_at = now
-                    settings_svc.store.upsert_connection(user_id, connection, actor_id=user_id)
+                    settings_store.upsert_connection(user_id, connection, actor_id=user_id)
         except Exception:
             log.exception("ajas.mail.subscription settings link failed")
         return saved
@@ -693,7 +691,15 @@ class EmailService:
         if store is None:
             return None
         try:
-            return store.get_active_connection(user_id)
+            active = store.get_active_connection(user_id)
+            if active is not None:
+                return active
+            expired = [
+                row
+                for row in store.list_connections(user_id)
+                if row.provider == "microsoft_365" and row.status == "expired" and row.refresh_token_enc
+            ]
+            return expired[0] if expired else None
         except Exception:
             return None
 
