@@ -250,6 +250,51 @@ def test_mark_packaged_attempt_manually_submitted(svc):
     assert again.status_code == 409
 
 
+def test_submitted_api_attempt_rejects_manual_submit(svc):
+    created = routes.auto_apply_create(
+        _req("POST", "http://localhost/api/v1/auto-apply/requests", json_body=_create_body())
+    )
+    request_id = _body(created)["request_id"]
+    assert _body(created)["state"] == "submitted"
+    blocked = routes.auto_apply_manual_submit(
+        _req(
+            "POST",
+            f"http://localhost/api/v1/auto-apply/requests/{request_id}/manual-submit",
+            route={"request_id": request_id},
+        )
+    )
+    assert blocked.status_code == 409
+    assert _body(blocked)["error"]["code"] == "CONFLICT"
+    detail = _body(
+        routes.auto_apply_get(
+            _req(
+                "GET",
+                f"http://localhost/api/v1/auto-apply/requests/{request_id}",
+                route={"request_id": request_id},
+            )
+        )
+    )
+    assert detail["state"] == "submitted"
+    assert all(row["event"] != "manually_submitted" for row in detail["state_history"])
+
+
+def test_queued_api_attempt_rejects_manual_submit(queued_svc):
+    created = routes.auto_apply_create(
+        _req("POST", "http://localhost/api/v1/auto-apply/requests", json_body=_create_body())
+    )
+    request_id = _body(created)["request_id"]
+    assert _body(created)["state"] == "queued"
+    blocked = routes.auto_apply_manual_submit(
+        _req(
+            "POST",
+            f"http://localhost/api/v1/auto-apply/requests/{request_id}/manual-submit",
+            route={"request_id": request_id},
+        )
+    )
+    assert blocked.status_code == 409
+    assert _body(blocked)["error"]["code"] == "CONFLICT"
+
+
 def test_cover_letter_upload_is_stored(svc):
     created = routes.auto_apply_create(
         _req(

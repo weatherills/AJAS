@@ -110,4 +110,18 @@ describe('mock auto-apply api', () => {
     expect(detail.state_history.some((event) => event.event === 'manually_submitted')).toBe(true)
     await expect(mockAutoApplyApi.markManualSubmitted(packaged.request_id)).rejects.toThrow(/packaged/)
   })
+
+  it('rejects marking an API-path greenhouse attempt as manually submitted', async () => {
+    resetAutoApplyMock()
+    const submitted = await mockAutoApplyApi.create({
+      job_source: 'greenhouse',
+      job_posting_id: 'job-staff',
+      posting_url: 'https://boards.greenhouse.io/demo/jobs/job-staff',
+      cover_letter_mode: 'none',
+      consent_approved: true,
+    })
+    expect(submitted.state).toBe('submitted')
+    expect(canMarkManualSubmitted(submitted.state)).toBe(false)
+    await expect(mockAutoApplyApi.markManualSubmitted(submitted.request_id)).rejects.toThrow(/packaged/)
+  })
 })
