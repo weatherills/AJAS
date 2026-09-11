@@ -137,7 +137,17 @@ describe('mock email api', () => {
     const file = messages.items[0].attachments[0]
     expect(file.downloadUrl).toContain('brief.pdf')
     expect(previewable(file.contentType, file.fileName)).toBe(true)
+    expect(previewable('image/png', 'shot.png')).toBe(true)
+    expect(previewable('application/zip', 'pack.zip')).toBe(false)
     expect(attachmentNeedsAuthFetch(file.downloadUrl)).toBe(false)
     expect(attachmentNeedsAuthFetch('/api/v1/email/attachments/att-1')).toBe(true)
+  })
+
+  it('flags oversized attachments without a download URL', async () => {
+    const messages = await mockEmailApi.listMessages('t-staff')
+    const huge = messages.items[0].attachments.find((file) => file.status === 'skipped_oversize')
+    expect(huge).toBeTruthy()
+    expect(huge?.downloadUrl).toBeNull()
+    expect(previewable(huge!.contentType, huge!.fileName)).toBe(false)
   })
 })

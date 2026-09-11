@@ -450,6 +450,21 @@ def test_oversized_attachment_metadata_only(svc, store, graph):
     atts = store.list_attachments(message.id)
     assert atts[0].status == "skipped_oversize"
     assert atts[0].blob_path is None
+    listed = routes.list_thread_messages(
+        _req("GET", f"http://localhost/api/v1/threads/{thread.id}/messages", route={"threadId": thread.id})
+    )
+    assert listed.status_code == 200
+    file = _body(listed)["items"][0]["attachments"][0]
+    assert file["status"] == "skipped_oversize"
+    assert file["downloadUrl"] is None
+    blocked = routes.download_email_attachment(
+        _req(
+            "GET",
+            f"http://localhost/api/v1/email/attachments/{file['id']}",
+            route={"attachmentId": file["id"]},
+        )
+    )
+    assert blocked.status_code == 422
 
 
 def test_eicar_attachment_is_skipped_not_stored(svc, store, graph):
