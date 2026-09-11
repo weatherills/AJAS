@@ -1,6 +1,7 @@
 import type { LearningApi, LearningMetrics, LearningParams } from './learningTypes'
 
 const DEFAULT_WEIGHTS = { keyword: 0.4, semantic: 0.6 }
+const lastDecisions = new Map<string, string>()
 
 const params: LearningParams = {
   weights: { ...DEFAULT_WEIGHTS },
@@ -27,6 +28,7 @@ export function resetMockLearning() {
   params.strictness = 1
   params.sample_size = 12
   params.updated_at = new Date().toISOString()
+  lastDecisions.clear()
 }
 
 export function mockLearningSnapshot() {
@@ -39,14 +41,28 @@ export function mockLearningSnapshot() {
 }
 
 export function recordMockDecision(_matchId: string, decision: string) {
-  params.sample_size += 1
   params.source = 'personalized'
   params.updated_at = new Date().toISOString()
+  if (decision === 'undo') {
+    const prior = lastDecisions.get(_matchId)
+    if (!prior) return
+    params.sample_size = Math.max(0, params.sample_size - 1)
+    if (prior === 'approve') {
+      params.weights.keyword = roundWeight(Math.max(0.2, params.weights.keyword - 0.02))
+    } else if (prior === 'reject') {
+      params.weights.keyword = roundWeight(Math.min(0.7, params.weights.keyword + 0.02))
+    }
+    lastDecisions.delete(_matchId)
+    params.weights.semantic = roundWeight(1 - params.weights.keyword)
+    return
+  }
+  params.sample_size += 1
   if (decision === 'approve') {
     params.weights.keyword = roundWeight(Math.min(0.7, params.weights.keyword + 0.02))
   } else if (decision === 'reject') {
     params.weights.keyword = roundWeight(Math.max(0.2, params.weights.keyword - 0.02))
   }
+  lastDecisions.set(_matchId, decision)
   params.weights.semantic = roundWeight(1 - params.weights.keyword)
 }
 

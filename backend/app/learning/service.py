@@ -131,7 +131,7 @@ class LearningService:
         match_id = payload.get("matchId") or payload.get("recommendation_id") or payload.get("recommendationId")
         job_id = payload.get("jobId") or payload.get("job_id") or "unknown"
         outcome = (payload.get("outcome") or payload.get("decision") or "approve").lower()
-        if outcome not in {"approve", "reject"}:
+        if outcome not in {"approve", "reject", "undo", "skip"}:
             return
         raw_score = payload.get("score")
         if raw_score is None:
@@ -156,8 +156,22 @@ class LearningService:
             model_version=payload.get("model_version") or DEFAULT_MODEL_VERSION,
         )
         self.store.upsert_recommendation(rec)
-        key = payload.get("decisionId") or payload.get("idempotency_key") or f"review-{rec_id}-{outcome}"
+        base_key = payload.get("idempotency_key") or payload.get("decisionId") or f"review-{rec_id}"
+        key = f"{base_key}-{outcome}" if outcome in {"undo", "skip"} else str(base_key)
         if self.store.get_by_idempotency(user_id, key):
+            return
+        if outcome in {"undo", "skip"}:
+            existing = self.store.get_decision_by_rec(user_id, rec_id)
+            if existing is None:
+                return
+            existing.decision = "skip"
+            existing.updated_at = now
+            existing.idempotency_key = key
+            self.store.put_decision(existing)
+            rec.status = "pending"
+            self.store.upsert_recommendation(rec)
+            self._maybe_enqueue_tune(user_id)
+            self.drain()
             return
         self.store.put_decision(
             DecisionLog(

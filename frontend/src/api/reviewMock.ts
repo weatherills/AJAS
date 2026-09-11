@@ -281,6 +281,9 @@ export const mockReviewApi: ReviewApi = {
     seed()
     const row = rows.get(matchId)
     if (!row) throw new Error('Not found')
+    if (row.decision === 'approve' || row.decision === 'reject') {
+      recordMockDecision(matchId, 'undo')
+    }
     row.status = 'pending'
     row.applied = false
     row.decidedAt = null

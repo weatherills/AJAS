@@ -202,6 +202,27 @@ def test_ingest_review_event(svc, store):
     assert store.get_decision_by_rec(USER, "match-99").decision == "approve"
 
 
+def test_ingest_undo_flips_prior_decision_to_skip(svc, store):
+    payload = {
+        "eventType": "LearningDecisionLogged",
+        "userId": USER,
+        "jobId": "job-1",
+        "matchId": "match-undo",
+        "decisionId": "dec-undo",
+        "score": 90.0,
+        "threshold": 0.7,
+        "occurredAt": utc_now(),
+    }
+    svc.ingest_event({**payload, "outcome": "approve"})
+    assert store.get_decision_by_rec(USER, "match-undo").decision == "approve"
+    svc.ingest_event({**payload, "outcome": "undo"})
+    assert store.get_decision_by_rec(USER, "match-undo").decision == "skip"
+    rec = store.get_recommendation("match-undo")
+    assert rec.status == "pending"
+    svc.ingest_event({**payload, "outcome": "undo"})
+    assert store.get_decision_by_rec(USER, "match-undo").decision == "skip"
+
+
 def test_tune_requires_admin(svc):
     resp = routes.tune_learning(_req("POST", "http://localhost/api/v1/learning/tune", json_body={}))
     assert resp.status_code == 403

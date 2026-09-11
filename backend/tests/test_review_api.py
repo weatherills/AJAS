@@ -619,3 +619,41 @@ def test_decide_enqueues_learning_event_with_threshold(svc, store, queue):
         assert len(queue.of("decision-events")) == 1
     finally:
         set_settings_service(None)
+
+
+def test_reopen_sends_learning_undo(svc, store, queue):
+    from app.learning.memory import InMemoryLearningStore
+    from app.learning.queues import InMemoryJobQueue as LearningQueue
+    from app.learning.runtime import set_service as set_learning
+    from app.learning.service import LearningService
+
+    learning_store = InMemoryLearningStore(seed=False)
+    set_learning(LearningService(store=learning_store, queue=LearningQueue(), local_mode=False))
+    try:
+        match = _seed(store)
+        decided = routes.create_decision(
+            _req(
+                "POST",
+                f"http://localhost/api/v1/matches/{match.id}/decision",
+                json_body={"decision": "approve"},
+                route={"matchId": match.id},
+                headers={"Idempotency-Key": "undo-1", "If-Match": match.etag},
+            )
+        )
+        assert decided.status_code == 201
+        assert learning_store.get_decision_by_rec(USER, match.id).decision == "approve"
+        reopened = routes.reopen_match(
+            _req(
+                "POST",
+                f"http://localhost/api/v1/matches/{match.id}/reopen",
+                route={"matchId": match.id},
+            )
+        )
+        assert reopened.status_code == 200
+        assert _body(reopened)["status"] == "pending"
+        assert learning_store.get_decision_by_rec(USER, match.id).decision == "skip"
+        undo_events = [item for item in queue.of("learning-decisions") if item.get("outcome") == "undo"]
+        assert len(undo_events) == 1
+        assert undo_events[0]["matchId"] == match.id
+    finally:
+        set_learning(None)

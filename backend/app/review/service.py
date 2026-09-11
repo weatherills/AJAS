@@ -367,7 +367,11 @@ class ReviewService:
         match = self.store.get_match(match_id, user_id=user_id)
         if match.status == "PENDING":
             raise ReviewConflictError("match is already awaiting a decision")
+        events = self.store.list_decisions(user_id, match_id)
+        last = events[-1] if events else None
         updated = self.store.reopen(user_id, match_id)
+        if last is not None and last.decision in {"approve", "reject"}:
+            self._log_learning_decision(updated, last, outcome="undo")
         return _match_detail(updated)
 
     def upsert_scored_match(

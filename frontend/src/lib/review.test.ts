@@ -92,6 +92,12 @@ describe('mock review api', () => {
     const detail = await mockReviewApi.get('match-staff')
     expect(detail.match.status).toBe('approved')
     expect(detail.match.applied).toBe(true)
+    await mockReviewApi.reopen('match-staff')
+    const undone = mockLearningSnapshot()
+    expect(undone.sample_size).toBe(before.sample_size)
+    expect(undone.weights.keyword).toBe(before.weights.keyword)
+    const pending = await mockReviewApi.get('match-staff')
+    expect(pending.match.status).toBe('pending')
   })
 
   it('keeps the comment when save fails', async () => {
