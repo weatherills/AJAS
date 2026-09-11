@@ -94,6 +94,36 @@ def test_default_graph_client_uses_http_when_oauth_configured(monkeypatch):
         get_settings.cache_clear()
 
 
+def test_http_graph_client_retries_once_after_401():
+    class UnauthorizedThenOk(FakeGraphHttp):
+        def __init__(self) -> None:
+            super().__init__()
+            self._unauth = True
+
+        def request(self, method: str, url: str, *, headers: dict[str, str], body: dict | None = None) -> tuple[int, dict]:
+            if self._unauth:
+                self._unauth = False
+                self.calls.append((method, url, body))
+                return 401, {"error": "expired"}
+            return super().request(method, url, headers=headers, body=body)
+
+    tokens: list[str] = []
+
+    def provider() -> str:
+        token = f"tok-{len(tokens)}"
+        tokens.append(token)
+        return token
+
+    http = UnauthorizedThenOk()
+    client = HttpGraphClient(token_provider=provider, http=http)
+    fetched = client.fetch_message("acct-1", "g1")
+    assert fetched is not None
+    assert fetched.subject == "Staff Engineer at Acme"
+    assert tokens == ["tok-0", "tok-1"]
+    assert http.calls[0][0] == "GET"
+    assert http.calls[1][0] == "GET"
+
+
 def test_http_graph_client_fetch_delta_send_and_subscribe():
     http = FakeGraphHttp()
     client = HttpGraphClient(token_provider=lambda: "tok", http=http)
@@ -176,3 +206,111 @@ def test_ensure_graph_subscription_persists_local_row():
         assert graph._subscriptions
     finally:
         set_settings(None)
+
+
+class RefreshExchanger:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def refresh(self, *, refresh_token: str):
+        from app.settings.oauth import TokenSet
+
+        self.calls += 1
+        assert refresh_token == "refresh-plain"
+        return TokenSet(
+            access_token="fresh-access",
+            refresh_token="refresh-plain-2",
+            expires_in=3600,
+            scope="offline_access Mail.Read Mail.Send",
+        )
+
+
+def test_graph_access_token_refreshes_when_expired():
+    from app.settings.crypto import open_token
+    from app.settings.queues import InMemoryJobQueue as SettingsQueue
+    from app.settings.runtime import set_service as set_settings
+    from app.settings.service import SettingsService
+
+    store = InMemorySettingsStore()
+    now = utc_now()
+    past = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat().replace("+00:00", "Z")
+    store.upsert_connection(
+        USER,
+        EmailConnection.model_validate(
+            {
+                "user_id": USER,
+                "provider": "microsoft_365",
+                "status": "active",
+                "account_email": "jane@contoso.com",
+                "access_token_enc": "stale-access",
+                "refresh_token_enc": "refresh-plain",
+                "expires_at": past,
+                "created_at": now,
+                "updated_at": now,
+            }
+        ),
+        actor_id=USER,
+    )
+    exchanger = RefreshExchanger()
+    service = SettingsService(store=store, queue=SettingsQueue(), exchanger=exchanger)
+    set_settings(service)
+    get_settings.cache_clear()
+    try:
+        token = service.graph_access_token(USER)
+        assert token == "fresh-access"
+        assert exchanger.calls == 1
+        saved = store.get_active_connection(USER)
+        assert open_token(saved.access_token_enc, get_settings().settings_token_key) == "fresh-access"
+    finally:
+        set_settings(None)
+        get_settings.cache_clear()
+
+
+def test_http_graph_poll_ingests_and_reply_hits_graph():
+    from app.mail.runtime import set_service
+
+    http = FakeGraphHttp()
+    graph = HttpGraphClient(token_provider=lambda: "tok", http=http)
+    store = InMemoryEmailStore(seed=False)
+    svc = EmailService(store=store, queue=InMemoryJobQueue(), graph=graph, local_mode=True)
+    set_service(svc)
+    try:
+        account = store.ensure_account(USER, address="jane@contoso.com", demo=False)
+        result = svc.refresh(USER)
+        assert result["status"] == "ok"
+        threads = store.list_threads(account.id)
+        assert any("Staff Engineer" in (row.subject or "") for row in threads)
+        thread = next(row for row in threads if "Staff Engineer" in (row.subject or ""))
+        status, payload = svc.reply(USER, thread.id, {"bodyText": "Thanks Maya"})
+        assert status == 201
+        assert payload["deliveryStatus"] == "sent"
+        assert any(call[0] == "POST" and str(call[1]).endswith("/sendMail") for call in http.calls)
+        assert any(call[0] == "GET" and "messages/delta" in str(call[1]) for call in http.calls)
+    finally:
+        set_service(None)
+
+
+def test_poll_all_renews_subscription_before_expiry():
+    store = InMemoryEmailStore(seed=False)
+    graph = LocalGraphClient()
+    svc = EmailService(store=store, queue=InMemoryJobQueue(), graph=graph, local_mode=True)
+    account = store.ensure_account(USER, address="jane@contoso.com", demo=False)
+    soon = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+    from app.mail.models import GraphSubscription
+
+    store.upsert_subscription(
+        GraphSubscription(
+            email_account_id=account.id,
+            graph_subscription_id="sub-old",
+            resource="/me/messages",
+            expires_at=soon,
+            client_state="dev-mail-webhook",
+            created_at=utc_now(),
+        )
+    )
+    svc.poll_all()
+    saved = store.get_subscription(account.id)
+    assert saved is not None
+    assert saved.graph_subscription_id == "sub-old"
+    later = datetime.fromisoformat(saved.expires_at.replace("Z", "+00:00"))
+    assert later - datetime.now(timezone.utc) > timedelta(hours=24)

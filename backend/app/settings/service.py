@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 from app.config import get_settings as get_app_settings
 from app.config import microsoft_oauth_configured
-from app.settings.crypto import seal_token
+from app.settings.crypto import open_token, seal_token
 from app.settings.errors import SettingsConflictError, SettingsNotFoundError, SettingsValidationError
 from app.settings.mapping import api_threshold, db_threshold, requested_at, settings_response
 from app.settings.models import EmailConnection, new_id
@@ -262,6 +262,59 @@ class SettingsService:
                 self.store.revoke_connection(user_id, connection.id, actor_id=user_id)
         settings = self.store.get_or_create_settings(user_id, actor_id=user_id)
         return settings_response(settings, None, updated_by=user_id)
+
+    def graph_access_token(self, user_id: str) -> str:
+        """Return a live Graph access token, refreshing when expiry is near."""
+        connection = self.store.get_active_connection(user_id)
+        if connection is None:
+            expired = [
+                row
+                for row in self.store.list_connections(user_id)
+                if row.provider == "microsoft_365" and row.status == "expired" and row.refresh_token_enc
+            ]
+            connection = expired[0] if expired else None
+        if connection is None or not connection.access_token_enc:
+            raise RuntimeError("no active Microsoft Graph token")
+        cfg = get_app_settings()
+        now = datetime.now(timezone.utc)
+        expires = parse_ts(connection.expires_at) if connection.expires_at else None
+        still_valid = (
+            connection.status == "active"
+            and expires is not None
+            and expires - now > timedelta(minutes=2)
+        )
+        if still_valid:
+            token = open_token(connection.access_token_enc, cfg.settings_token_key)
+            if token:
+                return token
+        refresh = open_token(connection.refresh_token_enc, cfg.settings_token_key)
+        if not refresh:
+            raise RuntimeError("no refresh token")
+        exchanger = self.exchanger
+        refresh_fn = getattr(exchanger, "refresh", None) if exchanger is not None else None
+        if not callable(refresh_fn):
+            from app.settings.oauth import MicrosoftTokenExchanger
+
+            exchanger = MicrosoftTokenExchanger(
+                tenant=cfg.microsoft_tenant,
+                client_id=cfg.microsoft_client_id,
+                client_secret=cfg.microsoft_client_secret,
+            )
+            refresh_fn = exchanger.refresh
+        tokens = refresh_fn(refresh_token=refresh)
+        stamped = utc_now()
+        connection.status = "active"
+        connection.access_token_enc = seal_token(tokens.access_token, cfg.settings_token_key)
+        if tokens.refresh_token:
+            connection.refresh_token_enc = seal_token(tokens.refresh_token, cfg.settings_token_key)
+        connection.expires_at = (
+            datetime.now(timezone.utc) + timedelta(seconds=int(tokens.expires_in or 3600))
+        ).isoformat().replace("+00:00", "Z")
+        connection.updated_at = stamped
+        connection.last_verified_at = stamped
+        connection.error_code = None
+        self.store.upsert_connection(user_id, connection, actor_id=user_id)
+        return tokens.access_token
 
     def _visible_connection(self, user_id: str) -> EmailConnection | None:
         rows = self.store.list_connections(user_id)

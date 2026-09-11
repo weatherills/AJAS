@@ -188,11 +188,16 @@ class HttpGraphClient:
         token = self._token_provider()
         return {"Authorization": f"Bearer {token}"}
 
+    def _request(self, method: str, url: str, *, body: dict | None = None) -> tuple[int, dict]:
+        status, payload = self._http.request(method, url, headers=self._headers(), body=body)
+        if status == 401:
+            status, payload = self._http.request(method, url, headers=self._headers(), body=body)
+        return status, payload
+
     def fetch_message(self, account_id: str, graph_message_id: str) -> GraphMessage | None:
-        status, payload = self._http.request(
+        status, payload = self._request(
             "GET",
             f"{self._base}/me/messages/{graph_message_id}?$expand=attachments",
-            headers=self._headers(),
         )
         if status == 404:
             return None
@@ -207,7 +212,7 @@ class HttpGraphClient:
             url = f"{self._base}/me/mailFolders/inbox/messages/delta?$deltatoken={token}"
         else:
             url = f"{self._base}/me/mailFolders/inbox/messages/delta"
-        status, payload = self._http.request("GET", url, headers=self._headers())
+        status, payload = self._request("GET", url)
         if status >= 400:
             return [], token or utc_now()
         rows = payload.get("value") or []
@@ -244,7 +249,7 @@ class HttpGraphClient:
                 for item in attachments
             ]
         payload = {"message": message, "comment": body_text}
-        self._http.request("POST", f"{self._base}/me/sendMail", headers=self._headers(), body=payload)
+        self._request("POST", f"{self._base}/me/sendMail", body=payload)
         sent = GraphMessage(
             id=f"graph-{new_id()}",
             internet_message_id=f"<sent-{new_id()}@ajas.dev>",
@@ -272,10 +277,9 @@ class HttpGraphClient:
 
         expires = (datetime.now(timezone.utc) + timedelta(hours=42)).strftime("%Y-%m-%dT%H:%M:%S.0000000Z")
         if existing_id:
-            status, payload = self._http.request(
+            status, payload = self._request(
                 "PATCH",
                 f"{self._base}/subscriptions/{existing_id}",
-                headers=self._headers(),
                 body={"expirationDateTime": expires},
             )
             if status < 400:
@@ -283,10 +287,9 @@ class HttpGraphClient:
                 payload.setdefault("resource", "/me/messages")
                 payload.setdefault("expirationDateTime", expires)
                 return payload
-        status, payload = self._http.request(
+        status, payload = self._request(
             "POST",
             f"{self._base}/subscriptions",
-            headers=self._headers(),
             body={
                 "changeType": "created,updated",
                 "notificationUrl": notification_url,
@@ -358,11 +361,8 @@ def pending_followup(account_id: str, mailbox: str) -> GraphMessage:
 
 
 def _settings_access_token() -> str:
-    from app.config import get_settings
-    from app.settings.crypto import open_token
     from app.settings.runtime import try_get_service
 
-    cfg = get_settings()
     service = try_get_service()
     if service is None:
         raise RuntimeError("settings service is not available for Graph tokens")
@@ -370,14 +370,14 @@ def _settings_access_token() -> str:
     list_ids = getattr(service.store, "list_user_ids", None)
     if callable(list_ids):
         user_ids = list_ids()
+    last_error: Exception | None = None
     for user_id in user_ids:
-        connection = service.store.get_active_connection(user_id)
-        if connection is None or not connection.access_token_enc:
+        try:
+            return service.graph_access_token(user_id)
+        except Exception as exc:
+            last_error = exc
             continue
-        token = open_token(connection.access_token_enc, cfg.settings_token_key)
-        if token:
-            return token
-    raise RuntimeError("no active Microsoft Graph token")
+    raise RuntimeError(str(last_error) if last_error else "no active Microsoft Graph token")
 
 
 def default_graph_client() -> GraphClient:

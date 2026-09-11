@@ -116,6 +116,37 @@ class MicrosoftTokenExchanger:
             ),
         )
 
+    def refresh(self, *, refresh_token: str) -> TokenSet:
+        body = urllib.parse.urlencode(
+            {
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+                "scope": " ".join(REQUIRED_SCOPES),
+            }
+        ).encode()
+        url = f"https://login.microsoftonline.com/{self.tenant}/oauth2/v2.0/token"
+        req = urllib.request.Request(url, data=body, method="POST")
+        req.add_header("Content-Type", "application/x-www-form-urlencoded")
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                payload = json.loads(resp.read().decode())
+        except urllib.error.HTTPError as exc:
+            raise GraphError("Microsoft token refresh failed", status_code=502, code="GRAPH_ERROR") from exc
+        except urllib.error.URLError as exc:
+            raise GraphError("Microsoft token endpoint unreachable", status_code=502, code="GRAPH_ERROR") from exc
+        if not payload.get("access_token"):
+            raise GraphError("Token response missing access_token", status_code=502, code="GRAPH_ERROR")
+        return TokenSet(
+            access_token=payload["access_token"],
+            refresh_token=payload.get("refresh_token") or refresh_token,
+            expires_in=int(payload.get("expires_in") or 3600),
+            scope=payload.get("scope") or " ".join(REQUIRED_SCOPES),
+            tenant_id=payload.get("tenant_id"),
+            account_id=None,
+        )
+
 
 def jwt_claims(token: str | None) -> dict:
     """Decode a JWT payload without verifying the signature (already issued to us)."""

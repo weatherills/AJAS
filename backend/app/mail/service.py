@@ -400,10 +400,36 @@ class EmailService:
         self.store.touch_sync(account.id)
 
     def poll_all(self) -> None:
-        # Local demo only has per-user accounts created on demand.
-        account = self.store.get_account_for_user("local-user")
-        if account:
+        self.renew_expiring_subscriptions()
+        for account in self.store.list_accounts():
             self.process_ingest({"kind": "poll", "accountId": account.id, "userId": account.user_id})
+
+    def renew_expiring_subscriptions(self) -> None:
+        now = parse_ts(self.clock())
+        horizon = timedelta(hours=12)
+        seen: set[str] = set()
+        for account in self.store.list_accounts():
+            if account.user_id in seen:
+                continue
+            seen.add(account.user_id)
+            sub = self.store.get_subscription(account.id)
+            if sub is None:
+                if self._graph_connection(account.user_id) is None:
+                    continue
+                try:
+                    self.ensure_graph_subscription(account.user_id)
+                except Exception:
+                    log.exception("ajas.mail.subscription create failed user_id=%s", account.user_id)
+                continue
+            try:
+                expires = parse_ts(sub.expires_at)
+            except Exception:
+                expires = now
+            if expires - now <= horizon:
+                try:
+                    self.ensure_graph_subscription(account.user_id)
+                except Exception:
+                    log.exception("ajas.mail.subscription renew failed user_id=%s", account.user_id)
 
     def _ingest_graph_message(self, account: EmailAccount, item: GraphMessage) -> None:
         if item.change_type == "deleted":
