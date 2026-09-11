@@ -614,6 +614,7 @@ def test_decide_enqueues_learning_event_with_threshold(svc, store, queue):
         assert payload["score"] == 88.0
         assert payload["threshold"] == 0.8
         assert payload["outcome"] == "approve"
+        assert payload["idempotency_key"] == payload["decisionId"]
         assert payload["occurredAt"]
         assert svc.learning_events == events
         assert len(queue.of("decision-events")) == 1
@@ -653,7 +654,13 @@ def test_reopen_sends_learning_undo(svc, store, queue):
         assert _body(reopened)["status"] == "pending"
         assert learning_store.get_decision_by_rec(USER, match.id).decision == "skip"
         undo_events = [item for item in queue.of("learning-decisions") if item.get("outcome") == "undo"]
+        approve_events = [item for item in queue.of("learning-decisions") if item.get("outcome") == "approve"]
         assert len(undo_events) == 1
         assert undo_events[0]["matchId"] == match.id
+        assert approve_events[0]["decisionId"] == undo_events[0]["decisionId"]
+        assert undo_events[0]["idempotency_key"] == approve_events[0]["idempotency_key"]
+        stored = learning_store.get_decision_by_rec(USER, match.id)
+        assert stored.idempotency_key == f"{undo_events[0]['decisionId']}-undo"
+        assert stored.idempotency_key != undo_events[0]["decisionId"]
     finally:
         set_learning(None)

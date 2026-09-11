@@ -214,13 +214,18 @@ def test_ingest_undo_flips_prior_decision_to_skip(svc, store):
         "occurredAt": utc_now(),
     }
     svc.ingest_event({**payload, "outcome": "approve"})
-    assert store.get_decision_by_rec(USER, "match-undo").decision == "approve"
+    approved = store.get_decision_by_rec(USER, "match-undo")
+    assert approved.decision == "approve"
+    assert approved.idempotency_key == "dec-undo"
     svc.ingest_event({**payload, "outcome": "undo"})
-    assert store.get_decision_by_rec(USER, "match-undo").decision == "skip"
+    undone = store.get_decision_by_rec(USER, "match-undo")
+    assert undone.decision == "skip"
+    assert undone.idempotency_key == "dec-undo-undo"
     rec = store.get_recommendation("match-undo")
     assert rec.status == "pending"
     svc.ingest_event({**payload, "outcome": "undo"})
     assert store.get_decision_by_rec(USER, "match-undo").decision == "skip"
+    assert store.get_decision_by_rec(USER, "match-undo").idempotency_key == "dec-undo-undo"
 
 
 def test_tune_requires_admin(svc):

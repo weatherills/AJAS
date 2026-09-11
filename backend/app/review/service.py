@@ -606,6 +606,7 @@ class ReviewService:
             "score": event.ai_score,
             "threshold": self._match_threshold(match.user_id),
             "outcome": outcome,
+            "idempotency_key": event.id,
             "occurredAt": event.decided_at,
         }
         self.learning_events.append(payload)
