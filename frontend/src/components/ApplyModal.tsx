@@ -137,34 +137,47 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
           <p className="muted">AJAS writes a short letter from the posting. Azure OpenAI is used when configured.</p>
         )}
         {coverMode === 'upload' && (
-          <label>
-            Cover letter file
-            <input
-              type="file"
-              accept=".txt,.md,.pdf,.doc,.docx,text/plain"
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                setCoverFileError(null)
-                setCoverText('')
-                if (!file) return
-                if (file.size > 200_000) {
-                  setCoverFileError('Cover letter must be under 200 KB.')
-                  return
-                }
-                const reader = new FileReader()
-                reader.onload = () => {
-                  const text = typeof reader.result === 'string' ? reader.result : ''
-                  if (!text.trim()) {
-                    setCoverFileError('Could not read that file as text. Try a .txt letter.')
+          <>
+            <label>
+              Cover letter file
+              <input
+                type="file"
+                accept=".txt,.md,.pdf,.doc,.docx,text/plain"
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  setCoverFileError(null)
+                  if (!file) return
+                  if (file.size > 200_000) {
+                    setCoverFileError('Cover letter must be under 200 KB.')
                     return
                   }
-                  setCoverText(text)
-                }
-                reader.onerror = () => setCoverFileError('Could not read that file.')
-                reader.readAsText(file)
-              }}
-            />
-          </label>
+                  const reader = new FileReader()
+                  reader.onload = () => {
+                    const text = typeof reader.result === 'string' ? reader.result : ''
+                    if (!text.trim()) {
+                      setCoverFileError('Could not read that file as text. Try a .txt letter or paste it below.')
+                      return
+                    }
+                    setCoverText(text)
+                  }
+                  reader.onerror = () => setCoverFileError('Could not read that file.')
+                  reader.readAsText(file)
+                }}
+              />
+            </label>
+            <label>
+              Or paste the letter
+              <textarea
+                rows={6}
+                value={coverText}
+                placeholder="Paste a short cover letter"
+                onChange={(event) => {
+                  setCoverFileError(null)
+                  setCoverText(event.target.value)
+                }}
+              />
+            </label>
+          </>
         )}
         {coverFileError && <p className="inline-error">{coverFileError}</p>}
         {coverMode === 'upload' && coverText && <p className="muted">Uploaded {coverText.trim().split(/\s+/).length} words.</p>}

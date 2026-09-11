@@ -46,6 +46,8 @@ export function EmailThreadPane({
   const [toasts, setToasts] = useState<Toast[]>([])
   const toastId = useRef(1)
   const composerRef = useRef<HTMLTextAreaElement | null>(null)
+  const onThreadChangeRef = useRef(onThreadChange)
+  onThreadChangeRef.current = onThreadChange
 
   const toast = (text: string, tone: Toast['tone'] = 'info') => {
     const id = toastId.current++
@@ -58,14 +60,14 @@ export function EmailThreadPane({
     try {
       const page = await emailApi.listMessages(thread.id)
       setMessages(page.items)
-      onThreadChange?.(page.thread)
+      onThreadChangeRef.current?.(page.thread)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load messages')
     } finally {
       setLoading(false)
     }
-  }, [thread.id, onThreadChange])
+  }, [thread.id])
 
   useEffect(() => {
     void load()
@@ -359,7 +361,7 @@ export function EmailThreadPane({
                   onClick={async () => {
                     try {
                       const updated = await emailApi.link(thread.id, job.id)
-                      onThreadChange?.(updated)
+                      onThreadChangeRef.current?.(updated)
                       toast(`Linked to ${job.title}`)
                       setLinkOpen(false)
                     } catch (err) {
@@ -383,7 +385,7 @@ export function EmailThreadPane({
               className="primary"
               onClick={async () => {
                 const updated = await emailApi.unlink(thread.id)
-                onThreadChange?.(updated)
+                onThreadChangeRef.current?.(updated)
                 setUnlinkOpen(false)
                 toast('Unlinked')
               }}
