@@ -111,6 +111,13 @@ class AutoApplyService:
             raise AutoApplyValidationError("job_posting_id or posting_url is required", path="job_posting_id")
         resume_id = body.get("resume_id") or body.get("resume_blob_ref") or "resume-active"
         cover_mode = _cover_mode(body.get("cover_letter_mode"))
+        if cover_mode == "upload":
+            uploaded = body.get("cover_letter_text")
+            if not (isinstance(uploaded, str) and uploaded.strip()):
+                raise AutoApplyValidationError(
+                    "cover_letter_text is required when cover_letter_mode is upload",
+                    path="cover_letter_text",
+                )
         consent = bool(body.get("consent_approved") if "consent_approved" in body else True)
         if not consent:
             raise AutoApplyValidationError("consent_approved must be true", path="consent_approved")
@@ -161,11 +168,9 @@ class AutoApplyService:
             )
         elif cover_mode == "upload":
             blob_ref = body.get("cover_letter_blob_ref")
-            uploaded = body.get("cover_letter_text")
-            body_text = uploaded.strip() if isinstance(uploaded, str) and uploaded.strip() else None
+            body_text = str(body.get("cover_letter_text") or "").strip()
             cover_path = str(blob_ref) if blob_ref else f"cover_letters/{user_id}/{attempt.id}.txt"
-            if body_text:
-                self.blobs.put(cover_path, body_text.encode("utf-8"))
+            self.blobs.put(cover_path, body_text.encode("utf-8"))
             cover = self.store.create_cover_letter(
                 user_id,
                 source="upload",

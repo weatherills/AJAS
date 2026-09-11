@@ -320,6 +320,27 @@ def test_cover_letter_upload_is_stored(svc):
     assert "Pat Override" in (detail["cover_letter_text"] or "")
 
 
+def test_cover_letter_upload_requires_text_and_rejects_unknown_mode(svc):
+    missing = routes.auto_apply_create(
+        _req(
+            "POST",
+            "http://localhost/api/v1/auto-apply/requests",
+            json_body=_create_body(cover_letter_mode="upload", cover_letter_text="   "),
+        )
+    )
+    assert missing.status_code == 400
+    assert "cover_letter_text" in json.dumps(_body(missing))
+    unknown = routes.auto_apply_create(
+        _req(
+            "POST",
+            "http://localhost/api/v1/auto-apply/requests",
+            json_body=_create_body(cover_letter_mode="attach"),
+        )
+    )
+    assert unknown.status_code == 400
+    assert "cover_letter_mode" in json.dumps(_body(unknown))
+
+
 def test_rate_limited_posting_url(svc):
     resp = routes.auto_apply_create(
         _req(

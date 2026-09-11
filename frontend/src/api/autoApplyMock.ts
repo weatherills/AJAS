@@ -20,6 +20,12 @@ export const mockAutoApplyApi: AutoApplyApi = {
   async create(body: CreateApplyBody) {
     if (!body.consent_approved) throw new Error('consent_approved must be true')
     if (!body.job_posting_id && !body.posting_url) throw new Error('job_posting_id or posting_url is required')
+    if (body.cover_letter_mode === 'upload' && !body.cover_letter_text?.trim()) {
+      throw new Error('cover_letter_text is required when cover_letter_mode is upload')
+    }
+    if (!['none', 'upload', 'generate'].includes(body.cover_letter_mode)) {
+      throw new Error('cover_letter_mode must be none, upload, or generate')
+    }
     const existing = [...rows.values()].find(
       (row) =>
         row.source.job_posting_id === (body.job_posting_id || null) &&

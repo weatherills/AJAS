@@ -93,6 +93,20 @@ describe('mock auto-apply api', () => {
     expect(detail.cover_letter_text).toMatch(/Jane Doe/)
   })
 
+  it('requires pasted or uploaded cover letter text', async () => {
+    resetAutoApplyMock()
+    await expect(
+      mockAutoApplyApi.create({
+        job_source: 'greenhouse',
+        job_posting_id: 'job-staff-empty-cover',
+        posting_url: 'https://boards.greenhouse.io/demo/jobs/job-staff-empty-cover',
+        cover_letter_mode: 'upload',
+        cover_letter_text: '   ',
+        consent_approved: true,
+      }),
+    ).rejects.toThrow(/cover_letter_text/)
+  })
+
   it('marks a packaged attempt as manually submitted', async () => {
     resetAutoApplyMock()
     const packaged = await mockAutoApplyApi.create({
