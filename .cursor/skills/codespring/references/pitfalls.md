@@ -37,6 +37,8 @@ The flowJson PUT is a full replace. Always fetch the current flowJson, ADD your 
 ## 7. Auth / connection
 Every skill should start by checking `codespring auth status` (this also refreshes an expired OAuth token) and `codespring status` (project link). If not ready, direct the user to `codespring auth login` / `codespring init` and stop.
 
+**401 is often billing, not a bad key.** CodeSpring returns `401 Unauthorized: Valid authentication required` on workspaces/tasks/MCP when the account is **out of tokens**, even if `CODESPRING_API_KEY` is correct and the local CLI still works under an OAuth session. The CLI maps insufficient credits to **402** in some paths, but the billing gate commonly presents as 401. Do not tell the user to rotate the API key or re-login until they have confirmed credits/tokens in the CodeSpring billing UI. After they top up, start a new agent (or retry the API); the same key should work.
+
 ## 8. Spec / research / planning documents
 Not reachable from the agent token (endpoints 404 / 401). These are web-app-only for now — do not promise to create them from the CLI.
 
