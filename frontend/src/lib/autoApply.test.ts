@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mockAutoApplyApi, resetAutoApplyMock } from '../api/autoApplyMock'
-import { canCancel, defaultPostingUrl, inferJobSource, stateLabel } from './autoApply'
+import { canCancel, canMarkManualSubmitted, defaultPostingUrl, inferJobSource, stateLabel } from './autoApply'
 
 describe('auto-apply helpers', () => {
   it('infers vendor from job id or posting URL', () => {
@@ -15,6 +15,8 @@ describe('auto-apply helpers', () => {
     expect(stateLabel('submitted')).toBe('Submitted')
     expect(canCancel('queued')).toBe(true)
     expect(canCancel('submitted')).toBe(false)
+    expect(canMarkManualSubmitted('packaged')).toBe(true)
+    expect(canMarkManualSubmitted('submitted')).toBe(false)
   })
 })
 
@@ -74,5 +76,38 @@ describe('mock auto-apply api', () => {
     const detail = await mockAutoApplyApi.get(created.request_id)
     expect(detail.autofill.find((row) => row.field_key === 'full_name')?.value).toBe('Jane Doe')
     expect(detail.cover_letter_text).toMatch(/Jane Doe/)
+  })
+
+  it('stores an uploaded cover letter', async () => {
+    resetAutoApplyMock()
+    const created = await mockAutoApplyApi.create({
+      job_source: 'greenhouse',
+      job_posting_id: 'job-staff',
+      posting_url: 'https://boards.greenhouse.io/demo/jobs/job-staff',
+      cover_letter_mode: 'upload',
+      cover_letter_text: 'Please consider my application.\nJane Doe',
+      consent_approved: true,
+    })
+    const detail = await mockAutoApplyApi.get(created.request_id)
+    expect(detail.cover_letter_source).toBe('upload')
+    expect(detail.cover_letter_text).toMatch(/Jane Doe/)
+  })
+
+  it('marks a packaged attempt as manually submitted', async () => {
+    resetAutoApplyMock()
+    const packaged = await mockAutoApplyApi.create({
+      job_source: 'manual',
+      job_posting_id: 'job-manual',
+      posting_url: 'https://jobs.example.com/apply',
+      cover_letter_mode: 'none',
+      consent_approved: true,
+    })
+    expect(packaged.state).toBe('packaged')
+    const marked = await mockAutoApplyApi.markManualSubmitted(packaged.request_id)
+    expect(marked.state).toBe('submitted')
+    const detail = await mockAutoApplyApi.get(packaged.request_id)
+    expect(detail.state).toBe('submitted')
+    expect(detail.state_history.some((event) => event.event === 'manually_submitted')).toBe(true)
+    await expect(mockAutoApplyApi.markManualSubmitted(packaged.request_id)).rejects.toThrow(/packaged/)
   })
 })

@@ -24,6 +24,8 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
   const [jobSource, setJobSource] = useState<JobSource>(inferred)
   const [url, setUrl] = useState(postingUrl || defaultPostingUrl(jobId, inferred))
   const [coverMode, setCoverMode] = useState<CoverLetterMode>('none')
+  const [coverText, setCoverText] = useState('')
+  const [coverFileError, setCoverFileError] = useState<string | null>(null)
   const [consent, setConsent] = useState(false)
   const [fallback, setFallback] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -65,6 +67,10 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
       setError('Confirm consent before submitting.')
       return
     }
+    if (coverMode === 'upload' && !coverText.trim()) {
+      setError('Upload a cover letter or switch to generate/none.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -74,6 +80,7 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
         posting_url: posting,
         resume_id: resumeId || 'resume-active',
         cover_letter_mode: coverMode,
+        cover_letter_text: coverMode === 'upload' ? coverText : undefined,
         consent_approved: true,
         answers: {
           full_name: contact.full_name,
@@ -123,11 +130,44 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
           <select value={coverMode} onChange={(event) => setCoverMode(event.target.value as CoverLetterMode)}>
             <option value="none">None</option>
             <option value="generate">Generate tailored letter</option>
+            <option value="upload">Upload a letter</option>
           </select>
         </label>
         {coverMode === 'generate' && (
           <p className="muted">AJAS writes a short letter from the posting. Azure OpenAI is used when configured.</p>
         )}
+        {coverMode === 'upload' && (
+          <label>
+            Cover letter file
+            <input
+              type="file"
+              accept=".txt,.md,.pdf,.doc,.docx,text/plain"
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                setCoverFileError(null)
+                setCoverText('')
+                if (!file) return
+                if (file.size > 200_000) {
+                  setCoverFileError('Cover letter must be under 200 KB.')
+                  return
+                }
+                const reader = new FileReader()
+                reader.onload = () => {
+                  const text = typeof reader.result === 'string' ? reader.result : ''
+                  if (!text.trim()) {
+                    setCoverFileError('Could not read that file as text. Try a .txt letter.')
+                    return
+                  }
+                  setCoverText(text)
+                }
+                reader.onerror = () => setCoverFileError('Could not read that file.')
+                reader.readAsText(file)
+              }}
+            />
+          </label>
+        )}
+        {coverFileError && <p className="inline-error">{coverFileError}</p>}
+        {coverMode === 'upload' && coverText && <p className="muted">Uploaded {coverText.trim().split(/\s+/).length} words.</p>}
         <label className="apply-check">
           <input type="checkbox" checked={fallback} onChange={(event) => setFallback(event.target.checked)} />
           This posting has a CAPTCHA or SSO wall
@@ -156,7 +196,7 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
           <button type="button" className="secondary" onClick={onClose} disabled={saving}>
             Cancel
           </button>
-          <button type="button" className="primary" onClick={() => void submit()} disabled={saving || !consent}>
+          <button type="button" className="primary" onClick={() => void submit()} disabled={saving || !consent || (coverMode === 'upload' && !coverText.trim())}>
             {saving ? 'Submitting…' : programmatic ? 'Submit application' : 'Build package'}
           </button>
         </div>

@@ -70,8 +70,11 @@ export const mockAutoApplyApi: AutoApplyApi = {
       cover_letter_text:
         body.cover_letter_mode === 'generate'
           ? `Dear hiring team,\n\nI am writing to apply. Sincerely,\n${body.answers?.full_name || 'Alex Jobseeker'}\n`
-          : null,
-      cover_letter_source: body.cover_letter_mode === 'generate' ? 'ai' : null,
+          : body.cover_letter_mode === 'upload'
+            ? body.cover_letter_text || null
+            : null,
+      cover_letter_source:
+        body.cover_letter_mode === 'generate' ? 'ai' : body.cover_letter_mode === 'upload' ? 'upload' : null,
       validation_errors: null,
       failure_reason: null,
       submitted_at: packaged ? null : stamped,
@@ -107,5 +110,16 @@ export const mockAutoApplyApi: AutoApplyApi = {
     if (row.state !== 'queued' && row.state !== 'created') throw new Error('cannot cancel after submission has started')
     row.state = 'cancelled'
     return { state: 'cancelled', request_id: requestId }
+  },
+  async markManualSubmitted(requestId) {
+    const row = rows.get(requestId)
+    if (!row) throw new Error('not found')
+    if (row.state !== 'packaged') throw new Error('only packaged attempts can be marked submitted')
+    const stamped = now()
+    row.state = 'submitted'
+    row.submitted_at = stamped
+    row.updated_at = stamped
+    row.state_history = [...row.state_history, { event: 'manually_submitted', at: stamped }]
+    return { state: 'submitted', request_id: requestId }
   },
 }

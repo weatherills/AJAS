@@ -19,4 +19,9 @@ export const liveAutoApplyApi: AutoApplyApi = {
   async cancel(requestId) {
     return json(await request(`/api/v1/auto-apply/requests/${encodeURIComponent(requestId)}/cancel`, { method: 'POST' }))
   },
+  async markManualSubmitted(requestId) {
+    return json(
+      await request(`/api/v1/auto-apply/requests/${encodeURIComponent(requestId)}/manual-submit`, { method: 'POST' }),
+    )
+  },
 }

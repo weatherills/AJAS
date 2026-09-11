@@ -5,7 +5,7 @@ import { AppNav } from '../components/AppNav'
 import { JobCrossLinks } from '../components/JobCrossLinks'
 import { JobEmailsTab } from '../components/JobEmailsTab'
 import { ToastStack } from '../components/Toast'
-import { canCancel, stateLabel } from '../lib/autoApply'
+import { canCancel, canMarkManualSubmitted, stateLabel } from '../lib/autoApply'
 import { applyHref, reviewHref, useHashSearch } from '../lib/routes'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
@@ -68,6 +68,20 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
       await load()
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Could not cancel', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const markSubmitted = async () => {
+    if (!detail || !canMarkManualSubmitted(detail.state)) return
+    setBusy(true)
+    try {
+      await autoApplyApi.markManualSubmitted(detail.request_id)
+      toast('Marked as manually submitted')
+      await load()
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Could not mark submitted', 'error')
     } finally {
       setBusy(false)
     }
@@ -216,6 +230,11 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
                   ))}
                 </ol>
               </section>
+              {canMarkManualSubmitted(detail.state) && (
+                <button type="button" className="primary" disabled={busy} onClick={() => void markSubmitted()}>
+                  {busy ? 'Saving…' : 'Mark as manually submitted'}
+                </button>
+              )}
               {canCancel(detail.state) && (
                 <button type="button" className="danger" disabled={busy} onClick={() => void cancel()}>
                   {busy ? 'Cancelling…' : 'Cancel request'}

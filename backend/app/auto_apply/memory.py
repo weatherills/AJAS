@@ -219,7 +219,7 @@ class InMemoryAutoApplyStore:
         event_map = {
             "queued": "queued",
             "submitting": "submission_started",
-            "submitted": "vendor_ack",
+            "submitted": "manually_submitted" if attempt.status == "needs_review" else "vendor_ack",
             "succeeded": "submission_succeeded",
             "failed": "submission_failed",
             "needs_review": "needs_review",

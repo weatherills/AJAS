@@ -117,6 +117,16 @@ def auto_apply_cancel(req: func.HttpRequest) -> func.HttpResponse:
         return _handle(exc)
 
 
+@bp.route(route="v1/auto-apply/requests/{request_id}/manual-submit", methods=["POST"])
+def auto_apply_manual_submit(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = _auth(req, WRITE_SCOPE)
+        body = get_service().mark_manual_submitted(principal.user_id, req.route_params["request_id"])
+        return json_response(body)
+    except Exception as exc:
+        return _handle(exc)
+
+
 @bp.route(route="v1/auto-apply/webhooks/{provider}", methods=["POST"])
 def auto_apply_webhook(req: func.HttpRequest) -> func.HttpResponse:
     try:

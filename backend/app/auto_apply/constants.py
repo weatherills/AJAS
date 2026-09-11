@@ -27,6 +27,7 @@ StatusEventType = Literal[
     "submission_failed",
     "vendor_ack",
     "vendor_rejected",
+    "manually_submitted",
     "needs_review",
     "rate_limited",
 ]
@@ -50,6 +51,7 @@ EVENT_TYPES: Final[frozenset[str]] = frozenset(
         "submission_failed",
         "vendor_ack",
         "vendor_rejected",
+        "manually_submitted",
         "needs_review",
         "rate_limited",
     }
@@ -96,7 +98,7 @@ ALLOWED_TRANSITIONS: Final[dict[str, frozenset[str]]] = {
     "submitting": frozenset({"submitted", "failed", "needs_review", "rate_limited"}),
     "submitted": frozenset({"succeeded", "failed", "needs_review"}),
     "rate_limited": frozenset({"queued", "submitting", "failed"}),
-    "needs_review": frozenset({"queued", "failed"}),
+    "needs_review": frozenset({"queued", "failed", "submitted"}),
     "succeeded": frozenset(),
     "failed": frozenset(),
 }

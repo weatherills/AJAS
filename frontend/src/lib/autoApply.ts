@@ -33,3 +33,7 @@ export function stateLabel(state: string): string {
 export function canCancel(state: string): boolean {
   return state === 'queued' || state === 'created'
 }
+
+export function canMarkManualSubmitted(state: string): boolean {
+  return state === 'packaged' || state === 'needs_review'
+}

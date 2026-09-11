@@ -113,6 +113,7 @@ def test_function_app_registers_auto_apply_routes(function_names):
     assert "auto_apply_list" in function_names
     assert "auto_apply_get" in function_names
     assert "auto_apply_cancel" in function_names
+    assert "auto_apply_manual_submit" in function_names
     assert "auto_apply_webhook" in function_names
     assert "auto_apply_process_queued" in function_names
     assert "health" in function_names
@@ -204,6 +205,74 @@ def test_manual_and_captcha_urls_package(svc):
     assert detail["state"] == "packaged"
     assert detail["artifacts"]["package_blob_sas"]
     assert "captcha" in (detail["artifacts"]["deep_link_url"] or "")
+
+
+def test_mark_packaged_attempt_manually_submitted(svc):
+    created = routes.auto_apply_create(
+        _req(
+            "POST",
+            "http://localhost/api/v1/auto-apply/requests",
+            json_body=_create_body(
+                job_source="manual",
+                job_posting_id="job-manual-submit",
+                posting_url="https://jobs.example.com/apply",
+            ),
+        )
+    )
+    request_id = _body(created)["request_id"]
+    marked = routes.auto_apply_manual_submit(
+        _req(
+            "POST",
+            f"http://localhost/api/v1/auto-apply/requests/{request_id}/manual-submit",
+            route={"request_id": request_id},
+        )
+    )
+    assert marked.status_code == 200
+    assert _body(marked)["state"] == "submitted"
+    detail = _body(
+        routes.auto_apply_get(
+            _req(
+                "GET",
+                f"http://localhost/api/v1/auto-apply/requests/{request_id}",
+                route={"request_id": request_id},
+            )
+        )
+    )
+    assert detail["state"] == "submitted"
+    assert any(row["event"] == "manually_submitted" for row in detail["state_history"])
+    again = routes.auto_apply_manual_submit(
+        _req(
+            "POST",
+            f"http://localhost/api/v1/auto-apply/requests/{request_id}/manual-submit",
+            route={"request_id": request_id},
+        )
+    )
+    assert again.status_code == 409
+
+
+def test_cover_letter_upload_is_stored(svc):
+    created = routes.auto_apply_create(
+        _req(
+            "POST",
+            "http://localhost/api/v1/auto-apply/requests",
+            json_body=_create_body(
+                cover_letter_mode="upload",
+                cover_letter_text="Please consider my application.\nPat Override",
+            ),
+        )
+    )
+    request_id = _body(created)["request_id"]
+    detail = _body(
+        routes.auto_apply_get(
+            _req(
+                "GET",
+                f"http://localhost/api/v1/auto-apply/requests/{request_id}",
+                route={"request_id": request_id},
+            )
+        )
+    )
+    assert detail["cover_letter_source"] == "upload"
+    assert "Pat Override" in (detail["cover_letter_text"] or "")
 
 
 def test_rate_limited_posting_url(svc):

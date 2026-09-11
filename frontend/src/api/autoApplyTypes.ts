@@ -59,6 +59,7 @@ export type CreateApplyBody = {
   posting_url?: string
   resume_id?: string
   cover_letter_mode: CoverLetterMode
+  cover_letter_text?: string
   consent_approved: boolean
   answers?: Record<string, string>
 }
@@ -68,4 +69,5 @@ export type AutoApplyApi = {
   list(state?: string): Promise<{ items: ApplySummary[] }>
   get(requestId: string): Promise<ApplyDetail>
   cancel(requestId: string): Promise<{ state: string; request_id: string }>
+  markManualSubmitted(requestId: string): Promise<{ state: string; request_id: string }>
 }

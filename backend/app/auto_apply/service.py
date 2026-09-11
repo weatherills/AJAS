@@ -230,6 +230,18 @@ class AutoApplyService:
             loaded = self.store.get_attempt(request_id, user_id=user_id)
         return 202, {"state": "cancelled", "request_id": loaded.id}
 
+    def mark_manual_submitted(self, user_id: str, request_id: str) -> dict[str, Any]:
+        attempt = self.store.get_attempt(request_id, user_id=user_id)
+        if attempt.status != "needs_review" and _api_state(attempt) != "packaged":
+            raise AutoApplyConflictError("only packaged attempts can be marked as manually submitted")
+        loaded = self.store.transition(
+            user_id,
+            request_id,
+            "submitted",
+            payload={"manual": True, "source": "user"},
+        )
+        return {"state": _api_state(loaded), "request_id": loaded.id}
+
     def ingest_webhook(self, provider: str, body: dict[str, Any], *, secret: str | None) -> dict[str, Any]:
         settings = get_settings()
         expected = settings.auto_apply_webhook_secret
