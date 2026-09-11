@@ -72,8 +72,17 @@ const messages: Record<string, EmailMessage[]> = {
       isIncoming: true,
       isRead: true,
       deliveryStatus: 'received',
-      hasAttachments: false,
-      attachments: [],
+      hasAttachments: true,
+      attachments: [
+        {
+          id: 'att-brief',
+          fileName: 'brief.pdf',
+          size: 12_288,
+          contentType: 'application/pdf',
+          status: 'stored',
+          downloadUrl: 'https://blob.local/brief.pdf',
+        },
+      ],
     },
   ],
   't-open': [

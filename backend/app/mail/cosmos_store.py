@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
 from typing import Any
 
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
@@ -88,7 +90,14 @@ class CosmosEmailStore:
         working._attachments = {
             row.id: row for row in (EmailAttachment.model_validate(i) for i in self._all_items(self._attachments))
         }
-        working._drafts = {row.id: row for row in (EmailDraft.model_validate(i) for i in self._all_items(self._drafts))}
+        working._drafts = {
+            row.id: row
+            for row in (
+                EmailDraft.model_validate(i)
+                for i in self._all_items(self._drafts)
+                if not i.get("kind")
+            )
+        }
         working._cursors = {
             row.email_account_id: row
             for row in (GraphSyncCursor.model_validate(i) for i in self._all_items(self._cursors))
@@ -101,7 +110,11 @@ class CosmosEmailStore:
             row.id: row for row in (EmailIngestionEvent.model_validate(i) for i in self._all_items(self._events))
         }
         working._audits = {row.id: row for row in (LinkAudit.model_validate(i) for i in self._all_items(self._audits))}
-        extras = [item for item in self._all_items(self._working_extras) if item.get("kind") in {"idempotency", "suggestion"}]
+        extras = [
+            item
+            for item in self._all_items(self._working_extras)
+            if item.get("kind") in {"idempotency", "suggestion", "blob"}
+        ]
         for item in extras:
             if item.get("kind") == "idempotency":
                 row = ReplyIdempotency.model_validate(item)
@@ -109,6 +122,8 @@ class CosmosEmailStore:
             elif item.get("kind") == "suggestion":
                 row = SuggestionUse.model_validate(item)
                 working._suggestions[row.id] = row
+            elif item.get("kind") == "blob":
+                working._blobs[str(item.get("path") or item["id"])] = base64.b64decode(item.get("content") or "")
         return working
 
     def _upsert(self, client: Any, payload: dict) -> None:
@@ -145,4 +160,12 @@ class CosmosEmailStore:
         for row in working._suggestions.values():
             payload = row.model_dump()
             payload["kind"] = "suggestion"
+            self._upsert(self._working_extras, payload)
+        for path, content in working._blobs.items():
+            payload = {
+                "id": "blob-" + hashlib.sha256(path.encode("utf-8")).hexdigest(),
+                "kind": "blob",
+                "path": path,
+                "content": base64.b64encode(content).decode("ascii"),
+            }
             self._upsert(self._working_extras, payload)

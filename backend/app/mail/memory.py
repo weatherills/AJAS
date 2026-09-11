@@ -174,6 +174,14 @@ class InMemoryEmailStore:
     def list_attachments(self, message_id: str) -> list[EmailAttachment]:
         return [deepcopy(row) for row in self._attachments.values() if row.email_message_id == message_id]
 
+    def get_attachment(self, attachment_id: str) -> EmailAttachment:
+        row = self._attachments.get(attachment_id)
+        if row is None:
+            from app.mail.errors import MailNotFoundError
+
+            raise MailNotFoundError(attachment_id)
+        return deepcopy(row)
+
     def put_blob(self, path: str, content: bytes) -> None:
         self._blobs[path] = content
 

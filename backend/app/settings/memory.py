@@ -33,6 +33,9 @@ class InMemorySettingsStore:
         self._audit: dict[str, list[SettingsAuditEntry]] = {}
         self.refresh_queue: list[dict[str, str]] = []
 
+    def list_user_ids(self) -> list[str]:
+        return sorted(set(self._settings) | set(self._connections))
+
     def get_or_create_settings(self, user_id: str, *, actor_id: str | None = None) -> UserSettings:
         validate_user_id(user_id)
         existing = self._settings.get(user_id)

@@ -34,6 +34,19 @@ class CosmosSettingsStore:
             raise SettingsNotFoundError(user_id) from exc
         return UserSettings.model_validate(item)
 
+    def list_user_ids(self) -> list[str]:
+        ids: set[str] = set()
+        for client in (self._settings, self._connections):
+            try:
+                rows = client.query_items(query="SELECT c.user_id FROM c", enable_cross_partition_query=True)
+            except TypeError:
+                rows = client.query_items(query="SELECT c.user_id FROM c")
+            for item in rows:
+                user_id = item.get("user_id")
+                if user_id:
+                    ids.add(str(user_id))
+        return sorted(ids)
+
     def update_settings(self, user_id: str, **kwargs: Any) -> UserSettings:
         working = self._hydrate(user_id)
         updated = working.update_settings(user_id, **kwargs)

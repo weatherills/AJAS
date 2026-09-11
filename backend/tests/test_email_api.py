@@ -122,6 +122,7 @@ def test_function_app_registers_email_routes(function_names):
     assert "suggest_thread_replies" in function_names
     assert "mail_ingest_job" in function_names
     assert "email_status" in function_names
+    assert "download_email_attachment" in function_names
     assert "health" in function_names
 
 
@@ -482,6 +483,53 @@ def test_eicar_attachment_is_skipped_not_stored(svc, store, graph):
     assert atts[0].status == "skipped_scan"
     assert atts[0].skip_reason == "eicar_signature"
     assert atts[0].blob_path is None
+
+
+def test_stored_attachment_download_returns_bytes(svc, store, graph):
+    account = store.ensure_account(USER, address="user-1@ajas.dev", demo=True)
+    payload = b"%PDF-1.4 brief"
+    inbound = GraphMessage(
+        id="graph-pdf",
+        internet_message_id="<pdf@x>",
+        conversation_id="conv-pdf",
+        subject="Staff Engineer at Acme (JOB-SE-1)",
+        from_address="maya@acme.test",
+        from_name="Maya",
+        to_addresses=[account.address],
+        body_text="Please see the brief.",
+        received_at=utc_now(),
+        attachments=[
+            GraphAttachment(
+                name="brief.pdf",
+                content_type="application/pdf",
+                size=len(payload),
+                content=payload,
+            )
+        ],
+    )
+    graph.put(account.id, inbound)
+    svc.process_ingest({"kind": "webhook", "accountId": account.id, "graphMessageId": "graph-pdf"})
+    thread = store.get_thread_by_conversation(account.id, "conv-pdf")
+    message = store.list_messages(thread.id)[0]
+    listed = routes.list_thread_messages(
+        _req("GET", f"http://localhost/api/v1/threads/{thread.id}/messages", route={"threadId": thread.id})
+    )
+    assert listed.status_code == 200
+    file = _body(listed)["items"][0]["attachments"][0]
+    assert file["status"] == "stored"
+    assert file["downloadUrl"] == f"/api/v1/email/attachments/{file['id']}"
+    downloaded = routes.download_email_attachment(
+        _req(
+            "GET",
+            f"http://localhost/api/v1/email/attachments/{file['id']}",
+            route={"attachmentId": file["id"]},
+        )
+    )
+    assert downloaded.status_code == 200
+    assert downloaded.get_body() == payload
+    assert "application/pdf" in (downloaded.mimetype or downloaded.headers.get("Content-Type") or "")
+    oversized = store.list_attachments(message.id)
+    assert oversized[0].blob_path
 
 
 def test_refresh_seeds_followup(svc, store):

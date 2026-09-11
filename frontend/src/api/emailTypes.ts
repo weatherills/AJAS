@@ -36,6 +36,7 @@ export type EmailAttachment = {
   status: string
   skipReason?: string | null
   blobPath?: string | null
+  downloadUrl?: string | null
 }
 
 export type EmailMessage = {

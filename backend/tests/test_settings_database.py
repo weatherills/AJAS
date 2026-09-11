@@ -338,6 +338,13 @@ def test_webhook_subscription_must_not_be_in_the_past(store):
     assert saved.webhook_subscription_id == "sub-1"
 
 
+def test_list_user_ids_includes_settings_and_connections(store):
+    store.get_or_create_settings(USER, actor_id=USER)
+    store.upsert_connection(OTHER, _connection(user_id=OTHER), actor_id=OTHER)
+    assert USER in store.list_user_ids()
+    assert OTHER in store.list_user_ids()
+
+
 def test_record_sync_and_pending_tokens(store):
     store.get_or_create_settings(USER, actor_id=USER)
     pending = store.upsert_connection(USER, _connection(status="pending"), actor_id=USER)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mockEmailApi, setEmailSuggestFail } from '../api/emailMock'
-import { demoMailbox, fillTemplate, graphConnected, leftoverVars, mailboxReadable, oauthConfigured, relativeTime, validateAttachments } from './email'
+import { demoMailbox, fillTemplate, graphConnected, leftoverVars, mailboxReadable, oauthConfigured, previewable, relativeTime, validateAttachments, attachmentNeedsAuthFetch } from './email'
 
 describe('email helpers', () => {
   it('fills template variables and reports leftovers', () => {
@@ -130,5 +130,14 @@ describe('mock email api', () => {
   it('surfaces suggestion failures from the mock composer', async () => {
     setEmailSuggestFail('Suggestion limit reached for today. Try again tomorrow.')
     await expect(mockEmailApi.suggestions('t-staff')).rejects.toThrow(/Suggestion limit reached/)
+  })
+
+  it('exposes a previewable download URL for stored attachments', async () => {
+    const messages = await mockEmailApi.listMessages('t-staff')
+    const file = messages.items[0].attachments[0]
+    expect(file.downloadUrl).toContain('brief.pdf')
+    expect(previewable(file.contentType, file.fileName)).toBe(true)
+    expect(attachmentNeedsAuthFetch(file.downloadUrl)).toBe(false)
+    expect(attachmentNeedsAuthFetch('/api/v1/email/attachments/att-1')).toBe(true)
   })
 })

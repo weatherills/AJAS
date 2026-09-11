@@ -57,12 +57,28 @@ def svc(monkeypatch, queue, exchanger):
     monkeypatch.delenv("COSMOS_CONNECTION_STRING", raising=False)
     get_settings.cache_clear()
     from app.job_sources.runtime import set_service as set_jobs
+    from app.mail.graph import LocalGraphClient
+    from app.mail.memory import InMemoryEmailStore
+    from app.mail.queues import InMemoryJobQueue as MailQueue
+    from app.mail.runtime import set_service as set_email
+    from app.mail.service import EmailService
 
     set_jobs(None)
-    service = SettingsService(store=InMemorySettingsStore(), queue=queue, exchanger=exchanger)
+    store = InMemorySettingsStore()
+    service = SettingsService(store=store, queue=queue, exchanger=exchanger)
     set_service(service)
+    set_email(
+        EmailService(
+            store=InMemoryEmailStore(seed=False),
+            queue=MailQueue(),
+            graph=LocalGraphClient(),
+            local_mode=True,
+            settings_store=store,
+        )
+    )
     yield service
     set_service(None)
+    set_email(None)
     set_jobs(None)
     get_settings.cache_clear()
 
@@ -598,6 +614,8 @@ def test_email_callback_stores_encrypted_refresh(svc, exchanger):
     assert stored is not None
     assert stored.refresh_token_enc
     assert REFRESH not in stored.refresh_token_enc
+    assert stored.webhook_subscription_id
+    assert stored.subscription_expires_at
     assert exchanger.calls and exchanger.calls[0]["code"] == "abc"
 
 

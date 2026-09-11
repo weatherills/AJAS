@@ -38,6 +38,7 @@ from app.mail.models import (
     EmailMessage,
     EmailRecipient,
     EmailThread,
+    GraphSubscription,
     GraphSyncCursor,
     LinkAudit,
     ReplyIdempotency,
@@ -102,6 +103,18 @@ class EmailService:
             "nextCursor": next_cursor,
             "total": len(rows),
         }
+
+    def download_attachment(self, user_id: str, attachment_id: str) -> tuple[bytes, str, str]:
+        account = self._require_mailbox(user_id)
+        attachment = self.store.get_attachment(attachment_id)
+        if attachment.email_account_id != account.id or attachment.user_id != user_id:
+            raise MailNotFoundError(attachment_id)
+        if attachment.status != "stored" or not attachment.blob_path:
+            raise MailUnprocessableError("attachment is not available for download", path="attachment")
+        content = self.store.get_blob(attachment.blob_path)
+        if content is None:
+            raise MailNotFoundError(attachment_id)
+        return content, attachment.content_type or "application/octet-stream", attachment.file_name
 
     def reply(self, user_id: str, thread_id: str, body: dict) -> tuple[int, dict]:
         account = self._require_mailbox(user_id)
@@ -264,6 +277,47 @@ class EmailService:
         self.drain()
         status = self.status(user_id)
         return {"status": "ok", **status}
+
+    def ensure_graph_subscription(self, user_id: str) -> GraphSubscription | None:
+        account = self._require_mailbox(user_id)
+        create = getattr(self.graph, "create_subscription", None)
+        if not callable(create):
+            return None
+        existing = self.store.get_subscription(account.id)
+        cfg = get_app_settings()
+        notification_url = (getattr(cfg, "mail_webhook_public_url", None) or "").strip() or "https://localhost/api/webhooks/graph/mail"
+        result = create(
+            notification_url=notification_url,
+            client_state=cfg.mail_webhook_client_state,
+            existing_id=existing.graph_subscription_id if existing else None,
+        )
+        if not result:
+            return existing
+        now = self.clock()
+        row = GraphSubscription(
+            email_account_id=account.id,
+            graph_subscription_id=str(result.get("id") or new_id()),
+            resource=str(result.get("resource") or "/me/messages"),
+            expires_at=str(result.get("expirationDateTime") or result.get("expires_at") or now),
+            client_state=cfg.mail_webhook_client_state,
+            created_at=existing.created_at if existing else now,
+        )
+        saved = self.store.upsert_subscription(row)
+        try:
+            from app.settings.runtime import try_get_service as try_settings
+
+            settings_svc = try_settings()
+            if settings_svc is not None:
+                connections = settings_svc.store.list_connections(user_id)
+                if connections:
+                    connection = connections[0]
+                    connection.webhook_subscription_id = saved.graph_subscription_id
+                    connection.subscription_expires_at = saved.expires_at
+                    connection.updated_at = now
+                    settings_svc.store.upsert_connection(user_id, connection, actor_id=user_id)
+        except Exception:
+            log.exception("ajas.mail.subscription settings link failed")
+        return saved
 
     def handle_webhook(self, *, validation_token: str | None, payload: dict | None, client_state: str | None) -> tuple[int, str | dict]:
         if validation_token:
@@ -767,6 +821,7 @@ class EmailService:
                 "status": item.status,
                 "skipReason": item.skip_reason,
                 "blobPath": item.blob_path,
+                "downloadUrl": f"/api/v1/email/attachments/{item.id}" if item.status == "stored" and item.blob_path else None,
             }
             for item in self.store.list_attachments(message.id)
         ]

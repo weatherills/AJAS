@@ -278,6 +278,24 @@ def list_thread_messages(req: func.HttpRequest) -> func.HttpResponse:
         return _handle(exc, route="v1/threads/{threadId}/messages", method="GET")
 
 
+@bp.route(route="v1/email/attachments/{attachmentId}", methods=["GET"])
+def download_email_attachment(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = _auth(req)
+        content, content_type, file_name = get_service().download_attachment(
+            principal.user_id,
+            req.route_params["attachmentId"],
+        )
+        log_request(feature="email", route="v1/email/attachments/{attachmentId}", method="GET", status=200, user_id=principal.user_id)
+        headers = {
+            "Content-Type": content_type,
+            "Content-Disposition": f'inline; filename="{file_name}"',
+        }
+        return func.HttpResponse(body=content, status_code=200, headers=headers, mimetype=content_type)
+    except Exception as exc:
+        return _handle(exc, route="v1/email/attachments/{attachmentId}", method="GET")
+
+
 @bp.route(route="v1/threads/{threadId}/reply", methods=["POST"])
 def reply_thread(req: func.HttpRequest) -> func.HttpResponse:
     try:

@@ -82,6 +82,11 @@ export function previewable(contentType: string, name: string): boolean {
   return type.startsWith('image/') || type === 'application/pdf' || /\.(png|jpe?g|pdf)$/.test(lower)
 }
 
+export function attachmentNeedsAuthFetch(url: string | null | undefined): boolean {
+  if (!url) return false
+  return url.startsWith('/api/') || url.startsWith('api/')
+}
+
 export function threadVariables(thread: {
   jobTitle: string | null
   jobCompany: string | null

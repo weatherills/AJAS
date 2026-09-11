@@ -13,6 +13,7 @@ import {
   relativeTime,
   threadVariables,
   validateAttachments,
+  attachmentNeedsAuthFetch,
 } from '../lib/email'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
@@ -190,7 +191,34 @@ export function EmailThreadPane({
                   <li key={file.id}>
                     {file.fileName} · {fileSize(file.size)}
                     {file.status === 'skipped_oversize' ? ' (too large)' : ''}
-                    {previewable(file.contentType, file.fileName) ? ' · Preview' : ' · Download'}
+                    {file.status === 'stored' && file.downloadUrl ? (
+                      <>
+                        {' · '}
+                        <a
+                          href={file.downloadUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(event) => {
+                            if (!attachmentNeedsAuthFetch(file.downloadUrl)) return
+                            event.preventDefault()
+                            void (async () => {
+                              try {
+                                const { request } = await import('../api/live')
+                                const resp = await request(file.downloadUrl!)
+                                if (!resp.ok) throw new Error('Could not open attachment')
+                                const blob = await resp.blob()
+                                const objectUrl = URL.createObjectURL(blob)
+                                window.open(objectUrl, '_blank', 'noopener,noreferrer')
+                              } catch (err) {
+                                toast(err instanceof Error ? err.message : 'Could not open attachment', 'error')
+                              }
+                            })()
+                          }}
+                        >
+                          {previewable(file.contentType, file.fileName) ? 'Preview' : 'Download'}
+                        </a>
+                      </>
+                    ) : null}
                   </li>
                 ))}
               </ul>

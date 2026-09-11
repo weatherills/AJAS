@@ -243,8 +243,17 @@ class SettingsService:
         )
         saved = self.store.upsert_connection(user_id, connection, actor_id=user_id)
         self._oauth.pop(state, None)
-        settings = self.store.get_or_create_settings(user_id, actor_id=user_id)
-        return settings_response(settings, saved, updated_by=user_id)
+        try:
+            from app.mail.runtime import get_service as get_email_service
+
+            get_email_service().ensure_graph_subscription(user_id)
+            settings_row = self.store.get_or_create_settings(user_id, actor_id=user_id)
+            connections = self.store.list_connections(user_id)
+            saved = connections[0] if connections else saved
+            return settings_response(settings_row, saved, updated_by=user_id)
+        except Exception:
+            settings = self.store.get_or_create_settings(user_id, actor_id=user_id)
+            return settings_response(settings, saved, updated_by=user_id)
 
     def disconnect(self, user_id: str) -> dict:
         self._hit_write(user_id)

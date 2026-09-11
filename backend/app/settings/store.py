@@ -12,6 +12,8 @@ class SettingsStore(Protocol):
 
     def get_settings(self, user_id: str) -> UserSettings: ...
 
+    def list_user_ids(self) -> list[str]: ...
+
     def update_settings(
         self,
         user_id: str,

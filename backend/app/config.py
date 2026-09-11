@@ -93,6 +93,7 @@ class Settings(BaseSettings):
     mail_reply_idempotency_hours: int = 24
     mail_blob_container: str = "mail-attachments"
     mail_retention_days: int = 90
+    mail_webhook_public_url: str = ""
 
     learning_tune_queue: str = "tuning-tasks"
     learning_min_samples: int = 20
