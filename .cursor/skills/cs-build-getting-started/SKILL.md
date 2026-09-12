@@ -26,7 +26,7 @@ Uses the `codespring` skill's `references/project-state.md` (state detection, th
 
 ## Step 1 — Connect
 1. **CLI installed?** If `codespring` is missing: `npm i -g @codespring-app/cli`.
-2. **Authenticated?** `codespring auth status`. If not, ask them to run `codespring auth login` and wait. (Running it also refreshes an expired token.)
+2. **Authenticated?** `codespring auth status`. If not, ask them to run `codespring auth login` and wait. (Running it also refreshes an expired token.) If `auth status` looks fine but `workspaces` / `tasks` / MCP return **401**, that is usually CodeSpring **billing** (out of tokens), not a wrong API key — see `pitfalls.md` §7.
 3. **Project linked?** `codespring status`.
    - Linked → note the name and continue.
    - Not linked → link an existing project (`codespring projects` → `codespring init --project <id> --force`), or create one. **If it must live in a team workspace, they create it in the web app first** — `project create` ignores `--org` and there is no way to move or delete a project from the CLI (`pitfalls.md`).

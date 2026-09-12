@@ -55,6 +55,8 @@ fi
 # Project-planning CLI used by the committed CodeSpring agent skills
 # (.cursor/skills/). Authenticate per-VM with `codespring auth login` (browser
 # OAuth) or, headless, `codespring auth login --api-key "$CODESPRING_API_KEY"`.
+# A 401 from the CodeSpring API often means the account is out of tokens, not
+# that the API key is invalid. Check billing before rotating the secret.
 if ! command -v codespring >/dev/null 2>&1; then
   npm install -g @codespring-app/cli
 fi

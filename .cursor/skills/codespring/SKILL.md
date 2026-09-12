@@ -18,7 +18,7 @@ Manage project planning: workspaces, projects, tasks, PRDs, and mindmaps.
 ## Prerequisites
 
 - **CLI installed**: `npm i -g @codespring-app/cli` or use `npx @codespring-app/cli`
-- **Authenticated**: Run `codespring auth status` to check. Login with `codespring auth login`.
+- **Authenticated**: Run `codespring auth status` to check. Login with `codespring auth login`. A **401** from `tasks` / `workspaces` is often CodeSpring billing (out of tokens), not a bad key — see `references/pitfalls.md` §7.
 - **Project linked**: Check for `.codespring/config.json` or run `codespring init`.
 
 ## Quick Start
