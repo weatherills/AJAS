@@ -64,3 +64,6 @@ Landed on `main` as `[S12]` commits.
 - [x] 048 Flaky tests: detect and quarantine framework
 - [x] 049 Test coverage: raise unit coverage to 80% target
 - [x] 050 Synthetic data: generators for jobs/emails/resumes
+
+## Batch 5 gate
+- tests/lint/typecheck green after task 50

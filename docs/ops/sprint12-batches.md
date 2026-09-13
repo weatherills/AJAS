@@ -23,3 +23,5 @@ Final gate:
 - Typecheck: clean
 - Lint: existing warnings only (no new errors)
 
+
+- Batch 5: green after task 50
