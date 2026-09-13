@@ -51,3 +51,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 035 Currency support: FX normalization and display rules
 - [x] 036 Salary parsing v3: equity + bonus components
 - [x] 037 Normalization v3: onsite/hybrid/remote detection improvements
+- [x] 038 Normalization v3: job type taxonomy (FT/PT/Contract/Intern)

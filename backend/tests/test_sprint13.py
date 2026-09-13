@@ -422,3 +422,13 @@ def test_normalization_v3_onsite_hybrid_remote_detection_improvements():
     assert work_mode("Remote / WFH") == "remote"
     assert work_mode("On-site in NYC") == "onsite"
 
+# === S13-38 ===
+
+def test_normalization_v3_job_type_taxonomy():
+    from app.sprint13.parse import job_type
+
+    assert job_type("Full-time Staff Engineer") == "ft"
+    assert job_type("Part time contractor") == "pt"
+    assert job_type("Summer internship") == "intern"
+    assert job_type("Contract role") == "contract"
+
