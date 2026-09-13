@@ -45,3 +45,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 30
 
 - [x] 031 Matching: multilingual JD support (detect + translate)
+- [x] 032 Ranking: feedback logging for LTR (click/open/reply)

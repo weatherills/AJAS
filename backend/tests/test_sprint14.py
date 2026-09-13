@@ -314,3 +314,13 @@ def test_matching_multilingual_jd_support_detect_translate():
     assert es["lang"] == "es"
     assert es["translate"] is True
 
+# === S14-32 ===
+
+def test_ranking_feedback_logging_for_ltr():
+    from app.sprint14.matching import ltr_event, reset
+
+    reset()
+    row = ltr_event(user_id="ada@example.test", job_id="j1", event="reply")
+    assert row["event"] == "reply"
+    assert "@" not in row["userId"]
+
