@@ -545,3 +545,10 @@ def test_privacy_on_demand_data_export_gdpr_bundle():
     assert bundle["userId"] == "ada"
     assert "jobs" in bundle
 
+# === S14-57 ===
+
+def test_privacy_right_to_be_forgotten_purge_job_ui():
+    from app.sprint14.ops import forget_user
+
+    assert forget_user("ada")["purged"] is True
+
