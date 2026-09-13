@@ -28,7 +28,7 @@ import {
   sourceUnconfiguredCopy,
 } from '../lib/settings'
 import { loadApplyPrefs, saveApplyPrefs, type ApplyPrefs } from '../lib/applyPrefs'
-import { buildExportBundle, purgeSummary } from '../lib/privacy'
+import { formatAllowlist, parseAllowlist } from '../lib/allowlist'
 import {
   addBoardToast,
   boardAddPayload,
@@ -109,7 +109,7 @@ function ApplyPrefsFields() {
 }
 
 export function SettingsPage() {
-  const [userId, setUser] = useState(getUserId())
+  const [allowlistText, setAllowlistText] = useState('boards.greenhouse.io, jobs.lever.co, graph.microsoft.com')
   const [doc, setDoc] = useState<SettingsDoc | null>(null)
   const [percent, setPercent] = useState(70)
   const [savedPercent, setSavedPercent] = useState(70)
@@ -663,6 +663,21 @@ export function SettingsPage() {
         >
           Forget my account
         </button>
+      </section>
+
+      <section className="editor-section" aria-labelledby="allowlist-heading">
+        <h2 id="allowlist-heading">Outbound domain allowlist</h2>
+        <p className="muted">Admin policy for hosts Auto-Apply and adapters may call. Comma-separated hostnames.</p>
+        <label>
+          Allowed hosts
+          <textarea
+            value={allowlistText}
+            onChange={(event) => setAllowlistText(event.target.value)}
+            aria-label="Outbound domain allowlist"
+            rows={3}
+          />
+        </label>
+        <p className="muted">Normalized: {formatAllowlist(parseAllowlist(allowlistText))}</p>
       </section>
 
       <section className="editor-section" aria-labelledby="learning-prefs-heading">

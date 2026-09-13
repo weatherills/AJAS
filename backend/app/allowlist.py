@@ -12,6 +12,14 @@ def allowed_hosts() -> set[str]:
     return {part.strip().lower() for part in raw.split(",") if part.strip()}
 
 
+def parse_policy(raw: str) -> list[str]:
+    return sorted({part.strip().lower() for part in (raw or "").split(",") if part.strip()})
+
+
+def policy_text(hosts: list[str] | set[str]) -> str:
+    return ", ".join(sorted({host.strip().lower() for host in hosts if host.strip()}))
+
+
 def host_allowed(url: str) -> bool:
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()

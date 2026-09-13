@@ -450,3 +450,11 @@ def test_right_to_be_forgotten_purge_job():
     result = apply_purge(plan)
     assert result["status"] == "purged"
     assert result["deleted"] == 3
+
+
+def test_outbound_allowlist_policy_parser():
+    from app.allowlist import parse_policy, policy_text
+
+    hosts = parse_policy("Boards.greenhouse.io, jobs.lever.co")
+    assert hosts == ["boards.greenhouse.io", "jobs.lever.co"]
+    assert "greenhouse" in policy_text(hosts)
