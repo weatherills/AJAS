@@ -85,10 +85,20 @@ def test_stripe_checkout_and_invoice_webhook():
     assert billing_mod.plan_of(tenant.id) == "team"
     assert billing_mod.invoices_for(tenant.id)[0]["status"] == "paid"
 
+def test_account_limits_soft_hard_messages():
+    tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
+    billing_mod.assign_plan(tenant.id, "free")
+    billing_mod.meter(tenant.id, "apply", 8)
+    soft = billing_mod.check_caps(tenant.id, "apply")
+    assert "approaching" in (soft["message"] or "")
+    billing_mod.meter(tenant.id, "apply", 2)
+    hard = billing_mod.check_caps(tenant.id, "apply")
+    assert "hard cap" in (hard["message"] or "")
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 8
+    assert COMPLETED == 9
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
