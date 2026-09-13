@@ -346,6 +346,32 @@ export function paginate<T>(items: T[], cursor: string | null, limit: number): {
   return { items: slice, nextCursor: next < items.length ? String(next) : null }
 }
 
+export const JOB_ROW_ESTIMATE_PX = 108
+export const WINDOW_OVERSCAN = 8
+
+export function windowedRange(
+  total: number,
+  scrollTop: number,
+  viewport: number,
+  rowHeight = JOB_ROW_ESTIMATE_PX,
+  overscan = WINDOW_OVERSCAN,
+): { start: number; end: number; leading: number; trailing: number } {
+  const start = Math.max(0, Math.floor(Math.max(0, scrollTop) / rowHeight) - overscan)
+  const visible = Math.max(1, Math.ceil(Math.max(rowHeight, viewport) / rowHeight) + overscan * 2)
+  const end = Math.min(total, start + visible)
+  return {
+    start,
+    end,
+    leading: start * rowHeight,
+    trailing: Math.max(0, total - end) * rowHeight,
+  }
+}
+
+export function skeletonPlaceholders(loading: boolean, hasItems: boolean): number {
+  if (!loading) return 0
+  return hasItems ? 2 : 6
+}
+
 export function alsoFromLabel(sources: JobSourceRef[], primary: JobSourceName): string | null {
   const others = sources.filter((item) => item.source !== primary)
   if (!others.length) return null

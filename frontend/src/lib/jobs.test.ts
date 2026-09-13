@@ -19,6 +19,8 @@ import {
   paginate,
   PAGE_SIZE,
   persistFeedSourceChip,
+  skeletonPlaceholders,
+  windowedRange,
   loadFilterPresets,
   saveFilterPreset,
   deleteFilterPreset,
@@ -107,6 +109,16 @@ describe('job feed helpers', () => {
     const second = paginate(items, first.nextCursor, PAGE_SIZE)
     expect(second.items).toHaveLength(15)
     expect(second.nextCursor).toBeNull()
+  })
+
+  it('windows long lists and sizes skeleton placeholders', () => {
+    const range = windowedRange(200, 1080, 540)
+    expect(range.start).toBeGreaterThan(0)
+    expect(range.end - range.start).toBeLessThan(200)
+    expect(range.leading).toBe(range.start * 108)
+    expect(skeletonPlaceholders(true, false)).toBe(6)
+    expect(skeletonPlaceholders(true, true)).toBe(2)
+    expect(skeletonPlaceholders(false, false)).toBe(0)
   })
 
   it('formats backoff countdown as mm:ss', () => {

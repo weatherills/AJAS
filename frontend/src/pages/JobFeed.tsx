@@ -32,6 +32,9 @@ import {
   persistFeedSourceChip,
   refreshToastForStatuses,
   saveFilters,
+  skeletonPlaceholders,
+  windowedRange,
+  saveFilters,
   boardErrorCopy,
   feedErrorLines,
   jobsListMayHaveChanged,
@@ -81,6 +84,8 @@ export function JobFeedPage() {
   const [applyJob, setApplyJob] = useState<JobCard | null>(null)
   const [saveOverride, setSaveOverride] = useState<Record<string, boolean>>({})
   const [listMinHeight, setListMinHeight] = useState(0)
+  const [listScrollTop, setListScrollTop] = useState(0)
+  const [listViewport, setListViewport] = useState(720)
   const [drawerTab, setDrawerTab] = useState<'details' | 'emails'>('details')
   const [sourcesReady, setSourcesReady] = useState(false)
   const [sourceSaving, setSourceSaving] = useState<JobSourceName | null>(null)
@@ -181,6 +186,26 @@ export function JobFeedPage() {
   useEffect(() => {
     void loadStatus()
   }, [loadStatus])
+
+  useEffect(() => {
+    const syncWindow = () => {
+      const node = listRef.current
+      if (node && node.scrollHeight > node.clientHeight + 8) {
+        setListScrollTop(node.scrollTop)
+        setListViewport(node.clientHeight || 720)
+        return
+      }
+      setListScrollTop(window.scrollY)
+      setListViewport(window.innerHeight || 720)
+    }
+    syncWindow()
+    window.addEventListener('scroll', syncWindow, { passive: true })
+    window.addEventListener('resize', syncWindow)
+    return () => {
+      window.removeEventListener('scroll', syncWindow)
+      window.removeEventListener('resize', syncWindow)
+    }
+  }, [items.length])
 
   const selectJob = useCallback(
     (job: JobCard, tab: 'details' | 'emails' = 'details') => {
@@ -543,6 +568,11 @@ export function JobFeedPage() {
     () => items.filter((job) => matchesExtraFilters(job, filters)),
     [items, filters],
   )
+  const windowRange = useMemo(
+    () => windowedRange(visibleItems.length, listScrollTop, listViewport),
+    [visibleItems.length, listScrollTop, listViewport],
+  )
+  const windowedItems = visibleItems.slice(windowRange.start, windowRange.end)
 
   function sourceBlocked(row: SourceStatus | undefined) {
     return (
@@ -839,7 +869,14 @@ export function JobFeedPage() {
           </button>
         </aside>
 
-        <div className="feed-main" ref={listRef}>
+        <div
+          className="feed-main"
+          ref={listRef}
+          onScroll={(event) => {
+            setListScrollTop(event.currentTarget.scrollTop)
+            setListViewport(event.currentTarget.clientHeight || 720)
+          }}
+        >
           {loadError && (
             <p className="inline-error">
               {loadError}{' '}
@@ -850,8 +887,8 @@ export function JobFeedPage() {
           )}
           {loading && items.length === 0 && (
             <ul className="job-list" aria-hidden="true">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <li key={index} className="job-card skeleton">
+              {Array.from({ length: skeletonPlaceholders(true, false) }).map((_, index) => (
+                <li key={index} className="job-card skeleton" aria-hidden="true">
                   Loading jobs
                 </li>
               ))}
@@ -941,7 +978,8 @@ export function JobFeedPage() {
                 </button>
               </div>
             <ul className="job-list" role="list" aria-label="Job postings" style={listMinHeight ? { minHeight: listMinHeight } : undefined}>
-              {visibleItems.map((job) => {
+              {windowRange.leading > 0 && <li className="job-window-spacer" style={{ height: windowRange.leading }} aria-hidden="true" />}
+              {windowedItems.map((job) => {
                 const also = alsoFromLabel(job.sources, job.primarySource)
                 const match = matches[job.id]
                 const hidden = Boolean(
@@ -997,11 +1035,20 @@ export function JobFeedPage() {
                   </li>
                 )
               })}
+              {windowRange.trailing > 0 && <li className="job-window-spacer" style={{ height: windowRange.trailing }} aria-hidden="true" />}
             </ul>
             </>
           )}
           {filters.pagination === 'infinite' && <div ref={sentinel} className="feed-sentinel" />}
-          {loadingMore && <p className="muted">Loading more jobs…</p>}
+          {loadingMore && (
+            <ul className="job-list" aria-hidden="true">
+              {Array.from({ length: skeletonPlaceholders(true, true) }).map((_, index) => (
+                <li key={`more-${index}`} className="job-card skeleton">
+                  Loading more jobs
+                </li>
+              ))}
+            </ul>
+          )}
           {filters.pagination === 'pages' && total > 0 && (
             <nav className="pager" aria-label="Job pages">
               <button
