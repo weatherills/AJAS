@@ -619,3 +619,17 @@ def test_seed_data_v2_varied_resumes():
     assert "intern" in seeds["junior"].lower()
     assert "staff" in seeds["senior"].lower()
     assert "remote" in seeds["remote-only"].lower()
+
+
+def test_api_pagination_and_sorting_jobs_matches():
+    from app.list_query import page_rows
+
+    rows = [
+        {"id": "a", "updatedAt": "2026-01-01", "score": 40},
+        {"id": "b", "updatedAt": "2026-09-01", "score": 90},
+        {"id": "c", "updatedAt": "2026-06-01", "score": 70},
+    ]
+    page = page_rows(rows, cursor=None, limit=2, sort="score", order="desc")
+    assert [item["id"] for item in page["items"]] == ["b", "c"]
+    assert page["nextCursor"] == "2"
+    assert page["total"] == 3
