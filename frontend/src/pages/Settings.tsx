@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getUserId, jobsApi, learningApi, setUserId, settingsApi, USE_MOCK } from '../api'
+import { getUserId, jobsApi, learningApi, resumeApi, setUserId, settingsApi, USE_MOCK } from '../api'
 import { json, request, fetchAuthConfig, type AuthConfig } from '../api/live'
 import type { SettingsAuditItem, SettingsDoc } from '../api/settingsTypes'
 import type { JobSourceName, SourceStatus } from '../api/jobsTypes'
@@ -28,10 +28,11 @@ import {
   sourceUnconfiguredCopy,
 } from '../lib/settings'
 import { loadApplyPrefs, saveApplyPrefs, type ApplyPrefs } from '../lib/applyPrefs'
+import { emailProviderHealth } from '../lib/emailHealth'
 import { formatAllowlist, parseAllowlist } from '../lib/allowlist'
 import { currentLocale, setLocale, t, type Locale } from '../lib/i18n'
 import { flagRows, mergeFlags } from '../lib/flags'
-import { evaluateLimit, type SiteLimit } from '../lib/automationLimits'
+import { evaluateLimit, remainingInWindow, windowLabel, type SiteLimit } from '../lib/automationLimits'
 import {
   addBoardToast,
   boardAddPayload,
@@ -58,6 +59,13 @@ function formatWhen(stamp: string | null) {
 
 function ApplyPrefsFields() {
   const [prefs, setPrefs] = useState<ApplyPrefs>(() => loadApplyPrefs())
+  const [resumes, setResumes] = useState<{ id: string; fileName: string }[]>([])
+  useEffect(() => {
+    void resumeApi
+      .list()
+      .then((items) => setResumes(items.map((item) => ({ id: item.id, fileName: item.fileName }))))
+      .catch(() => setResumes([]))
+  }, [])
   return (
     <div className="apply-prefs">
       <h3>Apply preferences</h3>
@@ -107,6 +115,25 @@ function ApplyPrefsFields() {
           aria-label="Profile location for matching boosts"
         />
       </label>
+      <label>
+        Resume / profile version
+        <select
+          value={prefs.defaultResumeId}
+          onChange={(event) => {
+            const next = { ...prefs, defaultResumeId: event.target.value }
+            setPrefs(next)
+            saveApplyPrefs(next)
+          }}
+          aria-label="Default resume for Auto-Apply"
+        >
+          <option value="">Active resume</option>
+          {resumes.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.fileName}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   )
 }
@@ -116,8 +143,8 @@ export function SettingsPage() {
   const [locale, setLocaleState] = useState<Locale>(() => currentLocale())
   const [flagOverrides, setFlagOverrides] = useState<Record<string, boolean>>({})
   const [siteLimits, setSiteLimits] = useState<SiteLimit[]>([
-    { site: 'greenhouse', cap: 20, consent: false, used: 0 },
-    { site: 'lever', cap: 20, consent: false, used: 0 },
+    { site: 'greenhouse', cap: 20, consent: false, used: 0, windowMinutes: 1440 },
+    { site: 'lever', cap: 20, consent: false, used: 0, windowMinutes: 1440 },
   ])
   const [allowlistText, setAllowlistText] = useState('boards.greenhouse.io, jobs.lever.co, graph.microsoft.com')
   const [doc, setDoc] = useState<SettingsDoc | null>(null)
@@ -692,7 +719,7 @@ export function SettingsPage() {
 
       <section className="editor-section" aria-labelledby="flags-heading">
         <h2 id="flags-heading">Feature flags</h2>
-        <p className="muted">Adapter and automation flags. Optional boards stay off unless an operator enables the matching env var. Toggles here are a preview of FLAG_* defaults.</p>
+        <p className="muted">Adapter, matching algorithm, and automation flags. Optional boards stay off unless an operator enables the matching env var. Toggles here are a preview of FLAG_* defaults.</p>
         <ul>
           {flagRows(mergeFlags(flagOverrides)).map((row) => (
             <li key={row.id}>
@@ -713,7 +740,7 @@ export function SettingsPage() {
 
       <section className="editor-section" aria-labelledby="automation-limits-heading">
         <h2 id="automation-limits-heading">Automation limits</h2>
-        <p className="muted">Per-site daily caps and explicit consent before Auto-Apply may submit.</p>
+        <p className="muted">Per-site rate windows and explicit consent before Auto-Apply may submit.</p>
         {siteLimits.map((row, index) => {
           const gate = evaluateLimit(row)
           return (
@@ -744,7 +771,23 @@ export function SettingsPage() {
                   }}
                 />
               </label>
-              <p className="muted">{gate.allowed ? 'Ready' : `Blocked: ${gate.reason}`}</p>
+              <label>
+                Window (minutes)
+                <input
+                  type="number"
+                  min={15}
+                  value={row.windowMinutes ?? 1440}
+                  aria-label={`${row.site} rate window minutes`}
+                  onChange={(event) => {
+                    const next = [...siteLimits]
+                    next[index] = { ...row, windowMinutes: Number(event.target.value) || 1440 }
+                    setSiteLimits(next)
+                  }}
+                />
+              </label>
+              <p className="muted">
+                {gate.allowed ? `Ready · ${remainingInWindow(row)} left (${windowLabel(row)})` : `Blocked: ${gate.reason}`}
+              </p>
             </div>
           )
         })}
@@ -839,6 +882,26 @@ export function SettingsPage() {
           <code>Mail.Read</code>, <code>Mail.Send</code>, and <code>offline_access</code>. We do not ask for mailbox
           admin or directory scopes. Microsoft will show this consent list before you connect.
         </p>
+        {(() => {
+          const health = emailProviderHealth({
+            connected: ui === 'connected',
+            graphConnected: ui === 'connected',
+            address: email?.accountId || null,
+            lastSyncedAt: email?.lastVerifiedAt || null,
+            unreadCount: 0,
+            demo: ui !== 'connected',
+            oauthConfigured: configured,
+            lastSyncError: ui === 'error' || ui === 'action_required' ? emailError : null,
+            provider: 'microsoft365',
+          })
+          return (
+            <p className={health.ok ? 'muted' : 'inline-error'} role="status">
+              Provider {health.provider}: {health.label}
+              {health.lastError ? ` · ${health.lastError}` : ''}
+              {health.reconnect ? ' · Reconnect required' : ''}
+            </p>
+          )
+        })()}
         {ui === 'unconfigured' && (
           <div className="oauth-unconfigured" role="status">
             <p>
