@@ -120,3 +120,4 @@ Landed on `main` as `[S12]` commits.
 ## Batch 9 gate
 - tests/lint/typecheck green after task 90
 - [x] 091 SLA/SLO definitions and monitoring widgets
+- [x] 092 Usage analytics: event stream and privacy controls

@@ -420,7 +420,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 91
+    assert COMPLETED == 92
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -609,3 +609,8 @@ def test_funnel_conversion_counts():
 def test_slo_widgets_cover_ingest_match_apply():
     widgets = ops_mod.slo_widgets()
     assert set(widgets) >= {"ingest", "match", "apply"}
+
+def test_usage_analytics_respects_privacy_allow():
+    allowed = platform_mod.track_event("match_viewed", user_id="ada", allow=True)
+    denied = platform_mod.track_event("match_viewed", user_id="ada", allow=False)
+    assert allowed and denied is None
