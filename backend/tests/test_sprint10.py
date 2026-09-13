@@ -318,3 +318,15 @@ def test_imap_labels_map_to_internal_states():
     assert map_label("AJAS/Interview") == "interview"
     mapped = map_labels(["Inbox", "AJAS/Applied"])
     assert mapped["current"] == "applied"
+
+
+def test_sender_reputation_warmup_and_daily_cap():
+    from datetime import date
+    from app.mail.reputation import ReputationState, can_send, daily_cap
+
+    assert daily_cap(age_days=0) == 5
+    assert daily_cap(age_days=14) > daily_cap(age_days=1)
+    day_one = can_send(ReputationState(day=date(2026, 9, 13), sent=5, age_days=0))
+    assert day_one["allowed"] is False
+    warmed = can_send(ReputationState(day=date(2026, 9, 13), sent=5, age_days=10))
+    assert warmed["allowed"] is True
