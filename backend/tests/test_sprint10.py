@@ -772,3 +772,12 @@ def test_certification_extractor_v2_patterns():
     assert "aws" in families
     assert "kubernetes" in families
     assert "security" in families
+
+
+def test_education_normalization_v2_degrees_schools():
+    from app.resumes.education import normalize_education
+
+    row = normalize_education("M.S. in Computer Science, MIT")
+    assert row["degree"] == "master"
+    assert row["school"] == "Massachusetts Institute of Technology"
+    assert row["major"] == "Computer Science"
