@@ -199,10 +199,16 @@ def test_audit_trail_before_after_diffs():
     event = security_mod.audit_diff(actor="ada", entity="settings", entity_id="s1", before={"threshold": 70}, after={"threshold": 80})
     assert event["changes"] == [{"field": "threshold", "from": 70, "to": 80}]
 
+def test_consent_cookie_preferences():
+    saved = security_mod.set_consent("ada", {"analytics": True, "marketing": False})
+    assert saved["choices"]["necessary"] is True
+    assert saved["choices"]["marketing"] is False
+    assert security_mod.export_consent_log("ada")[0]["version"] == "ajas.consent.v1"
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 26
+    assert COMPLETED == 27
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")

@@ -34,3 +34,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 024 SSO: Google OAuth for teams (SAML/OIDC scaffold)
 - [x] 025 Session security: device/session management UI
 - [x] 026 Audit trail v2: before/after diffs for critical changes
+- [x] 027 Consent management: cookie and tracking preferences
