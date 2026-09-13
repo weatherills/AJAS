@@ -743,3 +743,15 @@ def test_captcha_detection_hitl_stub_never_bypasses():
     assert blocked["action"] == "needs_manual"
     assert blocked["bypass"] is False
     assert apply_gate("thanks for applying") == "continue"
+
+
+def test_source_change_detection_dom_api_drift():
+    from app.job_sources.drift import detect_change, reset
+
+    reset()
+    first = detect_change("workday", {"jobs": [{"id": "1", "title": "A"}]})
+    second = detect_change("workday", {"jobs": [{"id": "1", "title": "A"}]})
+    third = detect_change("workday", {"jobs": [{"id": "1", "title": "A", "salary": "100k"}]})
+    assert first["firstSeen"] is True
+    assert second["changed"] is False
+    assert third["changed"] is True
