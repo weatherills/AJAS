@@ -8,6 +8,7 @@ from app.sprint12 import VERSION
 from app.sprint12 import billing as billing_mod
 from app.sprint12 import ingest as ingest_mod
 from app.sprint12 import mail_v2 as mail_mod
+from app.sprint12 import ops as ops_mod
 from app.sprint12 import perf as perf_mod
 from app.sprint12 import platform as platform_mod
 from app.sprint12 import product as product_mod
@@ -27,6 +28,7 @@ def setup_function() -> None:
     mail_mod.reset()
     ingest_mod.reset()
     perf_mod.reset()
+    ops_mod.reset()
     product_mod.reset()
     platform_mod.reset()
 
@@ -279,10 +281,19 @@ def test_db_index_review_includes_tenant():
     policy = perf_mod.suggested_indices()
     assert any(path["path"] == "/tenantId" for path in policy["includedPaths"])
 
+def test_health_dashboard_logs_and_alert_routing():
+    overview = ops_mod.health_overview(storage="memory", workers={"match": True, "ingest": True})
+    assert overview["goldenSignals"]["latencyMs"] == 42
+    ops_mod.ingest_log("error", "adapter timeout", source="lever")
+    assert ops_mod.search_logs(level="error", q="timeout")
+    ops_mod.set_oncall([{"name": "ada"}, {"name": "linus"}])
+    routed = ops_mod.route_alert("critical")
+    assert len(routed["notified"]) == 2
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 41
+    assert COMPLETED == 42
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
