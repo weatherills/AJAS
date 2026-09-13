@@ -481,3 +481,14 @@ def test_rate_limit_policy_v2_per_tenant_and_endpoint():
     assert third["allowed"] is False
     assert other["allowed"] is True
     assert other["count"] == 1
+
+
+def test_idempotency_keys_v2_window_and_conflicts():
+    from app.idempotency_v2 import conflicts, remember, reset
+
+    reset()
+    first = remember("k1", "fp-a", {"ok": True}, now=10, ttl_sec=5)
+    clash = remember("k1", "fp-b", {"ok": False}, now=11, ttl_sec=5)
+    assert first["status"] == "stored"
+    assert clash["status"] == "conflict"
+    assert conflicts()
