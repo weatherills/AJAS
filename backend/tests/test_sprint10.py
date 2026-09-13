@@ -492,3 +492,12 @@ def test_idempotency_keys_v2_window_and_conflicts():
     assert first["status"] == "stored"
     assert clash["status"] == "conflict"
     assert conflicts()
+
+
+def test_queue_health_stuck_job_auto_requeue():
+    from app.queue_health import QueueJob, requeue
+
+    jobs = [QueueJob(id="q1", queue="ingest", started_at=0, attempts=0, status="running")]
+    result = requeue(jobs, now=400, timeout_sec=300)
+    assert result["retried"] == 1
+    assert jobs[0].status == "queued"
