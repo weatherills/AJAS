@@ -39,3 +39,8 @@ Landed on `main` as `[S13]` commits.
 - [x] 027 Matching features: seniority ladder calibration data
 - [x] 028 Vector store: HNSW parameter tuning and benchmarks
 - [x] 029 Embeddings pipeline: shard-aware reindex and backpressure
+- [x] 030 Skills taxonomy v3: auto-extend from corpus with review queue
+
+## Batch 3 gate
+- tests/lint/typecheck green after task 30
+

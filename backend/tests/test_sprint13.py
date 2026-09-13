@@ -337,3 +337,16 @@ def test_embeddings_pipeline_shard_aware_reindex_and_backpressure():
     assert hot["backpressure"] is True
     assert hot["inflight"] == 100
 
+# === S13-30 ===
+
+def test_skills_taxonomy_v3_auto_extend_from_corpus_with_review_queue():
+    from app.sprint13.matching import observe_skill, reset, taxonomy_extend
+
+    reset()
+    observe_skill("rust", count=3)
+    observe_skill("obscure", count=1)
+    out = taxonomy_extend(min_count=3)
+    assert "rust" in out["proposed"]
+    assert "obscure" not in out["proposed"]
+    assert out["queue"][0]["status"] == "pending"
+
