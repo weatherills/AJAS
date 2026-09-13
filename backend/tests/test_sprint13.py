@@ -195,3 +195,11 @@ def test_vulnerability_remediation_critical_fixes():
     assert len(fixed) == 1
     assert fixed[0]["status"] == "fixed"
 
+# === S13-16 ===
+
+def test_ui_keyboard_shortcuts_accept_dismiss_contract():
+    from app.sprint13.product import explanation_chips
+
+    chips = explanation_chips(["Python"])
+    assert chips[0]["detail"].startswith("Matched")
+

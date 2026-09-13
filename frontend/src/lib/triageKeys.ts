@@ -16,6 +16,8 @@ export function triageShortcut(event: {
     case 'k':
       return 'prev'
     case 'a':
+    case 'y':
+    case 'enter':
       return 'apply'
     case 'd':
       return 'dismiss'
@@ -30,4 +32,4 @@ export function triageShortcut(event: {
   }
 }
 
-export const TRIAGE_HELP = 'j/k move · a apply · d dismiss · s save · c compare · ? why'
+export const TRIAGE_HELP = 'j/k move · a/Enter accept · d dismiss · s save · c compare · ? why'

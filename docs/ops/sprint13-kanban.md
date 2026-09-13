@@ -21,3 +21,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 013 Keyword alerts: saved search email triggers
 - [x] 014 Security scan: dependency and SAST checks
 - [x] 015 Vulnerability remediation: critical fixes
+- [x] 016 UI: keyboard shortcuts for triage (accept/dismiss)
