@@ -246,10 +246,22 @@ def test_sitemap_crawler_and_robots_rate_policy():
     assert ingest_mod.allow_domain_request("acme.test", now=10, min_interval=1) is True
     assert ingest_mod.allow_domain_request("acme.test", now=10.2, min_interval=1) is False
 
+def test_proxy_failover_and_vector_queue_circuits():
+    chosen = ingest_mod.proxy_failover(["https://p1", "https://p2"], unhealthy={"https://p1"})
+    assert chosen == "https://p2"
+    closed = ingest_mod.vector_circuit("ann", ok=True)
+    assert closed["allow"] is True
+    for _ in range(5):
+        ingest_mod.vector_circuit("ann", ok=False)
+    opened = ingest_mod.vector_circuit("ann", ok=False)
+    assert opened["open"] is True
+    q = ingest_mod.queue_circuit("match-compute", depth=1000)
+    assert q["allow"] is False
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 36
+    assert COMPLETED == 37
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")

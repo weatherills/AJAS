@@ -47,3 +47,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 034 Job source integrations: Lever job boards adapter
 - [x] 035 Company career pages: sitemap-based generic crawler
 - [x] 036 Anti-bot compliance: robots.txt + rate policy per domain
+- [x] 037 Proxy pool support for scraping with failover
