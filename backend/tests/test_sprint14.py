@@ -536,3 +536,12 @@ def test_alerts_tuning_adaptive_thresholds():
     assert quiet["fire"] is False
     assert hot["fire"] is True
 
+# === S14-56 ===
+
+def test_privacy_on_demand_data_export_gdpr_bundle():
+    from app.sprint14.ops import gdpr_bundle
+
+    bundle = gdpr_bundle("ada")
+    assert bundle["userId"] == "ada"
+    assert "jobs" in bundle
+
