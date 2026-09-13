@@ -199,3 +199,10 @@ def test_normalization_skills_canonicalization_v3():
 
     assert "python" in skills_canon(["py", "Python3"])
 
+# === S14-19 ===
+
+def test_normalization_title_cleaning_rules_v3():
+    from app.sprint14.parse import title_v3
+
+    assert "Software Engineer" in title_v3("Senior SWE")["normalized"]
+

@@ -24,3 +24,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 016 Normalization: contract types (FT/PT/Contract/Intern)
 - [x] 017 Normalization: benefits parsing (visa, relocation, equity)
 - [x] 018 Normalization: skills canonicalization v3
+- [x] 019 Normalization: title cleaning rules v3
