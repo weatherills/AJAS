@@ -348,6 +348,20 @@ def test_resume_versioning_and_multi_resume_pick():
     )
     assert best["id"] == "r2"
 
+def test_job_change_freshness_company_insights_and_spam():
+    change = product_mod.jd_material_change("We need Python", "We need a completely different marketing lead in NYC")
+    assert change["notify"] is True
+    fresh = product_mod.freshness(80, 50)
+    assert fresh["stale"] is True
+    groups = product_mod.merge_companies(["Acme Inc.", "Acme LLC", "Beta Co"])
+    assert set(groups["acme"]) == {"Acme Inc.", "Acme LLC"}
+    insights = product_mod.enrich_company("Acme Inc.")
+    assert insights["funding"] == "series-b"
+    spam = safety_mod.scam_job({"title": "Easy money", "description": "Pay for equipment via gift card"})
+    assert spam["spam"] is True
+    safety_mod.set_blocklist("t1", companies=["evilcorp"], keywords=["crypto seed"])
+    assert safety_mod.blocked("t1", {"company": "EvilCorp", "title": "Eng"}) is True
+
 def test_coverage_gate_documents_80_percent_target():
     assert ops_mod.ci_plan()["coverageGate"] == 0.4
     assert ops_mod.ci_plan()["backend"]["parallel"] == "pytest -n auto"
@@ -355,7 +369,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 68
+    assert COMPLETED == 69
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
