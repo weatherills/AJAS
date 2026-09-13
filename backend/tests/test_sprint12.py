@@ -386,6 +386,18 @@ def test_queue_idempotency_webhooks_and_api_keys():
     assert platform_mod.revoke_api_key(key["id"], user_id="ada") is True
     assert platform_mod.sdk_contract()["package"] == "@ajas/client"
 
+def test_rate_limit_headers_cursor_pagination_empty_states():
+    from app.ratelimit_v2 import reset as rl_reset
+
+    rl_reset()
+    headers = platform_mod.rate_headers("ada", "/v1/matches", limit=2)
+    assert headers["X-RateLimit-Limit"] == "2"
+    page = platform_mod.cursor_page([{"id": i} for i in range(5)], cursor="0", limit=2)
+    assert page["nextCursor"] == "2"
+    assert page["items"][0]["id"] == 0
+    empty = platform_mod.empty_state("jobs")
+    assert "Greenhouse" in empty["title"]
+
 def test_coverage_gate_documents_80_percent_target():
     assert ops_mod.ci_plan()["coverageGate"] == 0.4
     assert ops_mod.ci_plan()["backend"]["parallel"] == "pytest -n auto"
@@ -393,7 +405,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 82
+    assert COMPLETED == 83
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
