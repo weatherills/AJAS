@@ -560,3 +560,12 @@ def test_security_outbound_domain_allowlist_ui_policy():
     row = allowlist("prod", "boards.greenhouse.io")
     assert row["gated"] is True
 
+# === S14-59 ===
+
+def test_secrets_rotation_hot_reload_for_adapters():
+    from app.sprint14.ops import rotate_adapter_secret
+
+    row = rotate_adapter_secret("hired")
+    assert row["hotReload"] is True
+    assert row["reloaded"]["version"] >= 1
+

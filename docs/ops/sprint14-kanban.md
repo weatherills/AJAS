@@ -80,3 +80,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 056 Privacy: on-demand data export (GDPR bundle)
 - [x] 057 Privacy: right-to-be-forgotten purge job + UI
 - [x] 058 Security: outbound domain allowlist UI + policy
+- [x] 059 Secrets rotation: hot-reload for adapters
