@@ -142,6 +142,15 @@ def list_email_threads(req: func.HttpRequest) -> func.HttpResponse:
             limit=_query_int(req.params.get("limit"), "limit", default=50),
             cursor=req.params.get("cursor") or None,
         )
+        q = req.params.get("q") or None
+        if q:
+            from app.mail.thread_query import filter_threads
+
+            linked = None
+            if (req.params.get("unlinked") or "").lower() in {"1", "true", "yes"}:
+                linked = False
+            items = filter_threads(body.get("items") or [], q=q, job_id=req.params.get("jobId") or None, linked=linked)
+            body = {**body, "items": items, "total": len(items)}
         log_request(feature="email", route="v1/email/threads", method="GET", status=200, user_id=principal.user_id)
         return json_response(body)
     except Exception as exc:
