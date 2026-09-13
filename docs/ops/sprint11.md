@@ -30,3 +30,7 @@ Batch gates: [sprint11-batches.md](./sprint11-batches.md).
 - Benefits: `ajas.benefits.v1` in `app.job_sources.benefits`.
 - Onsite/travel: `app.job_sources.work_arrangement`.
 - Timezones: `app.job_sources.timezone`.
+- Comp: `app.job_sources.comp` (equity / bonus / signing).
+- Matching: batch autotune, embed cache, ANN recall harness, gap penalty,
+  PRD stack boost, employment-type alignment, fair-norm, tie-breakers,
+  counterfactual suggestions.
