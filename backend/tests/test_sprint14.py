@@ -269,3 +269,13 @@ def test_resume_parser_v3_impact_bullets_scoring():
     row = impact_bullets(["Increased conversion 12%", "Responsible for on-call"])
     assert row["impactCount"] >= 1
 
+# === S14-27 ===
+
+def test_embeddings_incremental_reindex_sweeper_retries():
+    from app.sprint14.matching import reindex_sweep, reset
+
+    reset()
+    out = reindex_sweep([("d1", "python azure"), ("d2", "react")])
+    assert out["indexed"] == 2
+    assert out["processed"] == 2
+

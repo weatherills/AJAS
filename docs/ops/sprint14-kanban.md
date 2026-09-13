@@ -36,3 +36,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 024 Salary parsing v3: multi-currency + bands
 - [x] 025 Skill extractor v3: phrase chunker + negation
 - [x] 026 Resume parser v3: impact bullets + scoring
+- [x] 027 Embeddings: incremental reindex sweeper + retries
