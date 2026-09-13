@@ -332,3 +332,10 @@ def test_skills_taxonomy_deprecate_outdated_terms():
     hit = resolve("angularjs")
     assert hit["deprecated"] is True
     assert hit["canonical"] == "javascript"
+
+def test_apply_form_state_machine_core():
+    from app.auto_apply.form_machine import next_state
+    assert next_state("draft", "start") == "profile"
+    assert next_state("review", "submit") == "submit"
+    assert next_state("submit", "ok") == "done"
+    assert next_state("questions", "next", payload="<div class='g-recaptcha'>") == "needs_manual"
