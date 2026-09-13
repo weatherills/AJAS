@@ -659,3 +659,14 @@ def test_backfill_tool_v2_safe_chunking_and_progress_ui():
     assert plan["status"] == "ready"
     assert len(plan["chunks"][0]) == 25
 
+# === S13-58 ===
+
+def test_api_v2_search_sort_filter_consistency():
+    from app.sprint13.platform import api_query
+
+    rows = [{"id": "2", "title": "PM", "company": "Beta"}, {"id": "1", "title": "Staff Python", "company": "Acme"}]
+    found = api_query(rows, q="python", sort="id", order="asc")
+    assert found["count"] == 1
+    desc = api_query(rows, q=None, sort="id", order="desc", filters={"company": "Acme"})
+    assert desc["items"][0]["id"] == "1"
+
