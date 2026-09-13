@@ -56,3 +56,17 @@ def test_canary_releases_feature_flag_rollout_process():
     canary(flag="fit-v2", percent=0)
     assert canary_assign("fit-v2", "anyone") == "control"
 
+# === S13-04 ===
+
+def test_pii_scanning_ci_hook_to_detect_leaks():
+    from app.sprint13.security import pii_scan_text, reset
+
+    reset()
+    dirty = pii_scan_text("contact me at ada@example.test please")
+    assert dirty["clean"] is False
+    assert dirty["leaks"]
+    clean = pii_scan_text("no emails here")
+    assert clean["clean"] is True
+    script = Path(__file__).resolve().parents[2] / "scripts" / "s13_pii_scan.py"
+    assert script.is_file()
+
