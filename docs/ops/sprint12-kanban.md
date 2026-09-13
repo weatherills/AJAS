@@ -11,3 +11,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 007 Billing: Stripe subscription + metered billing integration
 - [x] 008 Billing: webhook handling and invoice status sync
 - [x] 009 Account limits: enforce soft/hard caps with UX messages
+- [x] 010 Admin console: tenant usage dashboard and actions

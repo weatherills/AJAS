@@ -95,10 +95,16 @@ def test_account_limits_soft_hard_messages():
     hard = billing_mod.check_caps(tenant.id, "apply")
     assert "hard cap" in (hard["message"] or "")
 
+def test_admin_tenant_usage_dashboard():
+    tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
+    dash = tenants_mod.usage_dashboard(tenant.id, "ada")
+    assert dash["memberCount"] == 1
+    assert dash["roles"]["owner"] == 1
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 9
+    assert COMPLETED == 10
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
