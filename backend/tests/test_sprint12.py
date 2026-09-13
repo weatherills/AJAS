@@ -420,7 +420,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 88
+    assert COMPLETED == 89
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -595,3 +595,8 @@ def test_empty_state_copy_for_jobs():
 def test_onboarding_help_docs_exist():
     docs = platform_mod.knowledge_base()
     assert any(row["id"] == "threshold" for row in docs)
+
+def test_warehouse_etl_ndjson_export():
+    export = platform_mod.warehouse_export([{"e": 1}, {"e": 2}])
+    assert export["format"] == "ndjson"
+    assert export["count"] == 2
