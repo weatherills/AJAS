@@ -418,3 +418,12 @@ def test_apply_per_site_field_mapping_overrides():
     assert row["overrides"] is True
     assert row["fields"]["phone"] == "mobile"
 
+# === S14-44 ===
+
+def test_cover_letters_tone_style_presets():
+    from app.sprint14.product import cover_tone
+
+    warm = cover_tone("Staff role", tone="warm")
+    assert warm["tone"] == "warm"
+    assert "warm" in warm["presets"]
+
