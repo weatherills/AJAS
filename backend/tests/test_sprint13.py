@@ -381,3 +381,14 @@ def test_jd_cleaner_v3_boilerplate_classifier_using_heuristics_ml():
     assert noisy["boilerplate"] is True
     assert clean["boilerplate"] is False
 
+# === S13-34 ===
+
+def test_location_geocoding_v2_suburb_metro_rollups_and_radius():
+    from app.sprint13.parse import metro_rollup
+
+    sea = metro_rollup("Seattle", "WA")
+    assert sea["metro"] == "seattle-tacoma"
+    assert sea["radiusKm"] == 40
+    other = metro_rollup("Berlin", "", "DE")
+    assert other["radiusKm"] == 15
+

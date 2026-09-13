@@ -47,3 +47,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 031 Resume parser v3: gap detection and annotation
 - [x] 032 Resume parser v3: achievements metric detection (%, $, #)
 - [x] 033 JD cleaner v3: boilerplate classifier using heuristics+ML
+- [x] 034 Location geocoding v2: suburb/metro rollups and radius
