@@ -362,6 +362,30 @@ def test_job_change_freshness_company_insights_and_spam():
     safety_mod.set_blocklist("t1", companies=["evilcorp"], keywords=["crypto seed"])
     assert safety_mod.blocked("t1", {"company": "EvilCorp", "title": "Eng"}) is True
 
+def test_queue_idempotency_webhooks_and_api_keys():
+    from app.dlq import enqueue as dlq_enqueue, reset as dlq_reset, retry
+    from app.idempotency_v2 import remember, reset as idem_reset
+
+    dlq_reset()
+    idem_reset()
+    dlq_enqueue({"id": "d1", "token": "secret-token", "body": "x"})
+    inspector = ops_mod.queue_inspector()
+    assert inspector["count"] == 1
+    assert inspector["items"][0]["payload"]["token"] == "[redacted]"
+    assert retry("d1")["status"] == "queued"
+    remember("k1", "aaa", {"ok": True})
+    remember("k1", "bbb", {"ok": False})
+    mon = ops_mod.idempotency_monitor()
+    assert mon["count"] == 1
+    body = "{\"ok\":true}"
+    header = security_mod.sign_webhook("s3cret", body, timestamp="1000")
+    assert security_mod.verify_webhook("s3cret", body, header, now_ts=1000) is True
+    assert security_mod.verify_webhook("s3cret", body, header, now_ts=2000) is False
+    key = platform_mod.create_api_key(user_id="ada", name="ci", scopes=["ingest", "read"])
+    assert key["secret"].startswith("ajas_live_")
+    assert platform_mod.revoke_api_key(key["id"], user_id="ada") is True
+    assert platform_mod.sdk_contract()["package"] == "@ajas/client"
+
 def test_coverage_gate_documents_80_percent_target():
     assert ops_mod.ci_plan()["coverageGate"] == 0.4
     assert ops_mod.ci_plan()["backend"]["parallel"] == "pytest -n auto"
@@ -369,7 +393,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 77
+    assert COMPLETED == 78
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
