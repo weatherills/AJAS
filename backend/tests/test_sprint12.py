@@ -9,6 +9,7 @@ from app.sprint12 import billing as billing_mod
 from app.sprint12 import platform as platform_mod
 from app.sprint12 import product as product_mod
 from app.sprint12 import ranking as ranking_mod
+from app.sprint12 import security as security_mod
 from app.sprint12 import sharing as sharing_mod
 from app.sprint12 import tenants as tenants_mod
 
@@ -19,6 +20,7 @@ def setup_function() -> None:
     billing_mod.reset()
     sharing_mod.reset()
     ranking_mod.reset()
+    security_mod.reset()
     product_mod.reset()
     platform_mod.reset()
 
@@ -162,10 +164,18 @@ def test_skill_graph_cooccurrence_synonyms():
     ranking_mod.observe_skills(["python", "django"])
     assert "django" in ranking_mod.expand_synonyms("python", min_count=2)
 
+def test_html_sanitizer_strips_script_and_handlers():
+    raw = "<p onclick=\"alert(1)\">Hi</p><script>alert(2)</script><a href=\"javascript:alert(3)\">x</a>"
+    clean = security_mod.sanitize_html(raw)
+    assert "script" not in clean.lower()
+    assert "onclick" not in clean.lower()
+    assert "javascript:" not in clean.lower()
+    assert "&lt;" in security_mod.escape_text("<b>")
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 20
+    assert COMPLETED == 21
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")

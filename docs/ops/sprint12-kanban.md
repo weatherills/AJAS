@@ -28,3 +28,4 @@ Landed on `main` as `[S12]` commits.
 
 ## Batch 2 gate
 - tests/lint/typecheck green after task 20
+- [x] 021 Hardening: HTML sanitizer and unsafe content guardrails
