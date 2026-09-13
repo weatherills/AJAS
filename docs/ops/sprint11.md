@@ -38,3 +38,15 @@ Batch gates: [sprint11-batches.md](./sprint11-batches.md).
 - Taxonomy: community synonym import + deprecation aliases (`angularjs` → `javascript`).
 - Apply: multi-step form machine (CAPTCHA → `needs_manual`), upload retrier,
   role-family cover templates, parameterized resume highlights.
+
+## Email and follow-up
+
+- OAuth refresh: `app.mail.oauth_hardening.refresh_access_token`.
+- Interview times: `app.mail.interview_time` (IANA via location).
+- Quoted/signature strip: `app.mail.strip_quotes`.
+- Snooze: `app.mail.snooze` (weekday 09:00–17:00 UTC).
+
+## Operator UI
+
+- Match Why modal Copy, side-by-side compare, saved-search alerts,
+  row quick actions, j/k/a/d/s/c/? triage keys, inbox grouping by job.
