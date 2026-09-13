@@ -491,3 +491,11 @@ def test_notification_center_in_app_toasts_digest_email():
     assert digest["count"] == 1
     assert digest["channel"] == "email"
 
+# === S14-51 ===
+
+def test_audit_trail_ui_filter_export_csv():
+    from app.sprint14.product import audit_csv
+
+    bundle = audit_csv([{"id": "1", "action": "apply"}])
+    assert "apply" in bundle["csv"]
+

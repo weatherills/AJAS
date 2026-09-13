@@ -72,3 +72,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 ## Batch 5 gate
 - tests/lint/typecheck green after task 50
 
+- [x] 051 Audit trail UI: filter/export CSV
