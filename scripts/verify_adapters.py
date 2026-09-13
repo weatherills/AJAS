@@ -18,6 +18,7 @@ from app.job_sources.boards import (  # noqa: E402
     wellfound_jobs,
     workday_jobs,
 )
+from app.job_sources.hired import hired_jobs  # noqa: E402
 from app.job_sources.ziprecruiter import ziprecruiter_jobs  # noqa: E402
 from app.job_sources.circuit import snapshot as circuit_snapshot  # noqa: E402
 from app.flags import feature_flags  # noqa: E402
@@ -29,6 +30,7 @@ ADAPTERS = {
     "linkedin": linkedin_jobs,
     "workday": workday_jobs,
     "ziprecruiter": ziprecruiter_jobs,
+    "hired": hired_jobs,
 }
 
 
