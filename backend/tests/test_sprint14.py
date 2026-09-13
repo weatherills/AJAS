@@ -400,3 +400,12 @@ def test_job_detail_jd_version_diff_view():
     diff = jd_diff("Need Java", "Need Python")
     assert diff["changed"] is True
 
+# === S14-42 ===
+
+def test_bulk_actions_bulk_dismiss_undo_snackbar():
+    from app.sprint14.product import bulk_dismiss
+
+    snap = bulk_dismiss(["a", "b", "c"], ["b"])
+    assert snap["remaining"] == ["a", "c"]
+    assert snap["undo"] == ["b"]
+

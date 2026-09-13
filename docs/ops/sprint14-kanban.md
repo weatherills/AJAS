@@ -59,3 +59,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 40
 
 - [x] 041 Job detail: JD version diff view
+- [x] 042 Bulk actions: bulk-dismiss + undo snackbar
