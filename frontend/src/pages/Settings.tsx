@@ -30,6 +30,8 @@ import {
 import { loadApplyPrefs, saveApplyPrefs, type ApplyPrefs } from '../lib/applyPrefs'
 import { formatAllowlist, parseAllowlist } from '../lib/allowlist'
 import { currentLocale, setLocale, t, type Locale } from '../lib/i18n'
+import { flagRows, mergeFlags } from '../lib/flags'
+import { evaluateLimit, type SiteLimit } from '../lib/automationLimits'
 import {
   addBoardToast,
   boardAddPayload,
@@ -112,6 +114,11 @@ function ApplyPrefsFields() {
 export function SettingsPage() {
   const [userId, setUser] = useState(getUserId())
   const [locale, setLocaleState] = useState<Locale>(() => currentLocale())
+  const [flagOverrides, setFlagOverrides] = useState<Record<string, boolean>>({})
+  const [siteLimits, setSiteLimits] = useState<SiteLimit[]>([
+    { site: 'greenhouse', cap: 20, consent: false, used: 0 },
+    { site: 'lever', cap: 20, consent: false, used: 0 },
+  ])
   const [allowlistText, setAllowlistText] = useState('boards.greenhouse.io, jobs.lever.co, graph.microsoft.com')
   const [doc, setDoc] = useState<SettingsDoc | null>(null)
   const [percent, setPercent] = useState(70)
@@ -681,6 +688,69 @@ export function SettingsPage() {
           />
         </label>
         <p className="muted">Normalized: {formatAllowlist(parseAllowlist(allowlistText))}</p>
+      </section>
+
+      <section className="editor-section" aria-labelledby="flags-heading">
+        <h2 id="flags-heading">Feature flags</h2>
+        <p className="muted">Adapter and automation flags. Optional boards stay off unless an operator enables the matching env var. Toggles here are a preview of FLAG_* defaults.</p>
+        <ul>
+          {flagRows(mergeFlags(flagOverrides)).map((row) => (
+            <li key={row.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={row.on}
+                  disabled={row.id === 'respect_robots' || row.id === 'greenhouse' || row.id === 'lever'}
+                  onChange={(event) => setFlagOverrides((prev) => ({ ...prev, [row.id]: event.target.checked }))}
+                />{' '}
+                {row.id}
+              </label>
+            </li>
+          ))}
+        </ul>
+        <p className="muted">Greenhouse/Lever production adapters stay on. Robots stays on.</p>
+      </section>
+
+      <section className="editor-section" aria-labelledby="automation-limits-heading">
+        <h2 id="automation-limits-heading">Automation limits</h2>
+        <p className="muted">Per-site daily caps and explicit consent before Auto-Apply may submit.</p>
+        {siteLimits.map((row, index) => {
+          const gate = evaluateLimit(row)
+          return (
+            <div key={row.site} className="source-board-row">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={row.consent}
+                  onChange={(event) => {
+                    const next = [...siteLimits]
+                    next[index] = { ...row, consent: event.target.checked }
+                    setSiteLimits(next)
+                  }}
+                />{' '}
+                Consent {row.site}
+              </label>
+              <label>
+                Daily cap
+                <input
+                  type="number"
+                  min={1}
+                  value={row.cap}
+                  aria-label={`${row.site} daily cap`}
+                  onChange={(event) => {
+                    const next = [...siteLimits]
+                    next[index] = { ...row, cap: Number(event.target.value) || 0 }
+                    setSiteLimits(next)
+                  }}
+                />
+              </label>
+              <p className="muted">{gate.allowed ? 'Ready' : `Blocked: ${gate.reason}`}</p>
+            </div>
+          )
+        })}
+      </section>
+
+      <section className="editor-section" aria-labelledby="allowlist-heading-lang">
         <label>
           {t('language')}
           <select

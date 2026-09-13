@@ -3,6 +3,8 @@ import { AppNav } from '../components/AppNav'
 import { chartBars } from '../lib/metrics'
 import { digestCopy, notificationInbox, pushNotification, type AppNotification } from '../lib/notifications'
 import { json, request, setUserId } from '../api/live'
+import { auditCsv, filterAudit, type AuditRow } from '../lib/audit'
+import { dashboardPreview } from '../lib/sourceQuotas'
 
 type Slo = { route: string; budgetMs: number; p95Ms: number | null; samples: number; ok: boolean }
 type Trace = { traceId: string; name: string; elapsedMs: number; ok: boolean }
@@ -145,6 +147,18 @@ export function OpsPage() {
             </div>
           ))}
         </div>
+      </section>
+      <section className="editor-section">
+        <h2>Source quotas</h2>
+        <p className="muted">Usage, errors, and daily caps per adapter.</p>
+        <ul>
+          {dashboardPreview().map((row) => (
+            <li key={row.source}>
+              {row.source} — fetched {row.fetched}, errors {row.errors}
+              {row.capHit ? ' (cap hit)' : ''}
+            </li>
+          ))}
+        </ul>
       </section>
       <section className="editor-section ops-slo">
         <h2>SLOs</h2>
