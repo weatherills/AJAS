@@ -297,9 +297,19 @@ export function mergeJobs(items: JobCard[]): JobCard[] {
   return [...byKey.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
 }
 
+export function normalizedJobHaystack(job: Pick<JobCard, 'title' | 'company' | 'location' | 'employmentType' | 'snippet'> & {
+  workplace?: string
+  seniority?: string
+}): string {
+  return [job.title, job.company, job.location, job.employmentType, job.snippet, job.workplace, job.seniority]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+}
+
 export function matchesQuery(job: JobCard, query: JobListQuery): boolean {
   if (!job.sources.some((item) => query.sources.includes(item.source))) return false
-  const haystack = `${job.title} ${job.location} ${job.company}`.toLowerCase()
+  const haystack = normalizedJobHaystack(job)
   if (query.q && !haystack.includes(query.q.trim().toLowerCase())) return false
   if (query.location && !job.location.toLowerCase().includes(query.location.trim().toLowerCase())) return false
   if (query.status === 'new' && !job.isNew) return false
@@ -319,7 +329,7 @@ export function matchesExtraFilters(
   }
   if (filters.seniority && (job.seniority || '').toLowerCase() !== filters.seniority.toLowerCase()) return false
   if (filters.keywords) {
-    const hay = `${job.title} ${job.company} ${job.location} ${job.snippet}`.toLowerCase()
+    const hay = normalizedJobHaystack(job)
     const terms = filters.keywords
       .toLowerCase()
       .split(/[,\s]+/)

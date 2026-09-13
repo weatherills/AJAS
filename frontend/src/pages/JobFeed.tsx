@@ -701,8 +701,8 @@ export function JobFeedPage() {
             <input
               value={filters.q}
               onChange={(event) => setFilters((prev) => ({ ...prev, q: event.target.value }))}
-              placeholder="Title, company, or location"
-              aria-label="Search jobs"
+              placeholder="Title, company, location, or JD keywords"
+              aria-label="Search jobs across title, company, location, and description"
             />
           </label>
           <label>

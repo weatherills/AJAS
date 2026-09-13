@@ -83,6 +83,13 @@ describe('job feed helpers', () => {
     expect(matchesQuery(job, { sources: ['lever'], q: '', location: '', status: 'all', cursor: null, limit: 25 })).toBe(false)
     expect(matchesQuery(job, { sources: ['greenhouse'], q: '', location: '', status: 'all', cursor: null, limit: 25 })).toBe(true)
     expect(matchesQuery(job, { sources: [], q: '', location: '', status: 'all', cursor: null, limit: 25 })).toBe(false)
+    const described = { ...job, snippet: 'Own the matching ranker', seniority: 'staff', workplace: 'remote' }
+    expect(matchesQuery(described, { sources: ['greenhouse'], q: 'ranker', location: '', status: 'all', cursor: null, limit: 25 })).toBe(
+      true,
+    )
+    expect(matchesQuery(described, { sources: ['greenhouse'], q: 'staff', location: '', status: 'all', cursor: null, limit: 25 })).toBe(
+      true,
+    )
   })
 
   it('filters by salary, seniority, and keywords', () => {
