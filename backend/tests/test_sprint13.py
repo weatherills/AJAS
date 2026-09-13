@@ -468,3 +468,14 @@ def test_ingestion_adapters_v3_glassdoor_block_detection_and_cool_down():
     assert cool["allow"] is False
     assert circuit_allow("glassdoor") is True
 
+# === S13-42 ===
+
+def test_ingestion_adapters_v3_indeed_html_json_dual_path_parser():
+    from app.sprint13.ingest import indeed_dual, reset
+
+    reset()
+    parsed = indeed_dual(payload={"jobs": [{"id": "1", "title": "Staff"}]}, html="<div>job posting</div>")
+    assert "json" in parsed["paths"]
+    assert "html" in parsed["paths"]
+    assert len(parsed["jobs"]) == 2
+

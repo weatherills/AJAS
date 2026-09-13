@@ -59,3 +59,4 @@ Landed on `main` as `[S13]` commits.
 - tests/lint/typecheck green after task 40
 
 - [x] 041 Ingestion adapters v3: Glassdoor block detection and cool-down
+- [x] 042 Ingestion adapters v3: Indeed HTML/JSON dual-path parser
