@@ -66,10 +66,29 @@ def test_billing_usage_counters_and_plans():
     assert billing_mod.feature_allowed(tenant.id, "share_links") is True
     assert billing_mod.feature_allowed(tenant.id, "sso") is False
 
+def test_stripe_checkout_and_invoice_webhook():
+    tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
+    session = billing_mod.stripe_checkout(tenant.id, "team")
+    assert session["url"].startswith("https://checkout.stripe.test/")
+    billing_mod.handle_stripe_webhook(
+        {
+            "type": "checkout.session.completed",
+            "data": {"object": {"client_reference_id": tenant.id, "plan": "team", "status": "complete"}},
+        }
+    )
+    billing_mod.handle_stripe_webhook(
+        {
+            "type": "invoice.paid",
+            "data": {"object": {"id": "in_1", "tenantId": tenant.id, "amount_paid": 9900, "status": "paid"}},
+        }
+    )
+    assert billing_mod.plan_of(tenant.id) == "team"
+    assert billing_mod.invoices_for(tenant.id)[0]["status"] == "paid"
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 6
+    assert COMPLETED == 7
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
