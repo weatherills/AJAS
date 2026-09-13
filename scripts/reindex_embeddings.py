@@ -13,16 +13,24 @@ from app.matching.embedder import default_embedder  # noqa: E402
 from app.matching.runtime import try_get_service  # noqa: E402
 
 
-def main() -> None:
+def orchestrate(*, batch_size: int = 25) -> dict:
     embedder = default_embedder()
     service = try_get_service()
     count = 0
+    batches = 0
     if service is not None:
-        for run in service.store.list_runs("local-user", include_expired=True):
-            text = f"{run.resume_hash or ''} {run.job_hash or ''}"
-            embedder.embed([text])
-            count += 1
-    print(json.dumps({"reindexed": count, "embedder": type(embedder).__name__}))
+        runs = list(service.store.list_runs("local-user", include_expired=True))
+        for i in range(0, len(runs), batch_size):
+            chunk = runs[i : i + batch_size]
+            texts = [f"{run.resume_hash or ''} {run.job_hash or ''}" for run in chunk]
+            embedder.embed(texts)
+            count += len(chunk)
+            batches += 1
+    return {"reindexed": count, "batches": batches, "embedder": type(embedder).__name__, "orchestrated": True}
+
+
+def main() -> None:
+    print(json.dumps(orchestrate()))
 
 
 if __name__ == "__main__":
