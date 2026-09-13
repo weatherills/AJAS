@@ -93,3 +93,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 065 CLI: verify adapters + dry-run single source
 - [x] 066 E2E: ingestion→ranking→explain regressions
 - [x] 067 E2E: email parser templates coverage
+- [x] 068 Unit tests: salary/geo/negation edge cases v2

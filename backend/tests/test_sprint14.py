@@ -646,3 +646,12 @@ def test_e2e_email_parser_templates_coverage():
     row = e2e_email_templates()
     assert "interview" in row["templates"]
 
+# === S14-68 ===
+
+def test_unit_tests_salary_geo_negation_edge_cases_v2():
+    from app.sprint14.parse import geo_cache, salary_bands, skills_negation
+
+    assert geo_cache("Austin", "TX")["found"] is True
+    assert salary_bands("$90k-$110k")["min"]
+    assert skills_negation("No PHP required, need python")["chunks"]
+
