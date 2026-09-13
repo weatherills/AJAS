@@ -413,6 +413,24 @@ def test_help_changelog_etl_funnel_analytics_legal():
     pentest = platform_mod.file_pentest(title="XSS in JD html", severity="medium")
     assert pentest["status"] == "triage"
 
+def test_iac_env_rollback_release_cli_storage_scan_deliverability():
+    assert "functionApp" in platform_mod.iac_baseline()["resources"]
+    assert platform_mod.env_config("prod")["AUTH_MODE"] == "aad"
+    assert "Redeploy" in platform_mod.rollback_steps()[0]
+    assert "pytest" in platform_mod.release_checklist()[0]
+    assert "ingest" in platform_mod.cli_commands()
+    assert platform_mod.within_budget({"lcpMs": 1800, "inpMs": 80, "cls": 0.05}) is True
+    assert platform_mod.quota_put("resumes/ada.pdf", 100)["allowed"] is True
+    assert platform_mod.quota_put("resumes/ada.pdf", 11 * 1024 * 1024)["allowed"] is False
+    scan = platform_mod.scan_upload(EICAR_SIGNATURE, file_name="note.txt", content_type="text/plain")
+    assert scan["clean"] is False
+    mime = platform_mod.scan_upload(b"ok", file_name="note.exe", content_type="application/octet-stream")
+    assert mime["clean"] is False
+    dmarc = mail_mod.deliverability("ajas.example")
+    assert "DMARC" in dmarc["dmarc"]
+    mail_mod.bounce("bad@example.test", code="550", permanent=True)
+    assert mail_mod.suppressed("bad@example.test") is True
+
 def test_http_tenants_billing_and_security_headers():
     import json
 
@@ -445,7 +463,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 97
+    assert COMPLETED == 98
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")

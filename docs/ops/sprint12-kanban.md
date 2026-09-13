@@ -126,3 +126,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 095 Cookie banner with granular controls
 - [x] 096 Security headers and CSP tightening
 - [x] 097 Pen-test fixes backlog creation and triage
+- [x] 098 Infra as code: baseline templates and review
