@@ -51,3 +51,18 @@ def test_wellfound_requires_token_and_flag(monkeypatch):
     clear_token()
     monkeypatch.setenv("FLAG_WELLFOUND_ADAPTER", "false")
     get_settings.cache_clear()
+
+
+def test_rotating_user_agents_and_retry_jitter():
+    from app.job_sources.http_policy import jittered_backoff, rotate_user_agent
+
+    assert rotate_user_agent(index=0) == "AJASJobIngest/1.0"
+    assert rotate_user_agent(seed="glassdoor") in {
+        "AJASJobIngest/1.0",
+        "AJASJobIngest/1.0 (+https://ajas.local/ops)",
+        "AJASJobIngest/1.1",
+    }
+    delay = jittered_backoff(1, jitter=0.0)
+    assert delay == 0.5
+    noisy = jittered_backoff(2, jitter=0.3)
+    assert 0 <= noisy <= 8.0

@@ -7,7 +7,9 @@ from urllib.robotparser import RobotFileParser
 
 from app.flags import feature_enabled
 
-USER_AGENT = "AJASJobIngest/1.0"
+from app.job_sources.http_policy import USER_AGENTS, rotate_user_agent
+
+USER_AGENT = USER_AGENTS[0]
 
 
 def robots_url(target: str) -> str:
@@ -32,6 +34,6 @@ def can_fetch(target: str, *, parser: RobotFileParser | None = None, respect: bo
         if parser is None:
             robots.set_url(robots_url(target))
             robots.read()
-        return bool(robots.can_fetch(USER_AGENT, target))
+        return bool(robots.can_fetch(rotate_user_agent(seed=target), target))
     except Exception:
         return False
