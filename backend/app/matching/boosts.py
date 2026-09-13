@@ -10,6 +10,7 @@ from app.matching.taxonomy import expand_terms
 
 _REQUIRED_HEAD = re.compile(r"^(required|must have|must-have|requirements)\b", re.I)
 _NICE_HEAD = re.compile(r"^(nice to have|nice-to-have|preferred|plus)\b", re.I)
+_BULLET = re.compile(r"^(?:[-*•]|\d+[.)])\s+")
 _REMOTE = re.compile(r"\b(remote|work from home|wfh|distributed)\b", re.I)
 _HYBRID = re.compile(r"\bhybrid\b", re.I)
 _ONSITE = re.compile(r"\b(on[-\s]?site|in[-\s]?office)\b", re.I)
@@ -80,11 +81,22 @@ def seniority_level(text: str) -> int | None:
     return best
 
 
+def _looks_like_skill_item(line: str) -> bool:
+    """True for bullets or short skill phrases; false for JD body sentences."""
+    if _BULLET.match(line):
+        return True
+    if line.endswith(".") or len(line) >= 60:
+        return False
+    words = re.findall(r"[A-Za-z][A-Za-z0-9+.#/-]*", line)
+    return 1 <= len(words) <= 8
+
+
 def _split_skill_lists(job_text: str) -> tuple[list[str], list[str]]:
     fields = parse_job_fields(job_text)
     required: list[str] = []
     nice: list[str] = []
-    current = "required"
+    current: str | None = None
+    allow_plain = False
     for raw in (job_text or "").splitlines():
         line = raw.strip()
         if not line:
@@ -94,17 +106,25 @@ def _split_skill_lists(job_text: str) -> tuple[list[str], list[str]]:
             rest = line.split(":", 1)[1] if ":" in line else ""
             if rest.strip():
                 nice.extend(tokenize(rest))
+                allow_plain = False
+            else:
+                allow_plain = True
             continue
         if _REQUIRED_HEAD.match(line):
             current = "required"
             rest = line.split(":", 1)[1] if ":" in line else ""
             if rest.strip():
                 required.extend(tokenize(rest))
+                allow_plain = False
+            else:
+                allow_plain = True
             continue
-        if current == "nice":
-            nice.extend(tokenize(line))
-        elif current == "required" and required:
-            required.extend(tokenize(line))
+        if current in {"required", "nice"}:
+            if _BULLET.match(line) or (allow_plain and _looks_like_skill_item(line)):
+                target = required if current == "required" else nice
+                target.extend(tokenize(line))
+            else:
+                current = None
     if not required:
         nice = tokenize(fields.get("skills") or "") + nice
     # de-dupe preserving order

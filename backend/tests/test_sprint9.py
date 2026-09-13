@@ -98,6 +98,27 @@ def test_must_have_gating_caps_score():
     gate = skill_gate("python baker", "Required: rust golang\nNice to have: python")
     assert gate.missing_required
     assert apply_gate(88, gate) <= 54
+    # Body paragraphs after Required: are not extra must-haves.
+    prose = skill_gate(
+        "Staff python azure kubernetes",
+        "Required: python kubernetes azure\nBuild ingestion pipelines in python on azure kubernetes.",
+    )
+    assert prose.required == ["python", "kubernet", "azure"]
+    assert prose.coverage == 1.0
+    live = skill_gate(
+        RESUME,
+        "Title: Staff Platform Engineer\nRequired: python kubernetes azure\n"
+        "Build python matching on azure kubernetes.\nVisa sponsorship available.\n"
+        "Compensation $180,000 to $210,000.",
+    )
+    assert live.required == ["python", "kubernet", "azure"]
+    assert live.coverage == 1.0
+    bullets = skill_gate(
+        "python kubernetes terraform",
+        "Required:\n- Python\n- Kubernetes\n- Terraform\nWe also value communication.",
+    )
+    assert bullets.required == ["python", "kubernet", "terraform"]
+    assert bullets.coverage == 1.0
 
 
 def test_rule_boosts_location_seniority_visa():
