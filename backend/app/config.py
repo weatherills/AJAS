@@ -118,6 +118,8 @@ class Settings(BaseSettings):
     flag_linkedin_adapter: bool = False
     flag_glassdoor_adapter: bool = False
     flag_wellfound_adapter: bool = False
+    flag_workday_adapter: bool = False
+    flag_ziprecruiter_adapter: bool = False
     wellfound_api_token: str = ""
     flag_imap_transport: bool = False
     flag_bulk_auto_apply: bool = False

@@ -680,3 +680,21 @@ def test_batch_db_writes_for_ingestion_and_logs():
     assert result["batches"] == 3
     assert result["written"] == 12
     assert seen == [5, 5, 2]
+
+
+def test_workday_adapter_v1_fixture_only(monkeypatch):
+    from app.job_sources.boards import workday_jobs
+
+    payload = json.loads((FIXTURES / "job_boards" / "workday.json").read_text())
+    monkeypatch.setenv("FLAG_WORKDAY_ADAPTER", "false")
+    get_settings.cache_clear()
+    assert workday_jobs(payload, listing_url="https://fixtures.ajas.local/workday") == []
+    monkeypatch.setenv("FLAG_WORKDAY_ADAPTER", "true")
+    monkeypatch.setenv("FLAG_SITE_POLICY_CONSENT", "true")
+    get_settings.cache_clear()
+    from app.job_sources import boards as boards_mod
+
+    monkeypatch.setattr(boards_mod, "can_fetch", lambda target, parser=None, respect=None: True)
+    rows = workday_jobs(payload, listing_url="https://fixtures.ajas.local/workday")
+    assert rows[0]["source_posting_id"] == "wd-1"
+    assert rows[0]["title"] == "Staff Data Engineer"

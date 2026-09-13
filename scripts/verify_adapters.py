@@ -11,7 +11,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from app.job_sources.boards import glassdoor_jobs, indeed_jobs, linkedin_jobs, wellfound_jobs  # noqa: E402
+from app.job_sources.boards import (  # noqa: E402
+    glassdoor_jobs,
+    indeed_jobs,
+    linkedin_jobs,
+    wellfound_jobs,
+    workday_jobs,
+    ziprecruiter_jobs,
+)
 from app.job_sources.circuit import snapshot as circuit_snapshot  # noqa: E402
 from app.flags import feature_flags  # noqa: E402
 
@@ -20,6 +27,8 @@ ADAPTERS = {
     "wellfound": wellfound_jobs,
     "indeed": indeed_jobs,
     "linkedin": linkedin_jobs,
+    "workday": workday_jobs,
+    "ziprecruiter": ziprecruiter_jobs,
 }
 
 

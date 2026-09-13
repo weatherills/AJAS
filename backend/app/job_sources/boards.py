@@ -20,6 +20,8 @@ SOURCE_FLAGS = {
     "linkedin": "linkedin_adapter",
     "glassdoor": "glassdoor_adapter",
     "wellfound": "wellfound_adapter",
+    "workday": "workday_adapter",
+    "ziprecruiter": "ziprecruiter_adapter",
 }
 
 
@@ -103,3 +105,13 @@ def wellfound_jobs(payload: Any, *, listing_url: str | None = None) -> list[dict
     if not require_auth():
         return []
     return load_fixture_jobs("wellfound", payload, listing_url=listing_url)
+
+
+def workday_jobs(payload: Any, *, listing_url: str | None = None) -> list[dict[str, Any]]:
+    """Fixture-only. Live Workday HTML scraping is out of the Job Source PRD."""
+    return load_fixture_jobs("workday", payload, listing_url=listing_url)
+
+
+def ziprecruiter_jobs(payload: Any, *, listing_url: str | None = None) -> list[dict[str, Any]]:
+    """Fixture-only. Live ZipRecruiter scraping is out of the Job Source PRD."""
+    return load_fixture_jobs("ziprecruiter", payload, listing_url=listing_url)

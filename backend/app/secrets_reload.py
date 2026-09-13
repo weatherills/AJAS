@@ -29,4 +29,6 @@ def reload_adapters() -> dict[str, object]:
         "version": _VERSION,
         "glassdoor": bool(settings.flag_glassdoor_adapter),
         "wellfound": bool(settings.flag_wellfound_adapter),
+        "workday": bool(settings.flag_workday_adapter),
+        "ziprecruiter": bool(settings.flag_ziprecruiter_adapter),
     }

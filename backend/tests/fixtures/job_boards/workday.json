@@ -1,0 +1,18 @@
+{
+  "pages": [
+    {
+      "page": 1,
+      "jobs": [
+        {
+          "id": "wd-1",
+          "title": "Staff Data Engineer",
+          "company": "Northwind",
+          "location": "Seattle, WA",
+          "employment_type": "Full-time",
+          "description": "Required: python spark azure. Compensation $175,000-$205,000.",
+          "apply_url": "https://fixtures.ajas.local/workday/wd-1"
+        }
+      ]
+    }
+  ]
+}
