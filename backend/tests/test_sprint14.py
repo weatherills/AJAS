@@ -375,3 +375,11 @@ def test_filters_saved_presets_per_user():
     assert list_presets("ada")[0]["name"] == "python"
     assert list_presets("bob") == []
 
+# === S14-39 ===
+
+def test_search_keyword_across_normalized_jd_fields():
+    from app.sprint14.product import search_jd
+
+    found = search_jd([{"id": "1", "title": "Staff Python", "body": "azure"}], "python")
+    assert found["count"] == 1
+

@@ -52,3 +52,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 036 Explanations: highlight missing must-have skills
 - [x] 037 Fit score: per-dimension sub-scores UI
 - [x] 038 Filters: saved presets per user
+- [x] 039 Search: keyword across normalized JD fields
