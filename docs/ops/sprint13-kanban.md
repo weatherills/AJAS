@@ -72,3 +72,4 @@ Landed on `main` as `[S13]` commits.
 ## Batch 5 gate
 - tests/lint/typecheck green after task 50
 
+- [x] 051 Retry/backoff v2: jitter strategy per queue

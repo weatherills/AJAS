@@ -578,3 +578,15 @@ def test_quotas_v2_per_tenant_source_daily_and_burst_caps():
     assert daily["dailyHit"] is True
     assert daily["allowed"] is False
 
+# === S13-51 ===
+
+def test_retry_backoff_v2_jitter_strategy_per_queue():
+    from random import Random
+
+    from app.sprint13.ops import jitter_backoff
+
+    first = jitter_backoff(1, rng=Random(1))
+    later = jitter_backoff(5, rng=Random(1))
+    assert later >= first
+    assert later <= 8.0
+
