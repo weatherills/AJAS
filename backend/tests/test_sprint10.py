@@ -415,3 +415,15 @@ def test_metrics_dashboard_snapshot_series():
     names = [row["name"] for row in body["series"]]
     assert "Ingestion" in names
     assert body["counters"]["ingest.jobs"] == 3
+
+
+def test_adaptive_alert_thresholds_dampen_noise():
+    from app.alerts import observe
+
+    baseline = None
+    for _ in range(8):
+        baseline = observe("ingest.failures", 2)
+    spike = observe("ingest.failures", 40)
+    assert baseline and baseline["alert"] is False
+    assert spike["alert"] is True
+    assert spike["threshold"] > baseline["mean"]
