@@ -709,3 +709,12 @@ def test_health_endpoints_v2_dependency_matrix_version():
     assert row["version"] == "sprint14"
     assert "workers" in row["dependencyMatrix"]
 
+# === S14-75 ===
+
+def test_performance_cache_hot_queries_with_ttl():
+    from app.query_cache import reset as reset_cache
+    from app.sprint14.ops import cache_hot
+
+    reset_cache()
+    assert cache_hot("jobs:ada", [1, 2]) == [1, 2]
+
