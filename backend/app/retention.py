@@ -10,9 +10,30 @@ from app.flags import feature_enabled
 from app.job_sources.keys import parse_ts
 from app.mail.pii import redact_pii
 
+DAYS = {
+    "jobs": 365,
+    "emails": 180,
+    "logs": 30,
+    "matches": 365,
+    "resumes": 730,
+    "consent": 730,
+}
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def retention_days(artifact: str) -> int:
+    return DAYS.get(artifact, 365)
+
+
+def policy() -> dict[str, Any]:
+    return {"schema": "ajas.retention.v1", "days": dict(DAYS)}
+
+
+def expired(artifact: str, created_at: str, *, now: datetime | None = None) -> bool:
+    return is_stale(created_at, days=retention_days(artifact), now=now)
 
 
 def is_stale(stamp: str | None, *, days: int, now: datetime | None = None) -> bool:
@@ -55,6 +76,7 @@ def plan_purge(
         "emailIds": [mail_id for mail_id in stale_mail if mail_id],
         "jobRetentionDays": job_keep,
         "mailRetentionDays": mail_keep,
+        "policy": policy(),
     }
 
 
