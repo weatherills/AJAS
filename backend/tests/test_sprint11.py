@@ -241,3 +241,11 @@ def test_skills_gap_penalty_curve_calibration():
     adjusted = apply_gap_penalty(80.0, "python azure", job)
     assert adjusted["missing"] >= 1
     assert adjusted["score"] < 80.0
+
+def test_preferred_tech_stack_boost_from_prds():
+    from app.matching.stack_boost import PRD_STACK, stack_boost
+
+    result = stack_boost("python typescript react azure", "python azure react services")
+    assert "python" in result["hits"]
+    assert result["boost"] > 0
+    assert "python" in PRD_STACK
