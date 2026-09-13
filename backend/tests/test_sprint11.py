@@ -291,3 +291,9 @@ def test_explanations_counterfactual_resume_suggestions():
     assert result["add"]
     assert any("kubernetes" in item or "rust" in item for item in result["suggestions"])
     assert result["lift_if_all_added"] > 0
+
+def test_explanations_skill_mismatch_counts():
+    from app.matching.mismatch_counts import mismatch_counts
+    result = mismatch_counts("python azure", "python python rust")
+    terms = [row["term"] for row in result["missing"]]
+    assert "rust" in terms
