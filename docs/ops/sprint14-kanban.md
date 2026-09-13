@@ -22,3 +22,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 014 Source adapter: centralized backoff + jitter policy
 - [x] 015 Source adapter: HTTP fingerprint randomization
 - [x] 016 Normalization: contract types (FT/PT/Contract/Intern)
+- [x] 017 Normalization: benefits parsing (visa, relocation, equity)

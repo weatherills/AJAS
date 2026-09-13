@@ -182,3 +182,13 @@ def test_normalization_contract_types():
     assert contract_type("Internship") == "intern"
     assert contract_type("Contract") == "contract"
 
+# === S14-17 ===
+
+def test_normalization_benefits_parsing():
+    from app.sprint14.parse import benefits_v2
+
+    row = benefits_v2("Visa sponsorship, relocation, and equity RSUs. Health insurance.")
+    assert row["visa"] is True
+    assert row["relocation"] is True
+    assert "health_insurance" in row["benefits"] or row["equity"]
+
