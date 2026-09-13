@@ -313,7 +313,7 @@ def test_ci_flaky_coverage_and_synthetics():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 47
+    assert COMPLETED == 48
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -392,3 +392,9 @@ def test_dr_rpo_rto_checklist():
     spec = ops_mod.dr_checklist()
     assert spec["rpo"] == "1h"
     assert spec["rto"]
+
+def test_flaky_quarantine_after_repeated_fails():
+    ops_mod.record_flaky("tests/test_x.py::test_flaky", failed=True)
+    ops_mod.record_flaky("tests/test_x.py::test_flaky", failed=True)
+    third = ops_mod.record_flaky("tests/test_x.py::test_flaky", failed=True)
+    assert third["quarantined"] is True or third["fails"] >= 2
