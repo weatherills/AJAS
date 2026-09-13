@@ -24,3 +24,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 017 Ranking v3: feature store and offline training harness
 - [x] 018 AB testing framework: config, randomization, metrics hook
 - [x] 019 AB test: explanation style variants (bullet vs narrative)
+- [x] 020 Skill graph: co-occurrence mining to expand synonyms

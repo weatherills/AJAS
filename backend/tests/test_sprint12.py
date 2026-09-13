@@ -157,10 +157,15 @@ def test_ab_framework_and_explanation_styles():
     assert bullets.startswith("• ")
     assert "and Azure" in narrative
 
+def test_skill_graph_cooccurrence_synonyms():
+    ranking_mod.observe_skills(["python", "django", "flask"])
+    ranking_mod.observe_skills(["python", "django"])
+    assert "django" in ranking_mod.expand_synonyms("python", min_count=2)
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 19
+    assert COMPLETED == 20
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
