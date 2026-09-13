@@ -517,3 +517,17 @@ def test_privacy_field_level_redaction_config_ui():
     assert out["title"] == "Staff"
     assert "[email]" in out["notes"]
 
+# === S13-46 ===
+
+def test_data_retention_v2_per_tenant_retention_policies():
+    from app.sprint13.security import reset, retention_policy
+
+    reset()
+    row = retention_policy("t1", days=30)
+    assert row["days"] == 30
+    try:
+        retention_policy("t1", days=3)
+        raise AssertionError("expected")
+    except ValueError:
+        pass
+
