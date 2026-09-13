@@ -1,5 +1,14 @@
 # Changelog
 
+## Sprint 12
+
+Tenancy (org/workspace + Owner/Admin/Member/Read-only), Free/Pro/Team billing
+meters with a Stripe webhook stub, expiring recruiter share links, match
+thumbs-up training, AB explanation styles, HTML sanitizer, Google SSO scaffold,
+fr/es locales, dark/light theme, cookie banner, Help/Changelog/Legal/Admin
+routes, public API keys, CSP + rate-limit headers, operator CLI, and local
+bootstrap. Optional adapters stay off. See `docs/ops/sprint12.md`.
+
 ## Sprint 9
 
 Matching now returns calibrated fit buckets, must-have skill gates, location /
