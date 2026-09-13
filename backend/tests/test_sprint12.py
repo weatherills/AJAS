@@ -195,10 +195,14 @@ def test_session_device_management():
     assert security_mod.revoke_session(session["id"], user_id="ada") is True
     assert security_mod.list_sessions("ada") == []
 
+def test_audit_trail_before_after_diffs():
+    event = security_mod.audit_diff(actor="ada", entity="settings", entity_id="s1", before={"threshold": 70}, after={"threshold": 80})
+    assert event["changes"] == [{"field": "threshold", "from": 70, "to": 80}]
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 25
+    assert COMPLETED == 26
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
