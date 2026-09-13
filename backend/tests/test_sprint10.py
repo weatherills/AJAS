@@ -341,3 +341,18 @@ def test_reply_templates_v2_placeholders_and_preview():
     full = preset("interested", {"first_name": "Ada", "role": "Staff", "company": "Acme"})
     assert "Ada" in full["preview"]
     assert full["complete"] is True
+
+
+def test_followup_sla_24_and_72_hour_reminders():
+    from datetime import datetime, timezone, timedelta
+    from app.mail.sla import followup_reminders
+
+    now = datetime(2026, 9, 13, 12, tzinfo=timezone.utc)
+    inbound = now - timedelta(hours=30)
+    mid = followup_reminders(last_inbound_at=inbound, now=now)
+    assert 24 in mid["due"]
+    assert 72 not in mid["due"]
+    late = followup_reminders(last_inbound_at=now - timedelta(hours=80), now=now)
+    assert late["due"] == [24, 72]
+    replied = followup_reminders(last_inbound_at=inbound, last_outbound_at=now - timedelta(hours=1), now=now)
+    assert replied["replied"] is True
