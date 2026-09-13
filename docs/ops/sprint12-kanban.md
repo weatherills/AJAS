@@ -25,3 +25,6 @@ Landed on `main` as `[S12]` commits.
 - [x] 018 AB testing framework: config, randomization, metrics hook
 - [x] 019 AB test: explanation style variants (bullet vs narrative)
 - [x] 020 Skill graph: co-occurrence mining to expand synonyms
+
+## Batch 2 gate
+- tests/lint/typecheck green after task 20

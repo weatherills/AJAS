@@ -201,5 +201,5 @@ def test_thumbs_down_cancels_semantic_boost():
 
 def test_explanation_style_narrative_variant():
     ranking_mod.upsert_experiment("explain.style", ["bullet", "narrative"])
-            text = ranking_mod.format_explanation("narrative", ["Python", "Azure", "Cosmos"])
+    text = ranking_mod.format_explanation("narrative", ["Python", "Azure", "Cosmos"])
     assert "Python" in text and "and Cosmos" in text
