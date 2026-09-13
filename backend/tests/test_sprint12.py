@@ -6,6 +6,7 @@ from pathlib import Path
 from app.mail.scan import EICAR_SIGNATURE
 from app.sprint12 import VERSION
 from app.sprint12 import billing as billing_mod
+from app.sprint12 import platform as platform_mod
 from app.sprint12 import tenants as tenants_mod
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -13,6 +14,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 def setup_function() -> None:
     tenants_mod.reset()
     billing_mod.reset()
+    platform_mod.reset()
 
 def test_version_is_sprint12():
     from app.features.health import _status_payload
@@ -101,10 +103,19 @@ def test_admin_tenant_usage_dashboard():
     assert dash["memberCount"] == 1
     assert dash["roles"]["owner"] == 1
 
+def test_gdpr_bundle_json_and_csv():
+    bundle = platform_mod.gdpr_bundle(
+        user_id="ada",
+        tenant_id="t1",
+        records={"jobs": [{"id": "j1"}], "emails": [], "matches": [{"id": "m1"}], "resumes": [], "logs": []},
+    )
+    assert bundle["format"] == "ajas.gdpr.v2"
+    assert "jobs,j1" in bundle["csv"]
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 10
+    assert COMPLETED == 11
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
