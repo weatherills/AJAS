@@ -803,3 +803,12 @@ def test_data_migration_scripts_for_indices_tables_v2():
     row = migrate_indices()
     assert "jobs_title" in row["indices"]
 
+# === S14-86 ===
+
+def test_data_backfill_historical_salary_fields_v2():
+    from app.sprint14.ops import salary_backfill
+
+    out = salary_backfill([{"id": "j1", "body": "$140,000-$165,000"}])
+    assert out["count"] == 1
+    assert out["items"][0]["min"]
+
