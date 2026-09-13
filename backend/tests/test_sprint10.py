@@ -540,3 +540,32 @@ def test_cli_verify_adapters_dry_run(monkeypatch):
     assert result["dryRun"] is True
     assert result["source"] == "glassdoor"
     assert result["count"] == 0
+
+
+def test_e2e_ingestion_ranking_explain_regression(monkeypatch):
+    import json
+    from pathlib import Path
+    from app.config import get_settings
+    from app.job_sources.boards import glassdoor_jobs
+    from app.job_sources.enrich import enrich_posting
+    from app.matching.fairness import dedupe_roles
+    from app.matching.spans import reason_spans
+
+    payload = json.loads((Path(__file__).parent / "fixtures" / "job_boards" / "glassdoor.json").read_text())
+    monkeypatch.setenv("FLAG_GLASSDOOR_ADAPTER", "true")
+    monkeypatch.setenv("FLAG_SITE_POLICY_CONSENT", "true")
+    get_settings.cache_clear()
+    from app.job_sources import boards as boards_mod
+
+    monkeypatch.setattr(boards_mod, "can_fetch", lambda target, parser=None, respect=None: True)
+    rows = glassdoor_jobs(payload, listing_url="https://fixtures.ajas.local/glassdoor")
+    assert rows
+    ranked = []
+    for row in rows:
+        extra = enrich_posting(title=row["title"], company=row["company"], location=row["location"], body=row["body"])
+        spans = reason_spans(job_text=extra["description"], highlights=["python"], gaps=[])
+        ranked.append({**row, **extra, "score": 70, "spans": spans})
+    kept = dedupe_roles(ranked)
+    assert kept
+    assert kept[0]["salaryMin"]
+    assert any(span["token"].lower() == "python" for span in kept[0]["spans"]["matched"])
