@@ -102,3 +102,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 077 Admin metrics: per-adapter success/error/latency charts
 - [x] 078 Queue inspector: view, retry, and DLQ operations
 - [x] 079 Idempotency monitor: detect duplicate requests
+- [x] 080 Webhooks v2: signing secret rotation and replay protection
