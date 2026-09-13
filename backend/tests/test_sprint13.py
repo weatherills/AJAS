@@ -183,3 +183,15 @@ def test_security_scan_dependency_and_sast_checks():
     assert report["critical"] == 0
     assert "backend/app" in report["scanned"]
 
+# === S13-15 ===
+
+def test_vulnerability_remediation_critical_fixes():
+    from app.sprint13.security import file_vuln, remediate_critical, reset
+
+    reset()
+    file_vuln(title="demo", severity="critical", cve="CVE-TEST")
+    file_vuln(title="noise", severity="low")
+    fixed = remediate_critical()
+    assert len(fixed) == 1
+    assert fixed[0]["status"] == "fixed"
+
