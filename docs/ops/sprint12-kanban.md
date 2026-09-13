@@ -84,3 +84,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 062 Query builder UI for complex job filters
 - [x] 063 Bulk apply v2: site-specific captchas/manual steps handling
 - [x] 064 Cover letter library: manage and favorite templates
+- [x] 065 Cover letter variables: preview and validation rules
