@@ -403,3 +403,15 @@ def test_pipeline_trace_ids_span_ingest_match_apply():
     done = [complete_stage(ingest), complete_stage(match), complete_stage(apply)]
     assert {row["traceId"] for row in done} == {trace_id}
     assert [row["name"] for row in done] == ["pipeline.ingest", "pipeline.match", "pipeline.apply"]
+
+
+def test_metrics_dashboard_snapshot_series():
+    from app.metrics import increment, reset, snapshot
+
+    reset()
+    increment("ingest.jobs", 3)
+    increment("match.compute", 2)
+    body = snapshot()
+    names = [row["name"] for row in body["series"]]
+    assert "Ingestion" in names
+    assert body["counters"]["ingest.jobs"] == 3

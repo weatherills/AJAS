@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AppNav } from '../components/AppNav'
-import { auditCsv, filterAudit, type AuditRow } from '../lib/audit'
+import { chartBars } from '../lib/metrics'
 import { digestCopy, notificationInbox, pushNotification, type AppNotification } from '../lib/notifications'
 import { json, request, setUserId } from '../api/live'
 
@@ -128,6 +128,23 @@ export function OpsPage() {
             </li>
           ))}
         </ul>
+      </section>
+      <section className="editor-section">
+        <h2>Metrics</h2>
+        <p className="muted">Grafana-style counters for ingestion, matching, and apply volume.</p>
+        <div className="metrics-chart" role="img" aria-label="Pipeline volume chart">
+          {chartBars([
+            { name: 'Ingestion', value: 12, color: '#38bdf8' },
+            { name: 'Matches', value: 9, color: '#34d399' },
+            { name: 'Applies', value: 4, color: '#fbbf24' },
+            { name: 'Errors', value: 1, color: '#f87171' },
+          ]).map((bar) => (
+            <div key={bar.name} className="metrics-col">
+              <div className="metrics-bar" style={{ height: bar.height, background: bar.color }} />
+              <span>{bar.name}</span>
+            </div>
+          ))}
+        </div>
       </section>
       <section className="editor-section ops-slo">
         <h2>SLOs</h2>
