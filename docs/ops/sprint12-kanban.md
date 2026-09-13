@@ -106,3 +106,4 @@ Landed on `main` as `[S12]` commits.
 
 ## Batch 8 gate
 - tests/lint/typecheck green after task 80
+- [x] 081 Public API keys: create/revoke and scopes UI
