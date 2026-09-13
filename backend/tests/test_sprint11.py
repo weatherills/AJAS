@@ -325,3 +325,10 @@ def test_skills_taxonomy_community_synonyms_import():
     stats = import_rows([{"canonical": "python", "alias": "cpy"}])
     assert stats["added"] >= 1
     assert canonical_skill("cpy") == "python"
+
+def test_skills_taxonomy_deprecate_outdated_terms():
+    from app.matching.taxonomy_alias import apply_deprecations, resolve
+    apply_deprecations()
+    hit = resolve("angularjs")
+    assert hit["deprecated"] is True
+    assert hit["canonical"] == "javascript"
