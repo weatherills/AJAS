@@ -542,3 +542,16 @@ def test_outbound_allowlist_v2_per_environment_gates():
     assert dev["gated"] is False
     assert "boards.greenhouse.io" in prod["hosts"]
 
+# === S13-48 ===
+
+def test_idempotency_v3_conflict_resolution_strategies():
+    from app.idempotency_v2 import remember, reset as reset_idem
+    from app.sprint13.security import resolve_conflict
+
+    reset_idem()
+    remember("apply:1", "fp-a", {"id": 1})
+    stored = resolve_conflict("apply:1", "fp-b", {"id": 2}, strategy="stored-wins")
+    assert stored["status"] == "conflict"
+    incoming = resolve_conflict("apply:1", "fp-b", {"id": 2}, strategy="incoming-wins")
+    assert incoming["status"] == "replaced"
+
