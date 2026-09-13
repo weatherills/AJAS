@@ -117,6 +117,8 @@ class Settings(BaseSettings):
     flag_indeed_adapter: bool = False
     flag_linkedin_adapter: bool = False
     flag_glassdoor_adapter: bool = False
+    flag_wellfound_adapter: bool = False
+    wellfound_api_token: str = ""
     flag_imap_transport: bool = False
     flag_bulk_auto_apply: bool = False
     flag_ltr_logging: bool = True

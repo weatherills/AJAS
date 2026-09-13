@@ -29,3 +29,25 @@ def test_glassdoor_paginates_fixtures_when_flag_on(monkeypatch):
     monkeypatch.setenv("FLAG_GLASSDOOR_ADAPTER", "false")
     get_settings.cache_clear()
     assert glassdoor_jobs(payload) == []
+
+
+def test_wellfound_requires_token_and_flag(monkeypatch):
+    from app.job_sources import boards as boards_mod
+    from app.job_sources.boards import wellfound_jobs
+    from app.job_sources.wellfound_auth import auth_status, clear_token, remember_token
+
+    payload = json.loads((FIXTURES / "job_boards" / "wellfound.json").read_text())
+    clear_token()
+    monkeypatch.setenv("FLAG_WELLFOUND_ADAPTER", "true")
+    monkeypatch.setenv("FLAG_SITE_POLICY_CONSENT", "true")
+    monkeypatch.delenv("WELLFOUND_API_TOKEN", raising=False)
+    get_settings.cache_clear()
+    monkeypatch.setattr(boards_mod, "can_fetch", lambda target, parser=None, respect=None: True)
+    assert auth_status().token_present is False
+    assert wellfound_jobs(payload, listing_url="https://fixtures.ajas.local/wellfound") == []
+    remember_token("wf-dev-token")
+    rows = wellfound_jobs(payload, listing_url="https://fixtures.ajas.local/wellfound")
+    assert rows and rows[0]["source_posting_id"] == "wf-1"
+    clear_token()
+    monkeypatch.setenv("FLAG_WELLFOUND_ADAPTER", "false")
+    get_settings.cache_clear()

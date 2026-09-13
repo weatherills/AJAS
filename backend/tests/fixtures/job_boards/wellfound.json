@@ -1,0 +1,13 @@
+{
+  "jobs": [
+    {
+      "id": "wf-1",
+      "title": "Founding Engineer",
+      "company": "Initech",
+      "location": "San Francisco, CA",
+      "employment_type": "Full-time",
+      "description": "Required: typescript react. Compensation $170,000-$200,000.",
+      "apply_url": "https://fixtures.ajas.local/wellfound/wf-1"
+    }
+  ]
+}

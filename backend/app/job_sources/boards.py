@@ -18,6 +18,7 @@ SOURCE_FLAGS = {
     "indeed": "indeed_adapter",
     "linkedin": "linkedin_adapter",
     "glassdoor": "glassdoor_adapter",
+    "wellfound": "wellfound_adapter",
 }
 
 
@@ -91,3 +92,11 @@ def linkedin_jobs(payload: Any, *, listing_url: str | None = None) -> list[dict[
 
 def glassdoor_jobs(payload: Any, *, listing_url: str | None = None) -> list[dict[str, Any]]:
     return load_fixture_jobs("glassdoor", payload, listing_url=listing_url)
+
+
+def wellfound_jobs(payload: Any, *, listing_url: str | None = None) -> list[dict[str, Any]]:
+    from app.job_sources.wellfound_auth import require_auth
+
+    if not require_auth():
+        return []
+    return load_fixture_jobs("wellfound", payload, listing_url=listing_url)
