@@ -350,3 +350,9 @@ def test_apply_upload_fallback_retrier():
     assert out["ok"] is True and out["attempts"] == 2
     blocked = upload_with_retry(lambda: {"ok": False, "captcha": True}, attempts=3)
     assert blocked["action"] == "needs_manual"
+
+def test_cover_letter_role_specific_templates():
+    from app.auto_apply.cover_roles import render_role_cover
+    letter = render_role_cover(role_family="frontend", role="FE", company="Acme", name="Ava")
+    assert letter["roleFamily"] == "frontend"
+    assert "accessible" in letter["text"].lower() or "UI" in letter["text"]
