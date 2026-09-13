@@ -296,3 +296,12 @@ def test_matching_recency_time_decay_factor_v2():
 
     assert recency_v2(months_ago=6) > recency_v2(months_ago=40)
 
+# === S14-30 ===
+
+def test_matching_dedupe_near_identical_roles_per_company_v2():
+    from app.sprint14.matching import dedupe_v2
+
+    rows = dedupe_v2([{"id": "a", "company": "Acme", "score": 1}, {"id": "b", "company": "Acme", "score": 9}])
+    assert len(rows) == 1
+    assert rows[0]["id"] == "b"
+

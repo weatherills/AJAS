@@ -39,3 +39,8 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 027 Embeddings: incremental reindex sweeper + retries
 - [x] 028 Vector store: compaction/tombstone vacuum job v2
 - [x] 029 Matching: recency/time-decay factor v2
+- [x] 030 Matching: dedupe near-identical roles per company v2
+
+## Batch 3 gate
+- tests/lint/typecheck green after task 30
+
