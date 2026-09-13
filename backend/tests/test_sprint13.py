@@ -80,3 +80,15 @@ def test_e2e_suite_v3_ingestion_matching_apply_happy_path():
     assert [step["stage"] for step in path["steps"]] == ["ingest", "match", "apply"]
     assert all(step["ok"] for step in path["steps"])
 
+# === S13-06 ===
+
+def test_e2e_suite_v3_retries_and_partial_failure_flows():
+    from app.sprint13.platform import e2e_retry_path
+
+    path = e2e_retry_path(fail_at="apply")
+    assert path["ok"] is True
+    assert path["partial"] is True
+    apply_steps = [step for step in path["steps"] if step["stage"] == "apply"]
+    assert apply_steps[0]["ok"] is False
+    assert apply_steps[1]["ok"] is True
+
