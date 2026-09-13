@@ -317,7 +317,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 49
+    assert COMPLETED == 50
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -402,3 +402,11 @@ def test_flaky_quarantine_after_repeated_fails():
     ops_mod.record_flaky("tests/test_x.py::test_flaky", failed=True)
     third = ops_mod.record_flaky("tests/test_x.py::test_flaky", failed=True)
     assert third["quarantined"] is True or third["fails"] >= 2
+
+def test_synthetic_generators_jobs_emails_resumes():
+    job = ops_mod.synthetic_job(seed="acme")
+    resume = ops_mod.synthetic_resume(seed="ada")
+    email = ops_mod.synthetic_email(kind="reject")
+    assert job["company"]
+    assert resume["skills"]
+    assert email["kind"] == "reject"
