@@ -310,3 +310,11 @@ def test_resume_profiles_with_tags():
     assert len(list_profiles("ada")) == 2
     remote = list_profiles("ada", tag="remote")
     assert [row.label for row in remote] == ["Staff backend"]
+
+
+def test_imap_labels_map_to_internal_states():
+    from app.mail.imap_labels import map_label, map_labels
+
+    assert map_label("AJAS/Interview") == "interview"
+    mapped = map_labels(["Inbox", "AJAS/Applied"])
+    assert mapped["current"] == "applied"
