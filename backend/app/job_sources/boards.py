@@ -23,6 +23,7 @@ SOURCE_FLAGS = {
     "workday": "workday_adapter",
     "ziprecruiter": "ziprecruiter_adapter",
     "hired": "hired_adapter",
+    "greenhouse_career": "greenhouse_career_adapter",
 }
 
 

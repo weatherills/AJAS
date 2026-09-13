@@ -61,3 +61,21 @@ def test_hired_adapter_auth_and_captcha_fallback(monkeypatch):
     remember_token("hired-dev-token")
     assert hired_jobs(payload) == []
     clear_token()
+
+
+def test_greenhouse_career_page_fixture_parser(monkeypatch):
+    from app.job_sources.career_pages import greenhouse_career_jobs, parse_career_html
+
+    html = (FIXTURES / "job_boards" / "greenhouse_career.html").read_text()
+    cards = parse_career_html(html)
+    assert [card["id"] for card in cards] == ["gh-c-1", "gh-c-2"]
+    monkeypatch.setenv("FLAG_GREENHOUSE_CAREER_ADAPTER", "true")
+    get_settings.cache_clear()
+    from app.job_sources import boards as boards_mod
+
+    monkeypatch.setattr(boards_mod, "can_fetch", lambda target, parser=None, respect=None: True)
+    rows = greenhouse_career_jobs(html, listing_url="https://fixtures.ajas.local/greenhouse")
+    assert rows[0]["title"] == "Staff Platform Engineer"
+    monkeypatch.setenv("FLAG_GREENHOUSE_CAREER_ADAPTER", "false")
+    get_settings.cache_clear()
+    assert greenhouse_career_jobs(html) == []
