@@ -569,3 +569,15 @@ def test_e2e_ingestion_ranking_explain_regression(monkeypatch):
     assert kept
     assert kept[0]["salaryMin"]
     assert any(span["token"].lower() == "python" for span in kept[0]["spans"]["matched"])
+
+
+def test_e2e_email_parser_templates_invite_reject_neutral():
+    from app.mail.intent import classify_email
+    from app.mail.parser_templates import TEMPLATES
+
+    invite = classify_email(subject=TEMPLATES["invite"]["subject"], body=TEMPLATES["invite"]["body"])
+    reject = classify_email(subject=TEMPLATES["reject"]["subject"], body=TEMPLATES["reject"]["body"])
+    neutral = classify_email(subject=TEMPLATES["neutral"]["subject"], body=TEMPLATES["neutral"]["body"])
+    assert invite["intent"] == "interview"
+    assert reject["intent"] == "rejection"
+    assert neutral["intent"] in {"generic", "follow_up"}
