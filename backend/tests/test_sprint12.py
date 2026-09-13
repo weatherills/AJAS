@@ -327,6 +327,16 @@ def test_query_builder_filters_saved_search_and_csv():
     csv_text = product_mod.export_matches_csv([{"title": "Staff", "score": 91}], ["title", "score"])
     assert "title,score" in csv_text
 
+def test_bulk_apply_captcha_cover_letters_and_profile():
+    plans = product_mod.bulk_apply_plan([{"id": "j1", "captcha": True, "source": "workday"}, {"id": "j2", "source": "greenhouse"}])
+    assert plans[0]["action"] == "needs_manual"
+    cover = product_mod.save_cover(user_id="ada", name="eng", body="Hi {{candidate}} applying for {{role}} at {{company}}. {{highlight}}", favorite=True)
+    assert cover["valid"] is True
+    preview = product_mod.preview_cover(cover, {"candidate": "Ada", "role": "Eng", "company": "Acme", "highlight": "Python"})
+    assert "Ada" in preview
+    meter = product_mod.profile_completeness({"email": "a@b.c", "phone": "1", "skills": ["a", "b", "c", "d", "e"], "experience": [{}], "education": [], "summary": ""})
+    assert "education" in meter["suggestions"]
+
 def test_coverage_gate_documents_80_percent_target():
     assert ops_mod.ci_plan()["coverageGate"] == 0.4
     assert ops_mod.ci_plan()["backend"]["parallel"] == "pytest -n auto"
@@ -334,7 +344,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 62
+    assert COMPLETED == 63
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
