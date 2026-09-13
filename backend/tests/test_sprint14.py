@@ -718,3 +718,13 @@ def test_performance_cache_hot_queries_with_ttl():
     reset_cache()
     assert cache_hot("jobs:ada", [1, 2]) == [1, 2]
 
+# === S14-76 ===
+
+def test_performance_batch_db_writes_ingestion_logs():
+    from app.sprint14.ops import batch_write, reset
+
+    reset()
+    out = batch_write([{"id": "1"}, {"id": "2"}])
+    assert out["written"] == 2
+    assert out["batched"] is True
+
