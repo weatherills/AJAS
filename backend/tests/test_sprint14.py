@@ -569,3 +569,15 @@ def test_secrets_rotation_hot_reload_for_adapters():
     assert row["hotReload"] is True
     assert row["reloaded"]["version"] >= 1
 
+# === S14-60 ===
+
+def test_rate_limit_policy_v2_per_tenant_endpoint():
+    from app.source_quotas import reset as reset_quotas
+    from app.sprint14.ops import rate_policy, reset
+
+    reset()
+    reset_quotas()
+    row = rate_policy(tenant="t1", endpoint="ingest", used=50, daily=50)
+    assert row["dailyHit"] is True
+    assert row["tenant"] == "t1"
+

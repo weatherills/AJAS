@@ -81,3 +81,8 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 057 Privacy: right-to-be-forgotten purge job + UI
 - [x] 058 Security: outbound domain allowlist UI + policy
 - [x] 059 Secrets rotation: hot-reload for adapters
+- [x] 060 Rate limit policy v2: per-tenant + endpoint
+
+## Batch 6 gate
+- tests/lint/typecheck green after task 60
+
