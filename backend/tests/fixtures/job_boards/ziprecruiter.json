@@ -1,0 +1,22 @@
+{
+  "jobs": [
+    {
+      "id": "zr-1",
+      "title": "Backend Engineer",
+      "company": "Contoso",
+      "location": "Austin, TX",
+      "employment_type": "Full-time",
+      "description": "Required: python azure. Compensation $140,000-$165,000.",
+      "apply_url": "https://fixtures.ajas.local/ziprecruiter/zr-1"
+    },
+    {
+      "id": "zr-2",
+      "title": "Platform Engineer",
+      "company": "Contoso",
+      "location": "Remote",
+      "employment_type": "Full-time",
+      "description": "Required: kubernetes terraform.",
+      "apply_url": "https://fixtures.ajas.local/ziprecruiter/zr-2"
+    }
+  ]
+}

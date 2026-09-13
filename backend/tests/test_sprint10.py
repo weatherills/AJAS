@@ -698,3 +698,21 @@ def test_workday_adapter_v1_fixture_only(monkeypatch):
     rows = workday_jobs(payload, listing_url="https://fixtures.ajas.local/workday")
     assert rows[0]["source_posting_id"] == "wd-1"
     assert rows[0]["title"] == "Staff Data Engineer"
+
+
+def test_ziprecruiter_adapter_v1_fixture_throttling(monkeypatch):
+    from app.job_sources.boards import backoff_seconds, ziprecruiter_jobs
+
+    payload = json.loads((FIXTURES / "job_boards" / "ziprecruiter.json").read_text())
+    monkeypatch.setenv("FLAG_ZIPRECRUITER_ADAPTER", "true")
+    monkeypatch.setenv("FLAG_SITE_POLICY_CONSENT", "true")
+    get_settings.cache_clear()
+    from app.job_sources import boards as boards_mod
+
+    monkeypatch.setattr(boards_mod, "can_fetch", lambda target, parser=None, respect=None: True)
+    rows = ziprecruiter_jobs(payload, listing_url="https://fixtures.ajas.local/ziprecruiter")
+    assert [row["source_posting_id"] for row in rows] == ["zr-1", "zr-2"]
+    assert backoff_seconds(2) == 1.0
+    monkeypatch.setenv("FLAG_ZIPRECRUITER_ADAPTER", "false")
+    get_settings.cache_clear()
+    assert ziprecruiter_jobs(payload) == []
