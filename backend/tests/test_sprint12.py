@@ -293,7 +293,7 @@ def test_health_dashboard_logs_and_alert_routing():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 42
+    assert COMPLETED == 43
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -356,3 +356,9 @@ def test_embedding_backpressure_drops_overflow():
     queued = perf_mod.enqueue_embeddings([{"id": i} for i in range(4)], max_depth=2)
     assert queued["backpressure"] is True
     assert queued["dropped"] == 2
+
+def test_structured_log_search_filters():
+    ops_mod.ingest_log("info", "ok", source="gh")
+    ops_mod.ingest_log("error", "timeout greenhouse", source="gh")
+    hits = ops_mod.search_logs(level="error", q="greenhouse")
+    assert len(hits) == 1
