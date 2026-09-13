@@ -208,3 +208,13 @@ def test_embeddings_batch_size_autotune_from_latency():
     tuner = BatchAutotune(size=16, target_ms=200, min_size=4, max_size=64)
     assert tuner.record(400) == 8
     assert tuner.record(50, batch_size=8) == 16
+
+def test_embeddings_cold_start_cache_priming():
+    from app.matching.embed_cache import EmbeddingCache
+
+    cache = EmbeddingCache(max_items=8)
+    primed = cache.prime(["python azure", "react typescript"])
+    assert primed == 2
+    cache.get("python azure")
+    assert cache.hits >= 1
+    assert cache.misses == 2
