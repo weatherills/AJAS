@@ -173,3 +173,13 @@ def test_keyword_alerts_saved_search_email_triggers():
     assert row["channel"] == "email"
     assert row["hits"][0]["id"] == "j1"
 
+# === S13-14 ===
+
+def test_security_scan_dependency_and_sast_checks():
+    from app.sprint13.security import reset, sast_findings
+
+    reset()
+    report = sast_findings()
+    assert report["critical"] == 0
+    assert "backend/app" in report["scanned"]
+
