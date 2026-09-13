@@ -115,3 +115,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 087 Knowledge base: in-app docs and search
 - [x] 088 Changelog page with releases and highlights
 - [x] 089 ETL to warehouse: nightly export to analytics DB
+- [x] 090 BI dashboards: cohort/retention and conversion funnels

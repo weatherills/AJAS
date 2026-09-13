@@ -420,7 +420,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 89
+    assert COMPLETED == 90
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -600,3 +600,8 @@ def test_warehouse_etl_ndjson_export():
     export = platform_mod.warehouse_export([{"e": 1}, {"e": 2}])
     assert export["format"] == "ndjson"
     assert export["count"] == 2
+
+def test_funnel_conversion_counts():
+    funnel = platform_mod.funnel(["visit", "visit", "upload", "match"])
+    assert funnel["visit"] == 2
+    assert funnel["apply"] == 0
