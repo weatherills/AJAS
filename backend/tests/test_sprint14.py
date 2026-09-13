@@ -728,3 +728,11 @@ def test_performance_batch_db_writes_ingestion_logs():
     assert out["written"] == 2
     assert out["batched"] is True
 
+# === S14-77 ===
+
+def test_accessibility_wcag_audit_fixes():
+    from app.sprint14.product import a11y_label
+
+    assert a11y_label("list")["aria-label"] == "Job results"
+    assert a11y_label("filter")["aria-label"] == "Job filters"
+
