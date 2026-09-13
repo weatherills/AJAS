@@ -379,3 +379,15 @@ def test_audit_trail_filter_and_csv_export():
     csv_text = export_csv(rows)
     assert "actor" in csv_text.splitlines()[0]
     assert "ingest" in csv_text
+
+
+def test_error_taxonomy_v2_http_and_remediation():
+    from app.errors import error_taxonomy
+
+    row = error_taxonomy("INGESTION_FAILED")
+    assert row["status"] == 502
+    assert row["retryable"] is True
+    assert "circuit breaker" in str(row["remediation"]).lower()
+    aliased = error_taxonomy("BAD_INPUT")
+    assert aliased["canonical"] == "INVALID_INPUT"
+    assert aliased["status"] == 400

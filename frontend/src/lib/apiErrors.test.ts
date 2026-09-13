@@ -9,6 +9,7 @@ describe('describeApiError', () => {
       message: 'Too many requests. Try again in 8s.',
       retryable: true,
       retryAfter: 8,
+      remediation: 'Wait for the retry window, then send fewer requests.',
     })
   })
 })

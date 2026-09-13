@@ -35,6 +35,34 @@ ALIASES = {
     "VALIDATION_ERROR": "INVALID_INPUT",
 }
 
+REMEDIATION: dict[str, str] = {
+    "UNAUTHENTICATED": "Sign in again or paste a valid session token.",
+    "FORBIDDEN": "Ask an admin to grant the required role.",
+    "INVALID_INPUT": "Fix the highlighted fields and retry.",
+    "NOT_FOUND": "Refresh the list; the record may have been deleted.",
+    "CONFLICT": "Reload the resource and apply your change again.",
+    "RATE_LIMITED": "Wait for the retry window, then send fewer requests.",
+    "UNAVAILABLE": "Check Azure Functions and Cosmos, then retry.",
+    "INGESTION_FAILED": "Inspect source flags, robots/consent, and the circuit breaker.",
+    "APPLY_FAILED": "Confirm the posting URL allowlist and resume attachment.",
+    "EMAIL_FAILED": "Reconnect Microsoft Graph in Settings.",
+    "ROBOTS_DISALLOWED": "Do not scrape this host; use the official board API or fixtures.",
+    "ATTACHMENT_REJECTED": "Upload a PDF/DOCX under the size limit.",
+    "SOURCE_NOT_CONFIGURED": "Add a Greenhouse token or Lever URL in Settings.",
+}
+
+
+def error_taxonomy(code: str, status_code: int | None = None) -> dict[str, object]:
+    known = CANONICAL_CODES.get(code, {})
+    status = int(known.get("status") or status_code or 500)
+    meta = error_meta(code, status)
+    canonical = str(meta["canonical"])
+    return {
+        **meta,
+        "status": status,
+        "remediation": REMEDIATION.get(canonical, REMEDIATION.get(code, "Retry or contact support.")),
+    }
+
 
 def error_meta(code: str, status_code: int) -> dict[str, Any]:
     known = CANONICAL_CODES.get(code, {})
@@ -44,4 +72,5 @@ def error_meta(code: str, status_code: int) -> dict[str, Any]:
         "code": code,
         "canonical": canonical,
         "retryable": retryable,
+        "remediation": REMEDIATION.get(canonical, REMEDIATION.get(code)),
     }
