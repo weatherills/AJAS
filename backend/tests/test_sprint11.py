@@ -201,3 +201,10 @@ def test_salary_equity_bonus_extraction():
     assert parsed["equityPercent"] == 0.15
     assert parsed["bonusPercent"] == 10
     assert parsed["signingBonus"] == 10000
+
+def test_embeddings_batch_size_autotune_from_latency():
+    from app.matching.batch_autotune import BatchAutotune
+
+    tuner = BatchAutotune(size=16, target_ms=200, min_size=4, max_size=64)
+    assert tuner.record(400) == 8
+    assert tuner.record(50, batch_size=8) == 16
