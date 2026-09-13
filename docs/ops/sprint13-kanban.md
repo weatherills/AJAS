@@ -75,3 +75,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 051 Retry/backoff v2: jitter strategy per queue
 - [x] 052 Audit logging v2: export to CSV/JSON
 - [x] 053 Queue workers: graceful shutdown and draining
+- [x] 054 Follow-up heuristics v2: weekday/hour windows

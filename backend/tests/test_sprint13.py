@@ -612,3 +612,13 @@ def test_queue_workers_graceful_shutdown_and_draining():
     assert stopped["graceful"] is True
     assert stopped["status"] == "stopped"
 
+# === S13-54 ===
+
+def test_follow_up_heuristics_v2_weekday_hour_windows():
+    from app.sprint13.product import followup_window, next_followup_slot
+
+    assert followup_window(weekday=2, hour=10)["send"] is True
+    assert followup_window(weekday=6, hour=10)["send"] is False
+    slot = next_followup_slot(datetime(2026, 9, 12, 8, 0, tzinfo=timezone.utc))
+    assert followup_window(weekday=slot.weekday(), hour=slot.hour)["send"] is True
+
