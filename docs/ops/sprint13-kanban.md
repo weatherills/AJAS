@@ -36,3 +36,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 024 Near-duplicate job collapse: per-company rollup in results
 - [x] 025 Matching boosts v2: recent-role weighting curve
 - [x] 026 Matching features: visa/work-authorization rule updates
+- [x] 027 Matching features: seniority ladder calibration data

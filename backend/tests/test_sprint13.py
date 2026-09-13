@@ -306,3 +306,13 @@ def test_matching_features_visa_work_authorization_rule_updates():
     assert gated["gate"] is True
     assert gated["boost"] < 1.0
 
+# === S13-27 ===
+
+def test_matching_features_seniority_ladder_calibration_data():
+    from app.sprint13.matching import seniority_calibrate
+
+    staff = seniority_calibrate("Staff Engineer")
+    intern = seniority_calibrate("Software Intern")
+    assert staff["level"] > intern["level"]
+    assert intern["label"] == "intern"
+
