@@ -44,3 +44,4 @@ Landed on `main` as `[S13]` commits.
 ## Batch 3 gate
 - tests/lint/typecheck green after task 30
 
+- [x] 031 Resume parser v3: gap detection and annotation

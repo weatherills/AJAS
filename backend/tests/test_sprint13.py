@@ -350,3 +350,14 @@ def test_skills_taxonomy_v3_auto_extend_from_corpus_with_review_queue():
     assert "obscure" not in out["proposed"]
     assert out["queue"][0]["status"] == "pending"
 
+# === S13-31 ===
+
+def test_resume_parser_v3_gap_detection_and_annotation():
+    from app.sprint13.parse import gap_annotate
+
+    bullets = ["Eng Jan 2019 - Dec 2019", "Eng Jan 2021 - present"]
+    notes = {"2019-12-01|2021-01-01": "caregiving"}
+    result = gap_annotate(bullets, notes)
+    assert result["gaps"]
+    assert result["gaps"][0]["note"] == "caregiving"
+
