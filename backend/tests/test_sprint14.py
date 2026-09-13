@@ -68,3 +68,13 @@ def test_remotive_adapter_v1():
     assert out["source"] == "remotive"
     assert out["flag"] is False
 
+# === S14-06 ===
+
+def test_weworkremotely_adapter_v1():
+    from app.sprint14.ingest import reset, wwr_v1
+
+    reset()
+    out = wwr_v1(html="<article data-ajas-job data-title='WWR' data-company='Co' data-apply='https://x'></article>")
+    assert out["flag"] is False
+    assert out["live"] is False
+
