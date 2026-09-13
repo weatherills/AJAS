@@ -840,3 +840,10 @@ def test_maintenance_dependency_updates_security_audit():
     report = sast_findings()
     assert report["critical"] == 0
 
+# === S14-90 ===
+
+def test_maintenance_lint_type_rules_alignment():
+    from app.sprint14.ops import consolidate_note
+
+    assert "sprint13" in consolidate_note()
+

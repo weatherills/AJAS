@@ -123,3 +123,8 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 087 Data: vector store compaction v3
 - [x] 088 Data: retention sweep job v3
 - [x] 089 Maintenance: dependency updates + security audit
+- [x] 090 Maintenance: lint/type rules alignment
+
+## Batch 9 gate
+- tests/lint/typecheck green after task 90
+
