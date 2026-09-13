@@ -356,3 +356,12 @@ def test_cover_letter_role_specific_templates():
     letter = render_role_cover(role_family="frontend", role="FE", company="Acme", name="Ava")
     assert letter["roleFamily"] == "frontend"
     assert "accessible" in letter["text"].lower() or "UI" in letter["text"]
+
+def test_cover_letter_parameterize_resume_highlights():
+    from app.auto_apply.highlights import select_highlights
+    picks = select_highlights(
+        ["Increased API p99 by 40% with python", "Responsible for snacks"],
+        "python API reliability",
+        limit=1,
+    )
+    assert picks and "python" in picks[0]["text"].lower()
