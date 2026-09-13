@@ -96,3 +96,20 @@ def test_lever_career_page_fixture_parser(monkeypatch):
     monkeypatch.setenv("FLAG_LEVER_CAREER_ADAPTER", "false")
     get_settings.cache_clear()
     assert lever_career_jobs(html) == []
+
+
+def test_workday_career_page_fixture_parser(monkeypatch):
+    from app.job_sources.career_pages import workday_career_jobs
+
+    html = (FIXTURES / "job_boards" / "workday_career.html").read_text()
+    monkeypatch.setenv("FLAG_WORKDAY_ADAPTER", "true")
+    get_settings.cache_clear()
+    from app.job_sources import boards as boards_mod
+
+    monkeypatch.setattr(boards_mod, "can_fetch", lambda target, parser=None, respect=None: True)
+    rows = workday_career_jobs(html, listing_url="https://fixtures.ajas.local/workday")
+    assert rows[0]["source_posting_id"] == "wd-c-1"
+    assert "Workday" in rows[0]["title"]
+    monkeypatch.setenv("FLAG_WORKDAY_ADAPTER", "false")
+    get_settings.cache_clear()
+    assert workday_career_jobs(html) == []

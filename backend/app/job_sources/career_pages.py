@@ -54,3 +54,8 @@ def greenhouse_career_jobs(html: str, *, listing_url: str | None = None) -> list
 
 def lever_career_jobs(html: str, *, listing_url: str | None = None) -> list[dict[str, Any]]:
     return _from_html("lever_career", html, listing_url)
+
+
+def workday_career_jobs(html: str, *, listing_url: str | None = None) -> list[dict[str, Any]]:
+    """Fixture HTML only. Live Workday scraping remains out of the Job Source PRD."""
+    return _from_html("workday", html, listing_url)
