@@ -17,3 +17,4 @@ Landed on `main` as `[S13]` commits.
 - tests/lint/typecheck green after task 10
 
 - [x] 011 Observability UI: trace viewer embedded
+- [x] 012 Role mapping: title normalization v3

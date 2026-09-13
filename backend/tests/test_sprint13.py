@@ -153,3 +153,13 @@ def test_observability_ui_trace_viewer_embedded():
     assert view["count"] == 1
     assert view["items"][0]["traceId"] == span["traceId"]
 
+# === S13-12 ===
+
+def test_role_mapping_title_normalization_v3():
+    from app.sprint13.parse import normalize_title_v3
+
+    swe = normalize_title_v3("Senior SWE")
+    assert "Software Engineer" in swe["normalized"]
+    sre = normalize_title_v3("Staff SRE")
+    assert "Site Reliability" in sre["normalized"]
+
