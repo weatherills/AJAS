@@ -241,3 +241,14 @@ def test_saved_searches_auto_refresh_and_notifications():
     fresh = refresh_saved_search(stale_after_min=15, age_min=5)
     assert fresh["refresh"] is False
 
+# === S13-21 ===
+
+def test_ltr_feature_logging_v2_unified_schema_pii_redaction():
+    from app.sprint13.matching import ltr_log, reset
+
+    reset()
+    row = ltr_log(user_id="ada@example.test", job_id="j1", features={"kw": 0.8}, label=1)
+    assert row["schema"] == "ajas.ltr.v2"
+    assert "@" not in row["userId"]
+    assert row["jobId"] == "j1"
+

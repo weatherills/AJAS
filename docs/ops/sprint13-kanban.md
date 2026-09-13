@@ -30,3 +30,4 @@ Landed on `main` as `[S13]` commits.
 ## Batch 2 gate
 - tests/lint/typecheck green after task 20
 
+- [x] 021 LTR feature logging v2: unified schema + PII redaction
