@@ -822,3 +822,13 @@ def test_data_vector_store_compaction_v3():
     row = compact_v3()
     assert row["schema"] == "ajas.vector.vacuum.v3"
 
+# === S14-88 ===
+
+def test_data_retention_sweep_job_v3():
+    from app.sprint13.security import reset as reset_sec
+    from app.sprint14.ops import retain
+
+    reset_sec()
+    row = retain("t1", 30)
+    assert row["days"] == 30
+
