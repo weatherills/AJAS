@@ -318,3 +318,10 @@ def test_resume_multilingual_detection_and_routing():
     assert es["lang"] == "es" and es["route"] == "es_es"
     en = route("Experience and skills in python")
     assert en["lang"] == "en"
+
+def test_skills_taxonomy_community_synonyms_import():
+    from app.matching.synonyms_import import import_rows
+    from app.matching.taxonomy import canonical_skill
+    stats = import_rows([{"canonical": "python", "alias": "cpy"}])
+    assert stats["added"] >= 1
+    assert canonical_skill("cpy") == "python"
