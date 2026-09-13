@@ -96,3 +96,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 071 Duplicate company resolver: merge variants (Inc./LLC)
 - [x] 072 Company insights: size, funding, tech stack enrichment
 - [x] 073 Anti-spam: detect scam/spam job postings
+- [x] 074 Safety: blocklist companies/keywords per tenant
