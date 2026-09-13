@@ -44,3 +44,13 @@ def retry(item_id: str) -> dict[str, Any] | None:
 
 def listing() -> list[dict[str, Any]]:
     return list(_DLQ)
+
+
+def replay(item_id: str, *, sample_rate: float = 1.0, roll: float | None = None) -> dict[str, Any] | None:
+    item = inspect(item_id)
+    if not item:
+        return None
+    chance = 0.0 if roll is None else roll
+    if sample_rate < 1 and chance > sample_rate:
+        return {**item, "status": "sampled_skip"}
+    return retry(item_id)
