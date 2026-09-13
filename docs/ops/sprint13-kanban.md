@@ -66,3 +66,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 046 Data retention v2: per-tenant retention policies
 - [x] 047 Outbound allowlist v2: per-environment gates
 - [x] 048 Idempotency v3: conflict resolution strategies
+- [x] 049 Error taxonomy v3: mapping to remediation playbooks

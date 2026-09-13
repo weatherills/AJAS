@@ -555,3 +555,12 @@ def test_idempotency_v3_conflict_resolution_strategies():
     incoming = resolve_conflict("apply:1", "fp-b", {"id": 2}, strategy="incoming-wins")
     assert incoming["status"] == "replaced"
 
+# === S13-49 ===
+
+def test_error_taxonomy_v3_mapping_to_remediation_playbooks():
+    from app.sprint13.security import playbook_for
+
+    book = playbook_for("RATE_LIMITED")
+    assert book["retryable"] is True
+    assert "retry" in str(book["remediation"]).lower() or book["status"] == 429
+
