@@ -16,3 +16,4 @@ Landed on `main` as `[S13]` commits.
 ## Batch 1 gate
 - tests/lint/typecheck green after task 10
 
+- [x] 011 Observability UI: trace viewer embedded

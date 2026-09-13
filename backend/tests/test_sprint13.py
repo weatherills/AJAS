@@ -142,3 +142,14 @@ def test_devex_local_queue_emulator_and_scripts():
     assert "scripts/s13_queue_emulator.py" in emulator_scripts()
     assert (Path(__file__).resolve().parents[2] / "scripts" / "s13_queue_emulator.py").is_file()
 
+# === S13-11 ===
+
+def test_observability_ui_trace_viewer_embedded():
+    from app.sprint13.ops import propagate, reset, trace_viewer
+
+    reset()
+    span = propagate("match", trace_id="trace-s13", jobId="j1")
+    view = trace_viewer(trace_id="trace-s13")
+    assert view["count"] == 1
+    assert view["items"][0]["traceId"] == span["traceId"]
+
