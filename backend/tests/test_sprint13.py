@@ -30,3 +30,16 @@ def test_chaos_kill_switches_and_failure_injection():
     assert resp.status_code == 200
     assert json.loads(resp.get_body())["injected"] == "match"
 
+# === S13-02 ===
+
+def test_load_testing_ingest_and_match_throughput_targets():
+    from app.sprint13.platform import load_report, reset
+
+    reset()
+    miss = load_report(ingest_qps=5, match_qps=10)
+    assert miss["ingestOk"] is False
+    assert miss["matchOk"] is False
+    hit = load_report(ingest_qps=25, match_qps=80)
+    assert hit["ingestOk"] is True
+    assert hit["matchOk"] is True
+

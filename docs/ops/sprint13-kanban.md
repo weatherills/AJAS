@@ -3,3 +3,4 @@
 Landed on `main` as `[S13]` commits.
 
 - [x] 001 Chaos testing: kill switches and failure injection
+- [x] 002 Load testing: ingest and match throughput targets
