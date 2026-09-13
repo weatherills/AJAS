@@ -7,6 +7,7 @@ import { EmailThreadPane } from '../components/EmailThreadPane'
 import { JobCrossLinks } from '../components/JobCrossLinks'
 import { ToastStack } from '../components/Toast'
 import { demoMailbox, formatWhen, graphConnected, mailboxReadable, relativeTime } from '../lib/email'
+import { groupThreads } from '../lib/threadGroups'
 import { emailHref, useHashSearch } from '../lib/routes'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
@@ -156,7 +157,10 @@ export function EmailPage() {
       {readable && threads.length > 0 && (
         <div className="email-layout">
           <nav className="thread-list" aria-label={demo ? 'Demo email threads' : 'Email threads'}>
-            {threads.map((item) => (
+            {groupThreads(threads).map((group) => (
+              <section key={group.key} className="thread-group" aria-label={group.label}>
+                <h2>{group.label}</h2>
+                {group.items.map((item) => (
               <button
                 key={item.id}
                 type="button"
@@ -182,6 +186,8 @@ export function EmailPage() {
                   {item.linked && item.jobTitle ? ` · ${item.jobTitle}` : ''}
                 </p>
               </button>
+                ))}
+              </section>
             ))}
           </nav>
           {selected && (
