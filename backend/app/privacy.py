@@ -7,13 +7,23 @@ from typing import Any
 from app.matching.keys import utc_now
 
 
-def export_bundle(*, user_id: str, jobs: list[dict[str, Any]] | None = None, emails: list[dict[str, Any]] | None = None, matches: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+def export_bundle(
+    *,
+    user_id: str,
+    jobs: list[dict[str, Any]] | None = None,
+    emails: list[dict[str, Any]] | None = None,
+    matches: list[dict[str, Any]] | None = None,
+    resumes: list[dict[str, Any]] | None = None,
+    logs: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     return {
         "userId": user_id,
         "exportedAt": utc_now(),
         "jobs": jobs or [],
         "emails": emails or [],
         "matches": matches or [],
+        "resumes": resumes or [],
+        "logs": logs or [],
         "format": "ajas.gdpr.v1",
     }
 
