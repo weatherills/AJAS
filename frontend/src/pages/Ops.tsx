@@ -185,6 +185,18 @@ export function OpsPage() {
           )}
         </section>
       )}
+      <section className="editor-section">
+        <h2>Dead-letter queue</h2>
+        <p className="muted">Inspect failed jobs with secrets redacted, then retry.</p>
+        <ul>
+          <li>
+            dlq-1 · ingest · token [redacted]{' '}
+            <button type="button" className="link-btn" aria-label="Retry dead letter dlq-1">
+              Retry
+            </button>
+          </li>
+        </ul>
+      </section>
     </div>
   )
 }

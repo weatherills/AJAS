@@ -501,3 +501,13 @@ def test_queue_health_stuck_job_auto_requeue():
     result = requeue(jobs, now=400, timeout_sec=300)
     assert result["retried"] == 1
     assert jobs[0].status == "queued"
+
+
+def test_dead_letter_queue_inspect_retry_redaction():
+    from app.dlq import enqueue, inspect, reset, retry
+
+    reset()
+    row = enqueue({"id": "dlq-1", "title": "Staff", "token": "super-secret"})
+    assert row["payload"]["token"] == "[redacted]"
+    assert inspect("dlq-1")["status"] == "dead"
+    assert retry("dlq-1")["status"] == "queued"
