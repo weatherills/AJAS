@@ -95,3 +95,8 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 067 E2E: email parser templates coverage
 - [x] 068 Unit tests: salary/geo/negation edge cases v2
 - [x] 069 Fixtures: real-world HTML snapshots expansion
+- [x] 070 Seed data v3: resumes by seniority/remote
+
+## Batch 7 gate
+- tests/lint/typecheck green after task 70
+

@@ -664,3 +664,12 @@ def test_fixtures_real_world_html_snapshots_expansion():
     assert snap["count"] >= 6
     assert "s14_monster.json" in snap["extra"]
 
+# === S14-70 ===
+
+def test_seed_data_v3_resumes_by_seniority_remote():
+    from app.sprint14.platform import seed_seniority
+
+    seed = seed_seniority()
+    assert seed["bySeniority"] is True
+    assert {row["seniority"] for row in seed["resumes"]}
+
