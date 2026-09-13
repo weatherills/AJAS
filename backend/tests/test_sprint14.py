@@ -279,3 +279,13 @@ def test_embeddings_incremental_reindex_sweeper_retries():
     assert out["indexed"] == 2
     assert out["processed"] == 2
 
+# === S14-28 ===
+
+def test_vector_store_compaction_tombstone_vacuum_job_v2():
+    from app.sprint14.matching import reset, vacuum_v2
+
+    reset()
+    out = vacuum_v2()
+    assert out["schema"] == "ajas.vector.vacuum.v2"
+    assert "live" in out
+
