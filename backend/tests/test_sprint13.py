@@ -413,3 +413,12 @@ def test_salary_parsing_v3_equity_plus_bonus_components():
     assert parsed["equity"] == 50000
     assert parsed["bonus"] == 20000
 
+# === S13-37 ===
+
+def test_normalization_v3_onsite_hybrid_remote_detection_improvements():
+    from app.sprint13.parse import work_mode
+
+    assert work_mode("Hybrid in Seattle") == "hybrid"
+    assert work_mode("Remote / WFH") == "remote"
+    assert work_mode("On-site in NYC") == "onsite"
+
