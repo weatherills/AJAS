@@ -633,3 +633,12 @@ def test_api_pagination_and_sorting_jobs_matches():
     assert [item["id"] for item in page["items"]] == ["b", "c"]
     assert page["nextCursor"] == "2"
     assert page["total"] == 3
+
+
+def test_scoped_automation_tokens():
+    from app.automation_tokens import authorize, issue
+
+    token = issue("ada", ["ingest", "apply", "nope"])
+    assert authorize(token.token, "ingest") is True
+    assert authorize(token.token, "match") is False
+    assert "nope" not in token.scopes
