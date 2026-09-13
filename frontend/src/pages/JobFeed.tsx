@@ -15,6 +15,7 @@ import { jobHaystack, matchedTerms, resumeHaystack, storedMatchesForJobs } from 
 import { jobHref, useHashSearch } from '../lib/routes'
 import { bulkDismiss, dismissSnackbar } from '../lib/dismiss'
 import { unifiedDiff } from '../lib/jdDiff'
+import { diffLineClass, shouldRefreshSearch } from '../lib/sprint13'
 import { expandedAttr } from '../lib/a11y'
 import { t } from '../lib/i18n'
 import { compareRows, toggleCompareId } from '../lib/compareJobs'
@@ -104,6 +105,7 @@ export function JobFeedPage() {
   const jdVersions = useRef<Record<string, string>>({})
   const sentinel = useRef<HTMLDivElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
+  const alertRefresh = useRef(false)
   const pollMs = useRef(15_000)
   const pageRef = useRef(page)
   const paginationRef = useRef(filters.pagination)
@@ -545,6 +547,16 @@ export function JobFeedPage() {
       void loadStatus()
     }
   }
+
+  useEffect(() => {
+    if (alertRefresh.current || offline) return
+    if (!presets.some((preset) => preset.alertsEnabled)) return
+    const plan = shouldRefreshSearch(30, 15)
+    if (!plan.refresh) return
+    alertRefresh.current = true
+    void refresh('all', true)
+    if (plan.notify) toast('Saved search refreshed')
+  }, [presets, offline])
 
   async function toggleSource(name: JobSourceName) {
     if (sourceSaving) return
@@ -1316,7 +1328,14 @@ export function JobFeedPage() {
                 {jdDiff && (
                   <section aria-label="Job description updates">
                     <h3>Description updates</h3>
-                    <pre className="jd-diff">{jdDiff.lines.join('\n')}</pre>
+                    <pre className="jd-diff">
+                      {jdDiff.lines.map((line, index) => (
+                        <span key={`${index}-${line.slice(0, 24)}`} className={diffLineClass(line)}>
+                          {line}
+                          {'\n'}
+                        </span>
+                      ))}
+                    </pre>
                   </section>
                 )}
                 <p>{detail.description}</p>

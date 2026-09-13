@@ -203,3 +203,12 @@ def test_ui_keyboard_shortcuts_accept_dismiss_contract():
     chips = explanation_chips(["Python"])
     assert chips[0]["detail"].startswith("Matched")
 
+# === S13-17 ===
+
+def test_ui_job_change_diff_visualization_improvements():
+    from app.sprint13.product import jd_diff_blocks
+
+    diff = jd_diff_blocks("Need Java", "Need Python")
+    assert diff["changed"] is True
+    assert diff["visualization"] == "split"
+
