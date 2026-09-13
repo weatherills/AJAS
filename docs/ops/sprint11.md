@@ -58,3 +58,7 @@ Batch gates: [sprint11-batches.md](./sprint11-batches.md).
 - Algorithm flags: gap_penalty, stack_boost, fair_norm, ann_recall.
 - Worker `X-Request-Id` propagation, structured error contexts, source
   latency histograms, adapter mute, PII scrub v2.
+
+## Tests
+
+- E2E ingest→match→apply unhappy paths and email threading/follow-up SLAs.
