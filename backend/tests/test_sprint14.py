@@ -324,3 +324,11 @@ def test_ranking_feedback_logging_for_ltr():
     assert row["event"] == "reply"
     assert "@" not in row["userId"]
 
+# === S14-33 ===
+
+def test_ranking_pairwise_training_data_generator():
+    from app.sprint14.matching import pairwise_rows
+
+    pairs = pairwise_rows([{"id": "a", "score": 90}, {"id": "b", "score": 10}])
+    assert pairs[0]["chosen"] == "a"
+
