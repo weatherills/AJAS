@@ -33,7 +33,15 @@ def test_tenant_onboarding_invite_email():
     membership = tenants_mod.accept_invite(token=invite.token, user_id="linus")
     assert membership.role == "admin"
 
+def test_rbac_owner_admin_member_readonly():
+    tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
+    invite = tenants_mod.invite_member(tenant_id=tenant.id, actor_id="ada", email="r@example.test", role="readonly")
+    tenants_mod.accept_invite(token=invite.token, user_id="reader")
+    assert tenants_mod.can(tenant.id, "ada", "tenant.admin") is True
+    assert tenants_mod.can(tenant.id, "reader", "review.read") is True
+    assert tenants_mod.can(tenant.id, "reader", "apply.write") is False
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 2
+    assert COMPLETED == 3
