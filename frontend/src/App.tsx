@@ -1,10 +1,14 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import './App.css'
 import { AppNav } from './components/AppNav'
+import { CookieBanner } from './components/CookieBanner'
 import { captureAadTokenFromHash } from './api/live'
 import { jobsApi, matchingApi, reviewApi, settingsApi } from './api'
 import { filtersForTab } from './lib/review'
 import { onboardingSteps, type OnboardingStep } from './lib/onboarding'
+import { bannerNeeded } from './lib/cookieConsent'
+import { applyTheme, readThemePref, resolveTheme } from './lib/theme'
+import { tourSteps } from './lib/sprint12'
 
 const ReviewPage = lazy(() => import('./pages/Review').then((mod) => ({ default: mod.ReviewPage })))
 const ApplyPage = lazy(() => import('./pages/Apply').then((mod) => ({ default: mod.ApplyPage })))
@@ -15,6 +19,11 @@ const JobFeedPage = lazy(() => import('./pages/JobFeed').then((mod) => ({ defaul
 const EmailPage = lazy(() => import('./pages/Email').then((mod) => ({ default: mod.EmailPage })))
 const LearningPage = lazy(() => import('./pages/Learning').then((mod) => ({ default: mod.LearningPage })))
 const OpsPage = lazy(() => import('./pages/Ops').then((mod) => ({ default: mod.OpsPage })))
+const AdminPage = lazy(() => import('./pages/Admin').then((mod) => ({ default: mod.AdminPage })))
+const HelpPage = lazy(() => import('./pages/Help').then((mod) => ({ default: mod.HelpPage })))
+const ChangelogPage = lazy(() => import('./pages/Changelog').then((mod) => ({ default: mod.ChangelogPage })))
+const LegalPage = lazy(() => import('./pages/Legal').then((mod) => ({ default: mod.LegalPage })))
+const SharePage = lazy(() => import('./pages/Share').then((mod) => ({ default: mod.SharePage })))
 
 const phases = [
   {
@@ -73,6 +82,11 @@ type Route =
   | { name: 'email' }
   | { name: 'learning' }
   | { name: 'ops' }
+  | { name: 'admin' }
+  | { name: 'help' }
+  | { name: 'changelog' }
+  | { name: 'legal' }
+  | { name: 'share'; token: string }
 
 function parseRoute(hash: string): Route {
   const raw = (hash.replace(/^#/, '') || '/').split('?')[0]
@@ -84,6 +98,12 @@ function parseRoute(hash: string): Route {
   if (path === '/email') return { name: 'email' }
   if (path === '/learning') return { name: 'learning' }
   if (path === '/ops') return { name: 'ops' }
+  if (path === '/admin') return { name: 'admin' }
+  if (path === '/help') return { name: 'help' }
+  if (path === '/changelog') return { name: 'changelog' }
+  if (path === '/legal') return { name: 'legal' }
+  const share = path.match(/^\/share\/([^/]+)$/)
+  if (share) return { name: 'share', token: decodeURIComponent(share[1]) }
   const edit = path.match(/^\/resumes\/([^/]+)\/edit$/)
   if (edit) return { name: 'edit', id: decodeURIComponent(edit[1]) }
   if (path === '/apply' || path.startsWith('/apply/')) {
@@ -105,6 +125,12 @@ function useHashRoute(): Route {
 
 function Home() {
   const [steps, setSteps] = useState<OnboardingStep[] | null>(null)
+  const [cookies, setCookies] = useState(() => bannerNeeded())
+
+  useEffect(() => {
+    const systemDark = globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true
+    applyTheme(resolveTheme(readThemePref(), systemDark))
+  }, [])
 
   useEffect(() => {
     void matchingApi.warmup().catch(() => undefined)
@@ -158,6 +184,8 @@ function Home() {
           ranking.
         </p>
 
+        {cookies && <CookieBanner onSave={() => setCookies(false)} />}
+
         {steps && (
           <section className="onboarding" aria-labelledby="onboarding-heading">
             <h2 id="onboarding-heading">First-run checklist</h2>
@@ -172,6 +200,17 @@ function Home() {
             </ol>
           </section>
         )}
+
+        <section className="onboarding" aria-labelledby="tour-heading">
+          <h2 id="tour-heading">Tour</h2>
+          <ol>
+            {tourSteps().map((step) => (
+              <li key={step.id}>
+                <a href={step.href}>{step.title}</a>
+              </li>
+            ))}
+          </ol>
+        </section>
 
         <ul className="phases">
           {phases.map((phase) => {
@@ -197,7 +236,10 @@ function Home() {
         </ul>
       </main>
 
-      <footer className="footer">Azure Functions · Cosmos DB · Blob &amp; Queue Storage · Azure OpenAI</footer>
+      <footer className="footer">
+        Azure Functions · Cosmos DB · Blob &amp; Queue Storage · Azure OpenAI ·{' '}
+        <a href="#/legal">Legal</a> · <a href="#/changelog">Changelog</a>
+      </footer>
     </div>
   )
 }
@@ -213,9 +255,14 @@ function RouteFallback() {
 
 function App() {
   const route = useHashRoute()
+  const [cookies, setCookies] = useState(() => bannerNeeded())
   useEffect(() => {
     captureAadTokenFromHash()
   }, [route])
+  useEffect(() => {
+    const systemDark = globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true
+    applyTheme(resolveTheme(readThemePref(), systemDark))
+  }, [])
   let page
   if (route.name === 'review') page = <ReviewPage />
   else if (route.name === 'apply') page = <ApplyPage requestId={route.requestId} />
@@ -225,6 +272,11 @@ function App() {
   else if (route.name === 'email') page = <EmailPage />
   else if (route.name === 'learning') page = <LearningPage />
   else if (route.name === 'ops') page = <OpsPage />
+  else if (route.name === 'admin') page = <AdminPage />
+  else if (route.name === 'help') page = <HelpPage />
+  else if (route.name === 'changelog') page = <ChangelogPage />
+  else if (route.name === 'legal') page = <LegalPage />
+  else if (route.name === 'share') page = <SharePage token={route.token} />
   else if (route.name === 'edit') {
     page = (
       <ResumeEditor
@@ -236,7 +288,12 @@ function App() {
       />
     )
   } else page = <Home />
-  return <Suspense fallback={<RouteFallback />}>{page}</Suspense>
+  return (
+    <Suspense fallback={<RouteFallback />}>
+      {page}
+      {cookies && route.name !== 'home' ? <CookieBanner onSave={() => setCookies(false)} /> : null}
+    </Suspense>
+  )
 }
 
 export default App

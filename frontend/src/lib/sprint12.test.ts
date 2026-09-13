@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { formatNumber, formatPercent } from './format'
 import { cycleTheme, resolveTheme } from './theme'
+import { defaultChoices, saveChoices } from './cookieConsent'
 import {
   labelledBy,
   tableToCardLayout,
@@ -29,6 +30,16 @@ describe('theme toggle', () => {
     expect(cycleTheme('system')).toBe('dark')
     expect(cycleTheme('dark')).toBe('light')
     expect(cycleTheme('light')).toBe('system')
+  })
+})
+
+describe('cookie banner', () => {
+  it('keeps necessary cookies on and marketing off by default', () => {
+    expect(defaultChoices().necessary).toBe(true)
+    expect(defaultChoices().marketing).toBe(false)
+    const saved = saveChoices({ necessary: true, analytics: true, marketing: false })
+    expect(saved.analytics).toBe(true)
+    expect(saved.necessary).toBe(true)
   })
 })
 describe('sprint12 product helpers', () => {

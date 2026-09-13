@@ -123,3 +123,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 092 Usage analytics: event stream and privacy controls
 - [x] 093 Consent logs export for compliance
 - [x] 094 Legal: Terms/Privacy links and versioning
+- [x] 095 Cookie banner with granular controls
