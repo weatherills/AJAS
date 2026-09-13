@@ -786,3 +786,12 @@ def test_docs_data_model_diagrams_refresh():
     assert "matches" in data_model()
     assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint14-data-model.md").is_file()
 
+# === S14-84 ===
+
+def test_docs_release_process_rollback_steps_v2():
+    from app.sprint14.platform import rollback
+
+    steps = rollback()
+    assert any("revert" in step for step in steps)
+    assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint14-rollback.md").is_file()
+
