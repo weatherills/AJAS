@@ -649,3 +649,13 @@ def test_apply_profile_multi_profile_switcher_per_role_type():
     except PermissionError:
         pass
 
+# === S13-57 ===
+
+def test_backfill_tool_v2_safe_chunking_and_progress_ui():
+    from app.sprint13.ops import backfill_chunks
+
+    plan = backfill_chunks([f"j{i}" for i in range(60)], size=25)
+    assert plan["count"] == 3
+    assert plan["status"] == "ready"
+    assert len(plan["chunks"][0]) == 25
+
