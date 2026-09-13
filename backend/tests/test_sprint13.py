@@ -600,3 +600,15 @@ def test_audit_logging_v2_export_to_csv_json():
     assert "a1" in bundle["csv"]
     assert bundle["json"][0]["action"] == "kill"
 
+# === S13-53 ===
+
+def test_queue_workers_graceful_shutdown_and_draining():
+    from app.sprint13.ops import drain_worker, reset, shutdown_worker
+
+    reset()
+    draining = drain_worker("match")
+    assert draining["accepting"] is False
+    stopped = shutdown_worker("match")
+    assert stopped["graceful"] is True
+    assert stopped["status"] == "stopped"
+
