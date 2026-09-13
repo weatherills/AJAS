@@ -87,3 +87,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 60
 
 - [x] 061 Idempotency keys v2: persistence window logs
+- [x] 062 Queue health: stuck-job detector + auto-requeue

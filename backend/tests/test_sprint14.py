@@ -592,3 +592,12 @@ def test_idempotency_keys_v2_persistence_window_logs():
     assert row["status"] == "stored"
     assert row["windowHours"] == 24
 
+# === S14-62 ===
+
+def test_queue_health_stuck_job_detector_auto_requeue():
+    from app.sprint14.ops import reset, stuck_jobs
+
+    reset()
+    out = stuck_jobs([{"id": "j1", "ageSec": 9}, {"id": "j2", "ageSec": 400}])
+    assert out["requeued"][0]["id"] == "j2"
+
