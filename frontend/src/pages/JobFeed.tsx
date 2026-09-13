@@ -23,6 +23,9 @@ import {
   formatCountdown,
   formatWhen,
   loadFilters,
+  loadFilterPresets,
+  saveFilterPreset,
+  deleteFilterPreset,
   matchesExtraFilters,
   nextFeedSources,
   PAGE_SIZE,
@@ -62,6 +65,8 @@ export function JobFeedPage() {
   const [detail, setDetail] = useState<JobDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [presetName, setPresetName] = useState('')
+  const [presets, setPresets] = useState(() => loadFilterPresets())
   const [offline, setOffline] = useState(!navigator.onLine)
   const [now, setNow] = useState(Date.now())
   const [liveMessage, setLiveMessage] = useState('')
@@ -778,6 +783,46 @@ export function JobFeedPage() {
             />
             Only show ≥ threshold ({threshold}%)
           </label>
+          <label>
+            Save filter preset
+            <input
+              value={presetName}
+              onChange={(event) => setPresetName(event.target.value)}
+              placeholder="Remote staff"
+              aria-label="Filter preset name"
+            />
+          </label>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              const next = saveFilterPreset(presetName, filters)
+              setPresets(next)
+              if (presetName.trim()) toast(`Saved preset ${presetName.trim()}`)
+              setPresetName('')
+            }}
+          >
+            Save preset
+          </button>
+          {presets.length > 0 && (
+            <div className="filter-presets">
+              {presets.map((preset) => (
+                <div key={preset.name} className="filter-preset-row">
+                  <button type="button" className="secondary" onClick={() => setFilters(preset.filters)}>
+                    {preset.name}
+                  </button>
+                  <button
+                    type="button"
+                    className="link-btn"
+                    aria-label={`Delete preset ${preset.name}`}
+                    onClick={() => setPresets(deleteFilterPreset(preset.name))}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <p className="muted">
             Threshold is set in <a href="#/settings">Settings</a>.
           </p>

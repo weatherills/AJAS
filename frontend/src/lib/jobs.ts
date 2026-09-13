@@ -404,6 +404,64 @@ export function feedSourcesQueryParam(sources: JobSourceName[]): string {
   return sources.join(',') || 'none'
 }
 
+const PRESET_KEY = 'ajas.jobFeed.presets.v1'
+const PRESET_MEMORY = new Map<string, string>()
+
+export type FeedPreset = { name: string; userId: string; filters: JobFilters }
+
+function presetStorageKey(userId: string): string {
+  return `${PRESET_KEY}:${userId || 'local'}`
+}
+
+function readPresetStore(key: string): string | null {
+  try {
+    if (typeof localStorage !== 'undefined') return localStorage.getItem(key)
+  } catch {
+    /* fall through to memory */
+  }
+  return PRESET_MEMORY.get(key) ?? null
+}
+
+function writePresetStore(key: string, value: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(key, value)
+      return
+    }
+  } catch {
+    /* fall through to memory */
+  }
+  PRESET_MEMORY.set(key, value)
+}
+
+export function loadFilterPresets(userId = 'local'): FeedPreset[] {
+  try {
+    const raw = readPresetStore(presetStorageKey(userId))
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as FeedPreset[]
+    return Array.isArray(parsed) ? parsed.filter((item) => item && item.name && item.filters) : []
+  } catch {
+    return []
+  }
+}
+
+export function saveFilterPreset(name: string, filters: JobFilters, userId = 'local'): FeedPreset[] {
+  const trimmed = name.trim()
+  if (!trimmed) return loadFilterPresets(userId)
+  const next = [
+    ...loadFilterPresets(userId).filter((item) => item.name !== trimmed),
+    { name: trimmed, userId, filters: { ...filters } },
+  ]
+  writePresetStore(presetStorageKey(userId), JSON.stringify(next))
+  return next
+}
+
+export function deleteFilterPreset(name: string, userId = 'local'): FeedPreset[] {
+  const next = loadFilterPresets(userId).filter((item) => item.name !== name)
+  writePresetStore(presetStorageKey(userId), JSON.stringify(next))
+  return next
+}
+
 export async function persistFeedSourceChip(
   api: Pick<SettingsApi, 'patch'>,
   name: JobSourceName,

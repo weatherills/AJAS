@@ -19,6 +19,9 @@ import {
   paginate,
   PAGE_SIZE,
   persistFeedSourceChip,
+  loadFilterPresets,
+  saveFilterPreset,
+  deleteFilterPreset,
   refreshToastForStatuses,
   sourceChipPatch,
   sourceErrorCopy,
@@ -143,6 +146,17 @@ describe('job feed helpers', () => {
     expect(feedSourcesQueryParam([])).toBe('none')
     expect(feedSourcesQueryParam(['greenhouse'])).toBe('greenhouse')
     expect(feedSourcesQueryParam(['greenhouse', 'lever'])).toBe('greenhouse,lever')
+  })
+
+  it('saves and loads filter presets per user', () => {
+    const filters = { ...defaultFilters(), q: 'staff', location: 'Remote' }
+    saveFilterPreset('Remote staff', filters, 'ada')
+    saveFilterPreset('Onsite', { ...defaultFilters(), location: 'Austin' }, 'linus')
+    expect(loadFilterPresets('ada')).toHaveLength(1)
+    expect(loadFilterPresets('ada')[0].filters.q).toBe('staff')
+    expect(loadFilterPresets('linus')[0].filters.location).toBe('Austin')
+    deleteFilterPreset('Remote staff', 'ada')
+    expect(loadFilterPresets('ada')).toEqual([])
   })
 
   it('persists Job Feed chips through Settings so both-off survives a reload', async () => {
