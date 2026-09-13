@@ -113,3 +113,31 @@ def test_workday_career_page_fixture_parser(monkeypatch):
     monkeypatch.setenv("FLAG_WORKDAY_ADAPTER", "false")
     get_settings.cache_clear()
     assert workday_career_jobs(html) == []
+
+
+def test_source_adapter_watchdog_retries_on_dom_drift():
+    from app.job_sources.drift import reset
+    from app.job_sources.watchdog import retry_on_drift
+
+    reset()
+    payloads = [
+        {"jobs": [{"id": "1"}], "etag": "a"},
+        {"jobs": [{"id": "1"}], "ts": "later"},
+        {"jobs": [{"id": "2", "title": "New"}]},
+    ]
+    calls: list[int] = []
+
+    def loader(payload):
+        calls.append(1)
+        jobs = payload.get("jobs") if isinstance(payload, dict) else []
+        return jobs
+
+    first = retry_on_drift("canary-src", payloads[0], loader)
+    assert first["attempts"] == 1
+    assert first["recovered"] is True
+    same_shape = retry_on_drift("canary-src", payloads[1], loader)
+    assert same_shape["changed"] is False
+    drifted = retry_on_drift("canary-src", payloads[2], loader)
+    assert drifted["changed"] is True
+    assert drifted["jobs"] == [{"id": "2", "title": "New"}]
+    assert len(calls) >= 3
