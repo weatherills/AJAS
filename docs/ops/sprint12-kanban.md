@@ -6,3 +6,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 002 Tenant onboarding flow and admin invite emails
 - [x] 003 Roles & permissions: RBAC (Owner, Admin, Member, Read-only)
 - [x] 004 Access control middleware and permission checks across APIs
+- [x] 005 Billing: metered usage counters (ingest/match/apply/email)
