@@ -581,3 +581,14 @@ def test_rate_limit_policy_v2_per_tenant_endpoint():
     assert row["dailyHit"] is True
     assert row["tenant"] == "t1"
 
+# === S14-61 ===
+
+def test_idempotency_keys_v2_persistence_window_logs():
+    from app.idempotency_v2 import reset as reset_idem
+    from app.sprint14.ops import idem_log
+
+    reset_idem()
+    row = idem_log("k1", "fp", {"ok": True})
+    assert row["status"] == "stored"
+    assert row["windowHours"] == 24
+
