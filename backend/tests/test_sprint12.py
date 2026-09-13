@@ -236,10 +236,20 @@ def test_greenhouse_and_lever_board_adapters():
     assert gh[0]["source"] == "greenhouse"
     assert lv[0]["source"] == "lever"
 
+def test_sitemap_crawler_and_robots_rate_policy():
+    xml = """<?xml version='1.0'?><urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'><url><loc>https://acme.test/jobs/staff-eng</loc></url></urlset>"""
+    urls = ingest_mod.parse_sitemap(xml)
+    jobs = ingest_mod.board_jobs_from_urls(urls, source="sitemap")
+    assert jobs[0]["source_posting_id"] == "staff-eng"
+    policy = ingest_mod.robots_rate_policy("https://acme.test", crawl_delay=2)
+    assert policy["crawlDelaySec"] == 2
+    assert ingest_mod.allow_domain_request("acme.test", now=10, min_interval=1) is True
+    assert ingest_mod.allow_domain_request("acme.test", now=10.2, min_interval=1) is False
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 34
+    assert COMPLETED == 35
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
