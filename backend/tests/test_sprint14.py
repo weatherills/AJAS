@@ -884,3 +884,11 @@ def test_cli_reindex_embeddings_for_resume_job():
 
     assert any("reindex" in cmd for cmd in cli_reindex())
 
+# === S14-96 ===
+
+def test_webhooks_signed_callbacks_for_adapter_outcomes():
+    from app.sprint14.ops import webhook_event
+
+    row = webhook_event(secret="k", body='{"ok":true}', event="adapter.ok")
+    assert row["event"] == "adapter.ok"
+
