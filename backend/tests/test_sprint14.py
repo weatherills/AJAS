@@ -508,3 +508,13 @@ def test_error_taxonomy_v3_codes_remediation_hints():
     assert book["retryable"] is True
     assert book["remediation"]
 
+# === S14-53 ===
+
+def test_observability_trace_ids_across_ingest_apply():
+    from app.sprint14.ops import reset, traces
+
+    reset()
+    row = traces("ingest", trace_id="s14-trace")
+    assert row["span"]["traceId"] == "s14-trace"
+    assert row["viewer"]["count"] >= 1
+
