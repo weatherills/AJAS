@@ -240,3 +240,18 @@ def test_matching_fairness_dedupes_near_identical_roles():
     assert ("Staff Engineer", 88) in titles
     assert ("Staff Engineer", 70) not in titles
     assert ("Product Designer", 60) in titles
+
+
+def test_isotonic_regression_scaffold_with_holdout():
+    from app.matching.isotonic import holdout_split, isotonic_fit, isotonic_predict
+
+    pairs = [(10, 0.1), (20, 0.4), (30, 0.2), (40, 0.8), (50, 0.9)]
+    split = holdout_split(pairs, holdout_frac=0.2)
+    assert split.holdout
+    fitted = isotonic_fit(split.train)
+    xs = [x for x, _ in fitted]
+    ys = [y for _, y in fitted]
+    assert xs == sorted(xs)
+    assert ys == sorted(ys)
+    mid = isotonic_predict(fitted, 25)
+    assert ys[0] <= mid <= ys[-1]
