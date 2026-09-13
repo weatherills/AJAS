@@ -15,3 +15,14 @@ def verify_signature(secret: str, body: str, header: str) -> bool:
     expected = sign_payload(secret, body)
     provided = (header or "").strip()
     return hmac.compare_digest(expected, provided)
+
+
+def signed_event(secret: str, event_type: str, payload: dict) -> dict:
+    import json
+
+    body = json.dumps({"type": event_type, "payload": payload}, sort_keys=True, default=str)
+    return {
+        "type": event_type,
+        "payload": payload,
+        "signature": sign_payload(secret, body),
+    }
