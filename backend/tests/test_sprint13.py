@@ -479,3 +479,18 @@ def test_ingestion_adapters_v3_indeed_html_json_dual_path_parser():
     assert "html" in parsed["paths"]
     assert len(parsed["jobs"]) == 2
 
+# === S13-43 ===
+
+def test_ingestion_adapters_v3_linkedin_resilience_captcha_fallback():
+    from app.flags import feature_flags
+    from app.sprint13.ingest import linkedin_resilience, reset
+
+    reset()
+    assert feature_flags()["linkedin_adapter"] is False
+    blocked = linkedin_resilience(captcha=True)
+    assert blocked["bypass"] is False
+    assert blocked["fallback"] == "fixture"
+    ok = linkedin_resilience(captcha=False)
+    assert ok["ok"] is True
+    assert ok["bypass"] is False
+

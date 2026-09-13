@@ -60,3 +60,4 @@ Landed on `main` as `[S13]` commits.
 
 - [x] 041 Ingestion adapters v3: Glassdoor block detection and cool-down
 - [x] 042 Ingestion adapters v3: Indeed HTML/JSON dual-path parser
+- [x] 043 Ingestion adapters v3: LinkedIn resilience + captcha fallback
