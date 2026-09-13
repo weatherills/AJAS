@@ -369,7 +369,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 69
+    assert COMPLETED == 70
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -497,3 +497,7 @@ def test_multi_resume_picks_skill_overlap():
         {"title": "Azure Python engineer", "skills": ["python"]},
     )
     assert best["id"] == "r2"
+
+def test_job_freshness_marks_stale():
+    fresh = product_mod.freshness(80, 50)
+    assert fresh["stale"] is True

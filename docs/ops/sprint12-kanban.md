@@ -89,3 +89,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 067 Resume versioning: track edits and revert
 - [x] 068 Multi-resume matching: pick best resume per job automatically
 - [x] 069 Job change detection: notify when JD updates materially
+- [x] 070 Job freshness: decay scores and stale-job cleanup
