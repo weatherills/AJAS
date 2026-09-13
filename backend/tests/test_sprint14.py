@@ -499,3 +499,12 @@ def test_audit_trail_ui_filter_export_csv():
     bundle = audit_csv([{"id": "1", "action": "apply"}])
     assert "apply" in bundle["csv"]
 
+# === S14-52 ===
+
+def test_error_taxonomy_v3_codes_remediation_hints():
+    from app.sprint14.ops import playbook
+
+    book = playbook("RATE_LIMITED")
+    assert book["retryable"] is True
+    assert book["remediation"]
+
