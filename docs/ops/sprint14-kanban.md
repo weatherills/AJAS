@@ -135,3 +135,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 095 CLI: reindex embeddings for resume/job
 - [x] 096 Webhooks: signed callbacks for adapter outcomes
 - [x] 097 Health: dependency matrix endpoint v3
+- [x] 098 Idempotency: conflict inspector tool v2

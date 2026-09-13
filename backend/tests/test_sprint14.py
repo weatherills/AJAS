@@ -901,3 +901,14 @@ def test_health_dependency_matrix_endpoint_v3():
     assert row["schema"] == "ajas.health.v3"
     assert row["version"] == "sprint14"
 
+# === S14-98 ===
+
+def test_idempotency_conflict_inspector_tool_v2():
+    from app.idempotency_v2 import remember, reset as reset_idem
+    from app.sprint14.ops import idem_log
+
+    reset_idem()
+    remember("k", "a", {"v": 1})
+    row = idem_log("k", "b", {"v": 2})
+    assert row["status"] == "conflict"
+
