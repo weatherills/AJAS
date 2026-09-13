@@ -1,0 +1,35 @@
+{
+  "retry_after": 1.5,
+  "pages": [
+    {
+      "cursor": "p1",
+      "next": "p2",
+      "jobs": [
+        {
+          "id": "zr-p1",
+          "title": "Ingestion Engineer",
+          "company": "Northwind",
+          "location": "Seattle, WA",
+          "employment_type": "Full-time",
+          "description": "Python, queues, backoff.",
+          "apply_url": "https://fixtures.ajas.local/ziprecruiter/zr-p1"
+        }
+      ]
+    },
+    {
+      "cursor": "p2",
+      "next": null,
+      "jobs": [
+        {
+          "id": "zr-p2",
+          "title": "Platform SRE",
+          "company": "Northwind",
+          "location": "Remote",
+          "employment_type": "Full-time",
+          "description": "Kubernetes, observability.",
+          "apply_url": "https://fixtures.ajas.local/ziprecruiter/zr-p2"
+        }
+      ]
+    }
+  ]
+}

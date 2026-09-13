@@ -17,8 +17,8 @@ from app.job_sources.boards import (  # noqa: E402
     linkedin_jobs,
     wellfound_jobs,
     workday_jobs,
-    ziprecruiter_jobs,
 )
+from app.job_sources.ziprecruiter import ziprecruiter_jobs  # noqa: E402
 from app.job_sources.circuit import snapshot as circuit_snapshot  # noqa: E402
 from app.flags import feature_flags  # noqa: E402
 
