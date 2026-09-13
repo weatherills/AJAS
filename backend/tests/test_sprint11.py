@@ -400,3 +400,18 @@ def test_email_signature_quoted_text_stripping():
     assert strip_quoted(body) == "Please reply Tuesday."
     quoted = "Can you join?\n> On Mon, Jane wrote:\n> prior thread"
     assert strip_quoted(quoted) == "Can you join?"
+
+
+def test_followup_snooze_until_business_hours():
+    from datetime import datetime, timezone
+
+    from app.mail.snooze import snooze_until
+
+    saturday = datetime(2026, 9, 12, 12, 0, tzinfo=timezone.utc)
+    out = snooze_until(now=saturday, until=saturday, business_hours=True)
+    assert out["until"].startswith("2026-09-14T09:00:00")
+    assert out["rolled"] is True
+    weekday = datetime(2026, 9, 14, 10, 30, tzinfo=timezone.utc)
+    same = snooze_until(now=weekday, until=weekday, business_hours=True)
+    assert same["until"].startswith("2026-09-14T10:30:00")
+    assert same["rolled"] is False
