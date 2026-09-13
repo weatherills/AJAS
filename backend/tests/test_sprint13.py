@@ -670,3 +670,12 @@ def test_api_v2_search_sort_filter_consistency():
     desc = api_query(rows, q=None, sort="id", order="desc", filters={"company": "Acme"})
     assert desc["items"][0]["id"] == "1"
 
+# === S13-59 ===
+
+def test_cleanup_orphaned_records_sweeper_jobs():
+    from app.sprint13.ops import sweep_orphans
+
+    out = sweep_orphans([{"id": "keep"}, {"id": "gone"}], live_ids={"keep"})
+    assert out["count"] == 1
+    assert out["orphans"][0]["id"] == "gone"
+

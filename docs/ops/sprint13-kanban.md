@@ -80,3 +80,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 056 Apply profile: multi-profile switcher per role type
 - [x] 057 Backfill tool v2: safe chunking and progress UI
 - [x] 058 API v2: search/sort/filter consistency
+- [x] 059 Cleanup: orphaned records sweeper jobs
