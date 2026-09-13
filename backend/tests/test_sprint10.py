@@ -145,3 +145,34 @@ def test_salary_parsing_v2_multi_currency_and_total_comp():
     assert usd["min"] == 180000
     assert usd["currency"] == "USD"
     assert usd["totalComp"] is True
+
+
+def test_skill_extractor_v2_phrases_and_negation():
+    from app.matching.skills_v2 import extract_skills_v2
+
+    result = extract_skills_v2("Required: Python and machine learning.\nNo Java.\nWithout Kubernetes.")
+    skills = " ".join(result["skills"])
+    negated = " ".join(result["negated"])
+    assert "python" in skills
+    assert "machine learn" in skills or "machine" in skills
+    assert "java" in negated
+    assert "kubernet" in negated or "kubernetes" in negated
+    assert "java" not in skills.split()
+
+
+def test_resume_parser_v2_project_impact_scoring():
+    from app.resumes.impact import extract_and_score
+
+    text = """
+Projects
+- Launched matching v2 and increased interview rate 32%
+- Owned on-call rotation
+Experience:
+- Various duties
+"""
+    result = extract_and_score(text)
+    assert result["bullets"]
+    top = result["top"][0]
+    assert "32%" in top["text"] or "32" in "".join(top["metrics"])
+    assert int(top["score"]) >= 80
+    assert result["impactScore"] > 0
