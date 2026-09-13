@@ -341,3 +341,11 @@ def test_ranking_calibration_monitor_dashboard_v2():
     assert row["n"] == 3
     assert row["A"] >= 1
 
+# === S14-35 ===
+
+def test_explanations_counterfactual_suggestions():
+    from app.sprint14.matching import counterfactual
+
+    row = counterfactual(["Python"], ["Python", "Go"])
+    assert row["add"] == ["Go"]
+
