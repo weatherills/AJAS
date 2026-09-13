@@ -129,3 +129,16 @@ def test_devex_hot_reload_stability_for_workers():
     second = mark_reload("ingest")
     assert second["restarts"] == first["restarts"] + 1 or second["restarts"] >= 2
 
+# === S13-10 ===
+
+def test_devex_local_queue_emulator_and_scripts():
+    from app.sprint13.devex import drain_local, emulator_scripts, enqueue_local, reset
+
+    reset()
+    enqueue_local("ingest", {"id": "j1"})
+    items = drain_local("ingest")
+    assert items == [{"id": "j1"}]
+    assert drain_local("ingest") == []
+    assert "scripts/s13_queue_emulator.py" in emulator_scripts()
+    assert (Path(__file__).resolve().parents[2] / "scripts" / "s13_queue_emulator.py").is_file()
+
