@@ -24,6 +24,7 @@ SENIORITY_LEVELS: tuple[tuple[str, int], ...] = (
     ("mid", 3),
     ("intermediate", 3),
     ("senior", 4),
+    ("lead", 5),
     ("staff", 5),
     ("principal", 6),
     ("director", 7),

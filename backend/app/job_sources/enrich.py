@@ -119,7 +119,11 @@ def infer_seniority(title: str, body: str = "") -> dict[str, object]:
         8: "vp",
         9: "executive",
     }
-    return {"level": level, "label": labels.get(level, "mid")}
+    label = labels.get(level, "mid")
+    hay = f"{title} {body}".lower()
+    if level == 5 and re.search(r"\blead\b", hay) and not re.search(r"\bstaff\b", hay):
+        label = "lead"
+    return {"level": level, "label": label}
 
 
 def fuzzy_duplicate(left_title: str, left_company: str, right_title: str, right_company: str, *, threshold: float = 0.86) -> bool:

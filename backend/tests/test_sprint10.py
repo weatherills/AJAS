@@ -803,3 +803,14 @@ def test_multilingual_parsing_en_es_fr():
     assert detect_lang("experiencia laboral y habilidades técnicas") == "es"
     assert detect_lang("expérience professionnelle et compétences") == "fr"
     assert parse_branch("education and skills")["parser"] == "resume.en"
+
+
+def test_seniority_mapping_includes_lead_staff_principal():
+    from app.job_sources.enrich import infer_seniority
+    from app.matching.boosts import seniority_level
+
+    assert seniority_level("Lead Engineer") == 5
+    assert seniority_level("Staff Engineer") == 5
+    assert seniority_level("Principal Engineer") == 6
+    assert infer_seniority("Lead Platform Engineer")["label"] == "lead"
+    assert infer_seniority("Staff Platform Engineer")["label"] == "staff"
