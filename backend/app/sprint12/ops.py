@@ -172,3 +172,7 @@ def rate_policy_ui() -> dict[str, object]:
     from app.source_quotas import dashboard
     return {"quotas": list(dashboard()), "toggles": True}
 
+def feature_flags_ui() -> dict[str, bool]:
+    from app.flags import feature_flags
+    return feature_flags()
+

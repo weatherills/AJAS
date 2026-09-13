@@ -98,3 +98,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 073 Anti-spam: detect scam/spam job postings
 - [x] 074 Safety: blocklist companies/keywords per tenant
 - [x] 075 Rate policy UI: per-source quotas and toggles
+- [x] 076 Feature flags UI: enable/disable adapters/flows
