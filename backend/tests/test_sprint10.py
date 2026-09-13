@@ -781,3 +781,25 @@ def test_education_normalization_v2_degrees_schools():
     assert row["degree"] == "master"
     assert row["school"] == "Massachusetts Institute of Technology"
     assert row["major"] == "Computer Science"
+
+
+def test_experience_timeline_rebuild_infers_gaps():
+    from app.resumes.timeline import rebuild_timeline
+
+    rebuilt = rebuild_timeline(
+        [
+            "Engineer at Acme Jan 2018 - Dec 2019",
+            "Staff at Globex Jun 2021 - Present",
+        ]
+    )
+    assert rebuilt["count"] == 2
+    assert rebuilt["gaps"]
+
+
+def test_multilingual_parsing_en_es_fr():
+    from app.resumes.multilingual import detect_lang, parse_branch
+
+    assert detect_lang("Experience and education skills in python") == "en"
+    assert detect_lang("experiencia laboral y habilidades técnicas") == "es"
+    assert detect_lang("expérience professionnelle et compétences") == "fr"
+    assert parse_branch("education and skills")["parser"] == "resume.en"
