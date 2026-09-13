@@ -16,6 +16,7 @@ import { jobHref, useHashSearch } from '../lib/routes'
 import { bulkDismiss, dismissSnackbar } from '../lib/dismiss'
 import { unifiedDiff } from '../lib/jdDiff'
 import { expandedAttr } from '../lib/a11y'
+import { t } from '../lib/i18n'
 import {
   ALL_SOURCES,
   alsoFromLabel,
@@ -613,7 +614,7 @@ export function JobFeedPage() {
       <AppNav />
       <header className="library-header">
         <div>
-          <h1>Job feed</h1>
+          <h1>{t('jobs')}</h1>
           <p className="tagline">Public Greenhouse and Lever postings, merged when they are the same role.</p>
         </div>
         <div className="feed-header-actions">
@@ -623,7 +624,7 @@ export function JobFeedPage() {
             onClick={() => setFiltersOpen(true)}
             {...expandedAttr(filtersOpen)}
           >
-            Filters
+            {t('filters')}
           </button>
           <button
             type="button"
@@ -752,7 +753,7 @@ export function JobFeedPage() {
             </p>
           </fieldset>
           <label>
-            Search
+            {t('search')}
             <input
               value={filters.q}
               onChange={(event) => setFilters((prev) => ({ ...prev, q: event.target.value }))}

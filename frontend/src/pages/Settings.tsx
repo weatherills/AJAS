@@ -29,6 +29,7 @@ import {
 } from '../lib/settings'
 import { loadApplyPrefs, saveApplyPrefs, type ApplyPrefs } from '../lib/applyPrefs'
 import { formatAllowlist, parseAllowlist } from '../lib/allowlist'
+import { currentLocale, setLocale, t, type Locale } from '../lib/i18n'
 import {
   addBoardToast,
   boardAddPayload,
@@ -110,6 +111,7 @@ function ApplyPrefsFields() {
 
 export function SettingsPage() {
   const [userId, setUser] = useState(getUserId())
+  const [locale, setLocaleState] = useState<Locale>(() => currentLocale())
   const [allowlistText, setAllowlistText] = useState('boards.greenhouse.io, jobs.lever.co, graph.microsoft.com')
   const [doc, setDoc] = useState<SettingsDoc | null>(null)
   const [percent, setPercent] = useState(70)
@@ -503,7 +505,7 @@ export function SettingsPage() {
       <AppNav />
       <header className="library-header">
         <div>
-          <h1>Settings</h1>
+          <h1>{t('settings')}</h1>
           <p className="tagline">Match threshold, learning, Microsoft 365 email, and job sources.</p>
         </div>
         {!doc && !loadError && (
@@ -679,6 +681,16 @@ export function SettingsPage() {
           />
         </label>
         <p className="muted">Normalized: {formatAllowlist(parseAllowlist(allowlistText))}</p>
+        <label>
+          {t('language')}
+          <select
+            value={locale}
+            onChange={(event) => setLocaleState(setLocale(event.target.value))}
+            aria-label={t('language')}
+          >
+            <option value="en">English</option>
+          </select>
+        </label>
       </section>
 
       <section className="editor-section" aria-labelledby="learning-prefs-heading">
