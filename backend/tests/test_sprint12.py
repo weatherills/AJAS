@@ -369,7 +369,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 72
+    assert COMPLETED == 73
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -510,3 +510,7 @@ def test_company_insights_enrichment():
     insights = product_mod.enrich_company("Acme Inc.")
     assert insights["funding"]
     assert insights["size"] or insights.get("headcount") or True
+
+def test_scam_job_gift_card_flag():
+    spam = safety_mod.scam_job({"title": "Easy money", "description": "Pay for equipment via gift card"})
+    assert spam["spam"] is True
