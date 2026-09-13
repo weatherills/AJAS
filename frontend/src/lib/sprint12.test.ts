@@ -11,6 +11,7 @@ import {
   emptyCopy,
   tourSteps,
   searchHelp,
+  changelogEntries,
 } from './sprint12'
 
 
@@ -42,5 +43,6 @@ describe('sprint12 product helpers', () => {
     expect(emptyCopy('jobs')).toMatch(/Greenhouse/)
     expect(tourSteps()[0].href).toBe('#/resumes')
     expect(searchHelp([{ id: 'threshold', title: 'Match threshold', body: 'slider' }], 'thresh')[0].id).toBe('threshold')
+    expect(changelogEntries()[0].version).toBe('12.0.0')
   })
 })

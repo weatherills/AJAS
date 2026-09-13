@@ -113,3 +113,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 085 Error pages/empty states polish across app
 - [x] 086 Onboarding tour and contextual help
 - [x] 087 Knowledge base: in-app docs and search
+- [x] 088 Changelog page with releases and highlights
