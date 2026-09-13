@@ -445,7 +445,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 96
+    assert COMPLETED == 97
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -649,3 +649,7 @@ def test_legal_terms_privacy_versioning():
     legal = platform_mod.legal_bundle()
     assert legal["terms"]["version"]
     assert legal["privacy"]["version"]
+
+def test_pentest_backlog_triage():
+    pentest = platform_mod.file_pentest(title="XSS in JD html", severity="medium")
+    assert pentest["status"] == "triage"
