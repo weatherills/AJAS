@@ -92,3 +92,18 @@ def test_company_domain_resolver_mx_then_whois():
     assert mx["domain"] == "northwind.com" and mx["method"] == "mx"
     whois = resolve_company_domain("Contoso", mx_lookup=lambda _: None, whois_lookup=lambda name: "contoso.net")
     assert whois == {"domain": "contoso.net", "method": "whois", "company": "Contoso"}
+
+
+def test_geocode_city_state_country_is_cached():
+    from app.job_sources.geocode import clear_cache, geocode
+
+    clear_cache()
+    first = geocode("Seattle", "WA", "US")
+    second = geocode("Seattle", "WA", "US")
+    assert first["found"] is True
+    assert first["lat"] == 47.6062
+    assert first["lon"] == -122.3321
+    assert second["cached"] is True
+    missing = geocode("Atlantis", "OC", "US")
+    assert missing["found"] is False
+    assert missing["lat"] is None
