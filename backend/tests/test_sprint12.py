@@ -6,6 +6,7 @@ from pathlib import Path
 from app.mail.scan import EICAR_SIGNATURE
 from app.sprint12 import VERSION
 from app.sprint12 import billing as billing_mod
+from app.sprint12 import ingest as ingest_mod
 from app.sprint12 import mail_v2 as mail_mod
 from app.sprint12 import platform as platform_mod
 from app.sprint12 import product as product_mod
@@ -23,6 +24,7 @@ def setup_function() -> None:
     ranking_mod.reset()
     security_mod.reset()
     mail_mod.reset()
+    ingest_mod.reset()
     product_mod.reset()
     platform_mod.reset()
 
@@ -228,10 +230,16 @@ def test_notification_digests_and_web_push():
     push = mail_mod.subscribe_push(user_id="ada", endpoint="https://push.example/ada", keys={"p256dh": "x", "auth": "y"})
     assert push["endpoint"].startswith("https://")
 
+def test_greenhouse_and_lever_board_adapters():
+    gh = ingest_mod.greenhouse_board_jobs({"jobs": [{"id": 1, "title": "Eng", "absolute_url": "https://boards.greenhouse.io/x/jobs/1", "company": "Acme"}]})
+    lv = ingest_mod.lever_board_jobs({"data": [{"id": "abc", "text": "PM", "hostedUrl": "https://jobs.lever.co/x/abc", "categories": {"team": "Acme"}}]})
+    assert gh[0]["source"] == "greenhouse"
+    assert lv[0]["source"] == "lever"
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 32
+    assert COMPLETED == 33
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")

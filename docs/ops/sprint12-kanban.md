@@ -43,3 +43,4 @@ Landed on `main` as `[S12]` commits.
 - tests/lint/typecheck green after task 30
 - [x] 031 Notification digests: daily/weekly emails with key events
 - [x] 032 Web push notifications setup and subscription UX
+- [x] 033 Job source integrations: Greenhouse job boards adapter
