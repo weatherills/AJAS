@@ -467,3 +467,17 @@ def test_secrets_hot_reload_adapters():
     result = reload_adapters()
     assert result["version"] == before + 1
     assert current_version() == result["version"]
+
+
+def test_rate_limit_policy_v2_per_tenant_and_endpoint():
+    from app.ratelimit_v2 import hit, reset
+
+    reset()
+    first = hit("ada", "/jobs", limit=2, now=1.0)
+    second = hit("ada", "/jobs", limit=2, now=1.1)
+    third = hit("ada", "/jobs", limit=2, now=1.2)
+    other = hit("ada", "/matches", limit=2, now=1.2)
+    assert first["allowed"] and second["allowed"]
+    assert third["allowed"] is False
+    assert other["allowed"] is True
+    assert other["count"] == 1
