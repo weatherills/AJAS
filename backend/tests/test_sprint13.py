@@ -326,3 +326,14 @@ def test_vector_store_hnsw_parameter_tuning_and_benchmarks():
     assert tight["recall"] > loose["recall"]
     assert tight["latencyMs"] > loose["latencyMs"]
 
+# === S13-29 ===
+
+def test_embeddings_pipeline_shard_aware_reindex_and_backpressure():
+    from app.sprint13.matching import shard_reindex
+
+    calm = shard_reindex(shards=4, backlog=10, max_inflight=100)
+    hot = shard_reindex(shards=4, backlog=250, max_inflight=100)
+    assert calm["backpressure"] is False
+    assert hot["backpressure"] is True
+    assert hot["inflight"] == 100
+
