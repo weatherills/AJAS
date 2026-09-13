@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Protocol
 
 from app.matching.boosts import SkillGate, skill_gate
+from app.matching.spans import reason_spans
 from app.matching.evidence import evidence_sentences
 from app.matching.scoring import parse_job_fields, tokenize, truncate_words
 
@@ -20,6 +21,7 @@ class ExplainResult:
     gaps: list[str] = field(default_factory=list)
     evidence: list[str] = field(default_factory=list)
     gate: SkillGate | None = None
+    spans: dict[str, list[dict[str, object]]] = field(default_factory=dict)
 
 
 class Explainer(Protocol):
@@ -86,12 +88,14 @@ class HeuristicExplainer:
                 else "Limited overlap overall."
             )
         text = _EMAIL.sub("[redacted]", " ".join(parts))
+        spans = reason_spans(job_text=job_text, highlights=matched_skills or matched_title, gaps=gaps)
         return ExplainResult(
             summary=truncate_words(text, 500),
             highlights=matched_skills or matched_title,
             gaps=gaps,
             evidence=evidence,
             gate=gate,
+            spans=spans,
         )
 
 

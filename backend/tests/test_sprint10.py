@@ -255,3 +255,14 @@ def test_isotonic_regression_scaffold_with_holdout():
     assert ys == sorted(ys)
     mid = isotonic_predict(fitted, 25)
     assert ys[0] <= mid <= ys[-1]
+
+
+def test_explanation_reason_codes_include_token_spans():
+    from app.matching.spans import reason_spans
+
+    job = "We need Python and Azure experience. Kubernetes is required."
+    spans = reason_spans(job_text=job, highlights=["Python", "Azure"], gaps=["Kubernetes"])
+    assert spans["matched"][0]["code"] == "matched_skill"
+    assert job[spans["matched"][0]["start"] : spans["matched"][0]["end"]].lower() == "python"
+    assert spans["missing"][0]["code"] == "missing_skill"
+    assert spans["missing"][0]["token"].lower() == "kubernetes"

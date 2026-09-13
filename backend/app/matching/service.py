@@ -377,6 +377,7 @@ class MatchingService:
         explanation = None
         highlights: list[str] = []
         gaps: list[str] = []
+        spans: dict[str, list[dict[str, object]]] = {}
         if options["explanation"]:
             try:
                 structured = getattr(self.explainer, "explain_structured", None)
@@ -393,6 +394,7 @@ class MatchingService:
                     gaps = list(result.gaps or [])
                     if result.evidence:
                         evidence = result.evidence
+                    spans = getattr(result, "spans", None) or {}
                 else:
                     explanation = self.explainer.explain(
                         resume_text=resume_text,
@@ -456,6 +458,7 @@ class MatchingService:
             "evidence": evidence,
             "highlights": highlights,
             "gaps": gaps,
+            "spans": spans,
             "features": features,
             "persisted": persisted,
             "thresholdUsed": options["threshold_used"],
