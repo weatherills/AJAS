@@ -361,3 +361,13 @@ def test_resume_parser_v3_gap_detection_and_annotation():
     assert result["gaps"]
     assert result["gaps"][0]["note"] == "caregiving"
 
+# === S13-32 ===
+
+def test_resume_parser_v3_achievements_metric_detection():
+    from app.sprint13.parse import achievement_metrics
+
+    hit = achievement_metrics("Increased conversion 12% and saved $40k")
+    assert hit["hasMetric"] is True
+    assert 12.0 in hit["percents"]
+    assert hit["money"]
+
