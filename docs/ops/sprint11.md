@@ -50,3 +50,11 @@ Batch gates: [sprint11-batches.md](./sprint11-batches.md).
 
 - Match Why modal Copy, side-by-side compare, saved-search alerts,
   row quick actions, j/k/a/d/s/c/? triage keys, inbox grouping by job.
+
+## Settings, ops, observability
+
+- Per-site apply windows in Settings; resume version chooser on Apply.
+- Email provider health + reconnect; Ops adapter last-success/drift mute.
+- Algorithm flags: gap_penalty, stack_boost, fair_norm, ann_recall.
+- Worker `X-Request-Id` propagation, structured error contexts, source
+  latency histograms, adapter mute, PII scrub v2.
