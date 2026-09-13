@@ -211,3 +211,17 @@ def test_vector_store_tombstone_and_vacuum():
     assert "a" not in store.live
     assert result["live"] == 1
     assert result["tombstones"] == 1
+
+
+def test_matching_recency_time_decay():
+    from datetime import datetime, timezone, timedelta
+    from app.matching.recency import recency_boost
+
+    now = datetime(2026, 9, 13, tzinfo=timezone.utc)
+    fresh = recency_boost((now - timedelta(days=1)).isoformat(), now=now)
+    stale = recency_boost((now - timedelta(days=45)).isoformat(), now=now)
+    missing = recency_boost(None, now=now)
+    assert fresh > stale
+    assert fresh > 4
+    assert stale < 1.5
+    assert missing == 0.0

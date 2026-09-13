@@ -25,6 +25,7 @@ from app.matching.errors import (
     MatchingValidationError,
 )
 from app.matching.boosts import apply_gate, fit_bucket, rule_boosts, skill_gate
+from app.matching.recency import recency_boost
 from app.matching.evidence import evidence_sentences
 from app.matching.explain import Explainer, default_explainer
 from app.matching.keys import idempotency_key, sha256_text, utc_now
@@ -354,7 +355,8 @@ class MatchingService:
         score = score_1dp(keyword_norm, semantic_norm, keyword_w, semantic_w)
         gate = skill_gate(resume_text, job_text)
         boosts = rule_boosts(resume_text, job_text)
-        score = round(max(0.0, min(100.0, score + boosts.total)), 1)
+        recency = recency_boost(pair.get("posted_at") or pair.get("postedAt"))
+        score = round(max(0.0, min(100.0, score + boosts.total + recency)), 1)
         score = round(apply_gate(score, gate), 1)
         bucket = fit_bucket(score)
         evidence = evidence_sentences(resume_text, job_text, limit=5)
@@ -439,7 +441,8 @@ class MatchingService:
                     "location": boosts.location,
                     "seniority": boosts.seniority,
                     "visa": boosts.visa,
-                    "total": boosts.total,
+                    "recency": recency,
+                    "total": round(boosts.total + recency, 1),
                 },
             },
             "bucket": bucket,
