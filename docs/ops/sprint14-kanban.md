@@ -53,3 +53,8 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 037 Fit score: per-dimension sub-scores UI
 - [x] 038 Filters: saved presets per user
 - [x] 039 Search: keyword across normalized JD fields
+- [x] 040 Job list perf: windowed list + skeletons
+
+## Batch 4 gate
+- tests/lint/typecheck green after task 40
+

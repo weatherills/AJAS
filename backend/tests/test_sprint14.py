@@ -383,3 +383,12 @@ def test_search_keyword_across_normalized_jd_fields():
     found = search_jd([{"id": "1", "title": "Staff Python", "body": "azure"}], "python")
     assert found["count"] == 1
 
+# === S14-40 ===
+
+def test_job_list_perf_windowed_list_skeletons():
+    from app.sprint14.product import windowed
+
+    win = windowed(10_000, start=100)
+    assert win["virtualized"] is True
+    assert len(win["ids"]) == 20
+
