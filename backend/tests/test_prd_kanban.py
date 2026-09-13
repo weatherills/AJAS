@@ -161,6 +161,64 @@ def test_http_graph_client_fetch_delta_send_and_subscribe():
     assert any(call[0] == "PATCH" for call in http.calls)
 
 
+def test_http_graph_client_token_provider_receives_account_id():
+    seen: list[str | None] = []
+
+    def provider(account_id=None):
+        seen.append(account_id)
+        return "tok"
+
+    http = FakeGraphHttp()
+    client = HttpGraphClient(token_provider=provider, http=http)
+    client.fetch_message("acct-9", "g1")
+    client.delta("acct-9", None)
+    client.send_reply(
+        "acct-9",
+        conversation_id="conv-1",
+        internet_message_id="<g1@acme.test>",
+        subject="s",
+        body_text="b",
+        to_addresses=["maya@acme.test"],
+        attachments=[],
+    )
+    client.create_subscription(
+        notification_url="https://ajas.example/api/webhooks/graph/mail",
+        client_state="secret",
+        account_id="acct-9",
+    )
+    assert seen == ["acct-9", "acct-9", "acct-9", "acct-9"]
+
+
+def test_settings_access_token_uses_mailbox_owner_not_first_user():
+    from app.mail.graph import _settings_access_token
+    from app.mail.runtime import set_service as set_mail
+    from app.settings.runtime import set_service as set_settings
+
+    class FakeSettings:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def graph_access_token(self, user_id: str) -> str:
+            self.calls.append(user_id)
+            return f"tok-{user_id}"
+
+    mail_store = InMemoryEmailStore(seed=False)
+    first = mail_store.ensure_account("user-a", address="a@ex.com", demo=False)
+    second = mail_store.ensure_account("user-b", address="b@ex.com", demo=False)
+    mail = EmailService(store=mail_store, queue=InMemoryJobQueue(), graph=LocalGraphClient(), local_mode=True)
+    settings = FakeSettings()
+    set_mail(mail)
+    set_settings(settings)
+    try:
+        assert _settings_access_token(second.id) == "tok-user-b"
+        assert settings.calls == ["user-b"]
+        assert _settings_access_token(first.id) == "tok-user-a"
+        assert settings.calls == ["user-b", "user-a"]
+    finally:
+        set_mail(None)
+        set_settings(None)
+
+
 def test_ensure_graph_subscription_persists_local_row():
     store = InMemoryEmailStore(seed=False)
     settings_store = InMemorySettingsStore()

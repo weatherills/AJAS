@@ -4,14 +4,6 @@ Recorded 2026-09-11 after the Graph / Auto-Apply / Review must-fixes. These are 
 
 ## Open
 
-### Graph uses the first mailbox token in the process
-
-`HttpGraphClient` is constructed once with `_settings_access_token()`, which walks every Settings user and returns the first token that refreshes. Poll, reply, and subscription renew then call Graph as that mailbox, not as the account being processed.
-
-**Where:** `backend/app/mail/graph.py` (`_settings_access_token`, `default_graph_client`)
-
-**Impact:** A second connected Microsoft account can ingest or send as the wrong user.
-
 ### Disconnect does not cancel the Graph webhook
 
 Settings disconnect revokes the local connection and clears tokens. It does not DELETE the Graph subscription, so Microsoft can keep POSTing to `/api/webhooks/graph/mail` until the subscription expires (~42 hours).

@@ -7,6 +7,10 @@ from app.mail.service import EmailService
 _service: EmailService | None = None
 
 
+def try_get_service() -> EmailService | None:
+    return _service
+
+
 def get_service() -> EmailService:
     global _service
     if _service is None:

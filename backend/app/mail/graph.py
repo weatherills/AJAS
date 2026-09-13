@@ -62,6 +62,7 @@ class GraphClient(Protocol):
         notification_url: str,
         client_state: str,
         existing_id: str | None = None,
+        account_id: str | None = None,
     ) -> dict: ...
 
 
@@ -122,6 +123,7 @@ class LocalGraphClient:
         notification_url: str,
         client_state: str,
         existing_id: str | None = None,
+        account_id: str | None = None,
     ) -> dict:
         from datetime import datetime, timedelta, timezone
 
@@ -184,20 +186,35 @@ class HttpGraphClient:
         self._http = http or UrllibGraphHttp()
         self._base = base_url.rstrip("/")
 
-    def _headers(self) -> dict[str, str]:
-        token = self._token_provider()
+    def _call_token_provider(self, account_id: str | None) -> str:
+        provider = self._token_provider
+        try:
+            return provider(account_id)
+        except TypeError:
+            return provider()
+
+    def _headers(self, account_id: str | None = None) -> dict[str, str]:
+        token = self._call_token_provider(account_id)
         return {"Authorization": f"Bearer {token}"}
 
-    def _request(self, method: str, url: str, *, body: dict | None = None) -> tuple[int, dict]:
-        status, payload = self._http.request(method, url, headers=self._headers(), body=body)
+    def _request(
+        self,
+        method: str,
+        url: str,
+        *,
+        body: dict | None = None,
+        account_id: str | None = None,
+    ) -> tuple[int, dict]:
+        status, payload = self._http.request(method, url, headers=self._headers(account_id), body=body)
         if status == 401:
-            status, payload = self._http.request(method, url, headers=self._headers(), body=body)
+            status, payload = self._http.request(method, url, headers=self._headers(account_id), body=body)
         return status, payload
 
     def fetch_message(self, account_id: str, graph_message_id: str) -> GraphMessage | None:
         status, payload = self._request(
             "GET",
             f"{self._base}/me/messages/{graph_message_id}?$expand=attachments",
+            account_id=account_id,
         )
         if status == 404:
             return None
@@ -212,7 +229,7 @@ class HttpGraphClient:
             url = f"{self._base}/me/mailFolders/inbox/messages/delta?$deltatoken={token}"
         else:
             url = f"{self._base}/me/mailFolders/inbox/messages/delta"
-        status, payload = self._request("GET", url)
+        status, payload = self._request("GET", url, account_id=account_id)
         if status >= 400:
             return [], token or utc_now()
         rows = payload.get("value") or []
@@ -249,7 +266,7 @@ class HttpGraphClient:
                 for item in attachments
             ]
         payload = {"message": message, "comment": body_text}
-        self._request("POST", f"{self._base}/me/sendMail", body=payload)
+        self._request("POST", f"{self._base}/me/sendMail", body=payload, account_id=account_id)
         sent = GraphMessage(
             id=f"graph-{new_id()}",
             internet_message_id=f"<sent-{new_id()}@ajas.dev>",
@@ -272,6 +289,7 @@ class HttpGraphClient:
         notification_url: str,
         client_state: str,
         existing_id: str | None = None,
+        account_id: str | None = None,
     ) -> dict:
         from datetime import datetime, timedelta, timezone
 
@@ -281,6 +299,7 @@ class HttpGraphClient:
                 "PATCH",
                 f"{self._base}/subscriptions/{existing_id}",
                 body={"expirationDateTime": expires},
+                account_id=account_id,
             )
             if status < 400:
                 payload.setdefault("id", existing_id)
@@ -297,6 +316,7 @@ class HttpGraphClient:
                 "expirationDateTime": expires,
                 "clientState": client_state,
             },
+            account_id=account_id,
         )
         if status >= 400:
             raise RuntimeError(payload.get("error") or payload)
@@ -360,24 +380,35 @@ def pending_followup(account_id: str, mailbox: str) -> GraphMessage:
     )
 
 
-def _settings_access_token() -> str:
+def _user_id_for_graph_account(account_id: str | None) -> str | None:
+    if not account_id:
+        return None
+    try:
+        from app.mail.runtime import try_get_service as try_mail
+
+        mail = try_mail()
+    except Exception:
+        mail = None
+    if mail is not None:
+        try:
+            return mail.store.get_account(account_id).user_id
+        except Exception:
+            owned = mail.store.get_account_for_user(account_id)
+            if owned is not None:
+                return account_id
+    return account_id
+
+
+def _settings_access_token(account_id: str | None = None) -> str:
     from app.settings.runtime import try_get_service
 
     service = try_get_service()
     if service is None:
         raise RuntimeError("settings service is not available for Graph tokens")
-    user_ids = []
-    list_ids = getattr(service.store, "list_user_ids", None)
-    if callable(list_ids):
-        user_ids = list_ids()
-    last_error: Exception | None = None
-    for user_id in user_ids:
-        try:
-            return service.graph_access_token(user_id)
-        except Exception as exc:
-            last_error = exc
-            continue
-    raise RuntimeError(str(last_error) if last_error else "no active Microsoft Graph token")
+    user_id = _user_id_for_graph_account(account_id)
+    if not user_id:
+        raise RuntimeError("mailbox account is required for Graph token")
+    return service.graph_access_token(user_id)
 
 
 def default_graph_client() -> GraphClient:

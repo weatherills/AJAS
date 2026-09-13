@@ -297,6 +297,7 @@ class EmailService:
             notification_url=notification_url,
             client_state=cfg.mail_webhook_client_state,
             existing_id=existing.graph_subscription_id if existing else None,
+            account_id=account.id,
         )
         if not result:
             return existing
