@@ -181,3 +181,13 @@ def test_onsite_percent_and_travel_requirement_fields():
     assert travel["travel_percent"] == 25
     none = work_arrangement("Fully remote, no travel")
     assert none["travel_percent"] == 0
+
+
+def test_location_timezone_inference_and_normalization():
+    from app.job_sources.timezone import infer_timezone
+
+    assert infer_timezone("Seattle, WA")["timezone"] == "America/Los_Angeles"
+    assert infer_timezone("Austin, TX")["timezone"] == "America/Chicago"
+    assert infer_timezone("Dublin")["timezone"] == "Europe/Dublin"
+    assert infer_timezone("Remote")["timezone"] == "UTC"
+    assert infer_timezone("Unknownville")["timezone"] is None
