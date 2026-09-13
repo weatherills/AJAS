@@ -405,7 +405,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 84
+    assert COMPLETED == 85
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -572,3 +572,7 @@ def test_adapter_success_error_latency_charts():
     record("lever", fetched=2, errors=1)
     charts = ops_mod.adapter_charts()
     assert any(row.get("kind") == "quota" for row in charts)
+
+def test_empty_state_copy_for_jobs():
+    empty = platform_mod.empty_state("jobs")
+    assert "Greenhouse" in empty["title"]

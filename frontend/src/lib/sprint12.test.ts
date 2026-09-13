@@ -8,6 +8,7 @@ import {
   replayOffline,
   exportCsv,
   applyQuery,
+  emptyCopy,
 } from './sprint12'
 
 
@@ -36,5 +37,6 @@ describe('sprint12 product helpers', () => {
     expect(replayOffline(queued).replayed).toEqual(['a1'])
     expect(exportCsv([{ title: 'Staff', score: 91 }], ['title', 'score'])).toContain('title,score')
     expect(applyQuery([{ title: 'Staff Python', company: 'Acme' }, { title: 'PM', company: 'Other' }], [{ field: 'title', op: 'regex', value: '^Staff' }])).toHaveLength(1)
+    expect(emptyCopy('jobs')).toMatch(/Greenhouse/)
   })
 })

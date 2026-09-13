@@ -110,3 +110,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 082 SDK scaffold: JS client for public API
 - [x] 083 Rate limit headers: expose in API responses
 - [x] 084 Pagination standards: cursor-based pagination everywhere
+- [x] 085 Error pages/empty states polish across app
