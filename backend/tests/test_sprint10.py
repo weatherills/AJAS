@@ -609,3 +609,13 @@ def test_html_snapshots_exist_for_new_adapters():
     assert "gd-html-1" in glassdoor
     assert "wf-html-1" in wellfound
     assert "not scraped live" in glassdoor.lower() or "fixture" in glassdoor.lower()
+
+
+def test_seed_data_v2_varied_resumes():
+    from app.resumes.seeds_v2 import seed_resumes
+
+    seeds = seed_resumes()
+    assert set(seeds) == {"junior", "mid", "senior", "remote-only"}
+    assert "intern" in seeds["junior"].lower()
+    assert "staff" in seeds["senior"].lower()
+    assert "remote" in seeds["remote-only"].lower()
