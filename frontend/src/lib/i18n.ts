@@ -7,6 +7,42 @@ export const STRINGS = {
     dismiss: 'Dismiss selected',
     settings: 'Settings',
     language: 'Language',
+    help: 'Help',
+    changelog: 'Changelog',
+    legal: 'Legal',
+    admin: 'Admin',
+    darkMode: 'Theme',
+    cookies: 'Cookies',
+  },
+  fr: {
+    jobs: 'Offres',
+    filters: 'Filtres',
+    search: 'Recherche',
+    apply: 'Postuler',
+    dismiss: 'Ignorer la sélection',
+    settings: 'Paramètres',
+    language: 'Langue',
+    help: 'Aide',
+    changelog: 'Journal',
+    legal: 'Mentions',
+    admin: 'Admin',
+    darkMode: 'Thème',
+    cookies: 'Cookies',
+  },
+  es: {
+    jobs: 'Empleos',
+    filters: 'Filtros',
+    search: 'Buscar',
+    apply: 'Aplicar',
+    dismiss: 'Descartar selección',
+    settings: 'Ajustes',
+    language: 'Idioma',
+    help: 'Ayuda',
+    changelog: 'Novedades',
+    legal: 'Legal',
+    admin: 'Admin',
+    darkMode: 'Tema',
+    cookies: 'Cookies',
   },
 } as const
 
@@ -47,4 +83,10 @@ export function currentLocale(): Locale {
 
 export function availableLocales(): Locale[] {
   return Object.keys(STRINGS) as Locale[]
+}
+
+export function localeTag(locale: Locale = current): string {
+  if (locale === 'fr') return 'fr-FR'
+  if (locale === 'es') return 'es-ES'
+  return 'en-US'
 }
