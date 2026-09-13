@@ -65,6 +65,8 @@ class GraphClient(Protocol):
         account_id: str | None = None,
     ) -> dict: ...
 
+    def delete_subscription(self, subscription_id: str, *, account_id: str | None = None) -> None: ...
+
 
 class LocalGraphClient:
     """In-process mailbox used when Microsoft client id/secret are unset."""
@@ -139,6 +141,9 @@ class LocalGraphClient:
         self._subscriptions = [item for item in self._subscriptions if item.get("id") != sub_id]
         self._subscriptions.append(row)
         return row
+
+    def delete_subscription(self, subscription_id: str, *, account_id: str | None = None) -> None:
+        self._subscriptions = [item for item in self._subscriptions if item.get("id") != subscription_id]
 
 
 class GraphHttp(Protocol):
@@ -323,6 +328,15 @@ class HttpGraphClient:
         payload.setdefault("expirationDateTime", expires)
         payload.setdefault("resource", "/me/messages")
         return payload
+
+    def delete_subscription(self, subscription_id: str, *, account_id: str | None = None) -> None:
+        status, payload = self._request(
+            "DELETE",
+            f"{self._base}/subscriptions/{subscription_id}",
+            account_id=account_id,
+        )
+        if status >= 400 and status != 404:
+            raise RuntimeError(payload.get("error") or payload)
 
 
 def _graph_message_from_json(payload: dict) -> GraphMessage:

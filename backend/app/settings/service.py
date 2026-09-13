@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
@@ -22,6 +23,8 @@ from app.settings.oauth import (
 from app.settings.queues import InMemoryJobQueue, JobQueue
 from app.settings.store import SettingsStore, get_settings_store
 from app.settings.validation import parse_ts, utc_now
+
+log = logging.getLogger("ajas.settings")
 
 
 class SettingsRateLimitedError(Exception):
@@ -257,6 +260,14 @@ class SettingsService:
 
     def disconnect(self, user_id: str) -> dict:
         self._hit_write(user_id)
+        try:
+            from app.mail.runtime import try_get_service as try_mail
+
+            mail = try_mail()
+            if mail is not None:
+                mail.cancel_graph_subscription(user_id)
+        except Exception:
+            log.exception("ajas.settings.disconnect graph unsubscribe failed user_id=%s", user_id)
         for connection in self.store.list_connections(user_id):
             if connection.status != "revoked":
                 self.store.revoke_connection(user_id, connection.id, actor_id=user_id)

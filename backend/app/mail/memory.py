@@ -218,6 +218,10 @@ class InMemoryEmailStore:
         row = self._subscriptions.get(account_id)
         return deepcopy(row) if row else None
 
+    def delete_subscription(self, account_id: str) -> GraphSubscription | None:
+        row = self._subscriptions.pop(account_id, None)
+        return deepcopy(row) if row else None
+
     def record_audit(self, audit: LinkAudit) -> LinkAudit:
         self._audits[audit.id] = audit
         return deepcopy(audit)

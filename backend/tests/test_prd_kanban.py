@@ -71,6 +71,8 @@ class FakeGraphHttp:
             }
         if method == "PATCH" and "/subscriptions/" in url:
             return 200, {"id": "sub-graph-1", "expirationDateTime": "2026-09-13T00:00:00Z"}
+        if method == "DELETE" and "/subscriptions/" in url:
+            return 204, {}
         return 500, {"error": "unexpected"}
 
 
@@ -420,3 +422,75 @@ def test_poll_all_renews_subscription_before_expiry():
     assert saved.graph_subscription_id == "sub-old"
     later = datetime.fromisoformat(saved.expires_at.replace("Z", "+00:00"))
     assert later - datetime.now(timezone.utc) > timedelta(hours=24)
+
+
+def test_http_graph_client_deletes_subscription():
+    http = FakeGraphHttp()
+    client = HttpGraphClient(token_provider=lambda: "tok", http=http)
+    client.delete_subscription("sub-graph-1", account_id="acct-1")
+    assert any(call[0] == "DELETE" and "subscriptions/sub-graph-1" in call[1] for call in http.calls)
+
+
+def test_disconnect_deletes_graph_subscription():
+    from app.mail.models import GraphSubscription
+    from app.mail.runtime import set_service as set_mail
+    from app.settings.queues import InMemoryJobQueue as SettingsQueue
+    from app.settings.runtime import set_service as set_settings
+    from app.settings.service import SettingsService
+
+    mail_store = InMemoryEmailStore(seed=False)
+    settings_store = InMemorySettingsStore()
+    now = utc_now()
+    expires = (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat().replace("+00:00", "Z")
+    settings_store.upsert_connection(
+        USER,
+        EmailConnection.model_validate(
+            {
+                "user_id": USER,
+                "provider": "microsoft_365",
+                "status": "active",
+                "account_email": "jane@contoso.com",
+                "access_token_enc": "enc:access",
+                "refresh_token_enc": "enc:refresh",
+                "expires_at": expires,
+                "webhook_subscription_id": "sub-graph-1",
+                "subscription_expires_at": expires,
+                "created_at": now,
+                "updated_at": now,
+            }
+        ),
+        actor_id=USER,
+    )
+    http = FakeGraphHttp()
+    graph = HttpGraphClient(token_provider=lambda: "tok", http=http)
+    mail = EmailService(
+        store=mail_store,
+        queue=InMemoryJobQueue(),
+        graph=graph,
+        local_mode=True,
+        settings_store=settings_store,
+    )
+    account = mail_store.ensure_account(USER, address="jane@contoso.com", demo=False)
+    mail_store.upsert_subscription(
+        GraphSubscription(
+            email_account_id=account.id,
+            graph_subscription_id="sub-graph-1",
+            resource="/me/messages",
+            expires_at=expires,
+            client_state="secret",
+            created_at=now,
+        )
+    )
+    settings = SettingsService(store=settings_store, queue=SettingsQueue())
+    set_mail(mail)
+    set_settings(settings)
+    try:
+        settings.disconnect(USER)
+        assert any(call[0] == "DELETE" and "subscriptions/sub-graph-1" in call[1] for call in http.calls)
+        assert mail_store.get_subscription(account.id) is None
+        saved = settings_store.list_connections(USER)
+        assert saved
+        assert saved[0].status == "revoked"
+    finally:
+        set_mail(None)
+        set_settings(None)

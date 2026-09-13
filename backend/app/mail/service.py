@@ -325,6 +325,31 @@ class EmailService:
             log.exception("ajas.mail.subscription settings link failed")
         return saved
 
+    def cancel_graph_subscription(self, user_id: str) -> None:
+        account = self.store.get_account_for_user(user_id)
+        connection = self._graph_connection(user_id)
+        existing = self.store.get_subscription(account.id) if account is not None else None
+        sub_id = None
+        if existing is not None:
+            sub_id = existing.graph_subscription_id
+        elif connection is not None:
+            sub_id = connection.webhook_subscription_id
+        delete = getattr(self.graph, "delete_subscription", None)
+        if sub_id and callable(delete):
+            try:
+                delete(sub_id, account_id=account.id if account is not None else None)
+            except Exception:
+                log.exception("ajas.mail.subscription delete failed user_id=%s", user_id)
+        if account is not None:
+            self.store.delete_subscription(account.id)
+        if connection is not None:
+            settings_store = self._settings_store()
+            if settings_store is not None:
+                connection.webhook_subscription_id = None
+                connection.subscription_expires_at = None
+                connection.updated_at = self.clock()
+                settings_store.upsert_connection(user_id, connection, actor_id=user_id)
+
     def handle_webhook(self, *, validation_token: str | None, payload: dict | None, client_state: str | None) -> tuple[int, str | dict]:
         if validation_token:
             return 200, validation_token

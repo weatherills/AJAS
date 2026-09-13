@@ -69,6 +69,21 @@ class CosmosEmailStore:
             raise AttributeError(name)
         return wrapper
 
+    def delete_subscription(self, account_id: str):
+        working = self._hydrate()
+        row = working.delete_subscription(account_id)
+        if row is not None:
+            for key in (getattr(row, "id", None), row.email_account_id, row.graph_subscription_id):
+                if not key:
+                    continue
+                try:
+                    self._subscriptions.delete_item(item=row.id, partition_key=key)
+                    break
+                except Exception:
+                    continue
+        self._persist_working(working)
+        return row
+
     def _all_items(self, client: Any) -> list[dict]:
         try:
             return list(client.query_items(query="SELECT * FROM c", enable_cross_partition_query=True))

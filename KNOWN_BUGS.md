@@ -4,14 +4,6 @@ Recorded 2026-09-11 after the Graph / Auto-Apply / Review must-fixes. These are 
 
 ## Open
 
-### Disconnect does not cancel the Graph webhook
-
-Settings disconnect revokes the local connection and clears tokens. It does not DELETE the Graph subscription, so Microsoft can keep POSTing to `/api/webhooks/graph/mail` until the subscription expires (~42 hours).
-
-**Where:** `backend/app/settings/service.py` (`disconnect`); no Graph unsubscribe in `backend/app/mail/`
-
-**Impact:** Stale notifications after the user disconnects Outlook. Client-state checks still reject foreign payloads, but the endpoint keeps receiving traffic.
-
 ### Disconnect does not revoke the Microsoft refresh token
 
 Local tokens are deleted. AJAS does not call Microsoft’s token revocation endpoint, so the issued refresh token stays valid at Entra ID until it expires. The Settings PRD documents this.
