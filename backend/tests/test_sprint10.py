@@ -127,3 +127,21 @@ Free snacks
     assert "- Ship ranking" in cleaned["bullets"]
     assert "responsibilities" in cleaned["sections"]
     assert "benefits" not in cleaned["sections"]
+
+
+def test_salary_parsing_v2_multi_currency_and_total_comp():
+    from app.job_sources.salary import parse_salary_v2
+
+    euro = parse_salary_v2("EUR 90k-110k total compensation")
+    assert euro["min"] == 90000
+    assert euro["max"] == 110000
+    assert euro["currency"] == "EUR"
+    assert euro["totalComp"] is True
+    gbp = parse_salary_v2("£75,000-£95,000")
+    assert gbp["currency"] == "GBP"
+    assert gbp["min"] == 75000
+    assert gbp["totalComp"] is False
+    usd = parse_salary_v2("OTE $180k including equity")
+    assert usd["min"] == 180000
+    assert usd["currency"] == "USD"
+    assert usd["totalComp"] is True
