@@ -855,3 +855,10 @@ def test_maintenance_remove_dead_flags_code_paths():
     flags = dead_flags()
     assert "ziprecruiter_adapter" in flags
 
+# === S14-92 ===
+
+def test_maintenance_consolidate_duplicate_utils():
+    from app.sprint14.ops import consolidate_note
+
+    assert "api_query" in consolidate_note()
+
