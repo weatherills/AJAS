@@ -337,6 +337,17 @@ def test_bulk_apply_captcha_cover_letters_and_profile():
     meter = product_mod.profile_completeness({"email": "a@b.c", "phone": "1", "skills": ["a", "b", "c", "d", "e"], "experience": [{}], "education": [], "summary": ""})
     assert "education" in meter["suggestions"]
 
+def test_resume_versioning_and_multi_resume_pick():
+    product_mod.add_resume_version("r1", {"skills": ["python"]})
+    product_mod.add_resume_version("r1", {"skills": ["go"]})
+    reverted = product_mod.revert_resume("r1", 1)
+    assert reverted["snapshot"]["skills"] == ["python"]
+    best = product_mod.pick_best_resume(
+        [{"id": "r1", "skills": ["sales"]}, {"id": "r2", "skills": ["python", "azure"]}],
+        {"title": "Azure Python engineer", "skills": ["python"]},
+    )
+    assert best["id"] == "r2"
+
 def test_coverage_gate_documents_80_percent_target():
     assert ops_mod.ci_plan()["coverageGate"] == 0.4
     assert ops_mod.ci_plan()["backend"]["parallel"] == "pytest -n auto"
@@ -344,7 +355,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 66
+    assert COMPLETED == 67
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")

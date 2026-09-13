@@ -86,3 +86,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 064 Cover letter library: manage and favorite templates
 - [x] 065 Cover letter variables: preview and validation rules
 - [x] 066 Profile completeness meter and suggestions
+- [x] 067 Resume versioning: track edits and revert
