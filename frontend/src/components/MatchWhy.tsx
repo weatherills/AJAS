@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { MatchView } from '../api/matchingTypes'
 import { copyText, explanationClipboardPayload } from '../lib/clipboard'
 import { EXPLAIN_MAX, EXPLAIN_PREVIEW, truncateExplanation } from '../lib/matching'
+import { explanationChips } from '../lib/sprint13'
 import { Modal } from './Modal'
 
 export function WhyThisScore({ match, onClose }: { match: MatchView; onClose: () => void }) {
@@ -25,9 +26,13 @@ export function WhyThisScore({ match, onClose }: { match: MatchView; onClose: ()
       )}
       {match.bucket && <p className="muted">Fit bucket: {match.bucket.label}</p>}
       {match.highlights && match.highlights.length > 0 && (
-        <p>
-          Top skills: {match.highlights.slice(0, 6).join(', ')}
-        </p>
+        <ul className="match-chips" aria-label="Match reasons">
+          {explanationChips(match.highlights.slice(0, 8)).map((chip) => (
+            <li key={chip.label} title={chip.detail}>
+              {chip.label}
+            </li>
+          ))}
+        </ul>
       )}
       {match.gaps && match.gaps.length > 0 && <p className="muted">Gaps: {match.gaps.slice(0, 6).join(', ')}</p>}
       {match.evidence && match.evidence.length > 0 && (
@@ -75,6 +80,15 @@ export function WhyThisScoreInline({ match }: { match: MatchView | undefined }) 
             <button type="button" className="link-btn" onClick={() => setExpanded((value) => !value)}>
               {expanded ? 'Show less' : 'Show more'}
             </button>
+          )}
+          {match.highlights && match.highlights.length > 0 && (
+            <ul className="match-chips" aria-label="Match reasons">
+              {explanationChips(match.highlights.slice(0, 8)).map((chip) => (
+                <li key={chip.label} title={chip.detail}>
+                  {chip.label}
+                </li>
+              ))}
+            </ul>
           )}
           {match.evidence && match.evidence.length > 0 && (
             <ul className="evidence-list">

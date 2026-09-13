@@ -212,3 +212,11 @@ def test_ui_job_change_diff_visualization_improvements():
     assert diff["changed"] is True
     assert diff["visualization"] == "split"
 
+# === S13-18 ===
+
+def test_ui_match_explanation_inline_chips_with_hover_details():
+    from app.sprint13.product import explanation_chips
+
+    chips = explanation_chips(["Azure", "fintech"])
+    assert {c["label"] for c in chips} == {"Azure", "fintech"}
+
