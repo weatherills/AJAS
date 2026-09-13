@@ -23,3 +23,13 @@ def test_ziprecruiter_adapter_v1_pagination_backoff():
     assert out["flag"] is False
     assert len(out["jobs"]) >= 2
 
+# === S14-02 ===
+
+def test_monster_adapter_v1_html_api_hybrid():
+    from app.sprint14.ingest import monster_v1, reset
+
+    reset()
+    out = monster_v1(payload={"jobs": [{"id": "1", "title": "Staff"}]}, html="<div>job posting</div>")
+    assert "json" in out["paths"] and "html" in out["paths"]
+    assert out["flag"] is False
+
