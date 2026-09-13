@@ -41,3 +41,4 @@ Landed on `main` as `[S12]` commits.
 
 ## Batch 3 gate
 - tests/lint/typecheck green after task 30
+- [x] 031 Notification digests: daily/weekly emails with key events

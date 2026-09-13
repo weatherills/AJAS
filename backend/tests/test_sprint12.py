@@ -222,10 +222,16 @@ def test_calendar_invite_parse():
     assert parsed["startsAt"].startswith("2026-09-15T14:00")
     assert parsed["needsManual"] is False
 
+def test_notification_digests_and_web_push():
+    digest = mail_mod.build_digest([{"kind": "match"}], kind="weekly")
+    assert digest["kind"] == "weekly"
+    push = mail_mod.subscribe_push(user_id="ada", endpoint="https://push.example/ada", keys={"p256dh": "x", "auth": "y"})
+    assert push["endpoint"].startswith("https://")
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 30
+    assert COMPLETED == 31
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
