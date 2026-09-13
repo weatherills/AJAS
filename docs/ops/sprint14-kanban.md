@@ -103,3 +103,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 071 API: pagination/sorting on jobs/matches
 - [x] 072 API auth: scoped tokens for automation tasks
 - [x] 073 Webhooks: ingestion/apply events + signatures
+- [x] 074 Health endpoints v2: dependency matrix + version

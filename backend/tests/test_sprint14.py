@@ -700,3 +700,12 @@ def test_webhooks_ingestion_apply_events_signatures():
     assert row["signed"] is True
     assert row["signature"]
 
+# === S14-74 ===
+
+def test_health_endpoints_v2_dependency_matrix_version():
+    from app.sprint14.ops import health_matrix
+
+    row = health_matrix()
+    assert row["version"] == "sprint14"
+    assert "workers" in row["dependencyMatrix"]
+
