@@ -64,3 +64,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 044 Observability: structured tracing context propagation
 - [x] 045 Privacy: field-level redaction config UI
 - [x] 046 Data retention v2: per-tenant retention policies
+- [x] 047 Outbound allowlist v2: per-environment gates

@@ -531,3 +531,14 @@ def test_data_retention_v2_per_tenant_retention_policies():
     except ValueError:
         pass
 
+# === S13-47 ===
+
+def test_outbound_allowlist_v2_per_environment_gates():
+    from app.sprint13.security import allowlist_for_env
+
+    prod = allowlist_for_env("prod", "boards.greenhouse.io, jobs.lever.co")
+    dev = allowlist_for_env("dev", "boards.greenhouse.io")
+    assert prod["gated"] is True
+    assert dev["gated"] is False
+    assert "boards.greenhouse.io" in prod["hosts"]
+
