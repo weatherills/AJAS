@@ -32,3 +32,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 
 - [x] 021 Geocoding: city/state/country → lat/lon cache
 - [x] 022 Company domain resolver via DNS/MX/WHOIS fallback
+- [x] 023 JD cleaner v3: section heuristics + bullets

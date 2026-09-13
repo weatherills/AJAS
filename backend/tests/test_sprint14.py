@@ -234,3 +234,12 @@ def test_company_domain_resolver_via_dns_mx_whois_fallback():
     assert str(row["domain"]).endswith(".com")
     assert row["via"] in {"mx", "whois", "guess", "hint"}
 
+# === S14-23 ===
+
+def test_jd_cleaner_v3_section_heuristics_bullets():
+    from app.sprint14.parse import jd_sections
+
+    row = jd_sections("Equal opportunity employer.\n- Build APIs\n- Own ingest")
+    assert row["schema"] == "ajas.jd.v3"
+    assert row["bullets"]
+
