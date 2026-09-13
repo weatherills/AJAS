@@ -141,3 +141,19 @@ def test_source_adapter_watchdog_retries_on_dom_drift():
     assert drifted["changed"] is True
     assert drifted["jobs"] == [{"id": "2", "title": "New"}]
     assert len(calls) >= 3
+
+
+def test_source_adapter_canary_html_snapshot_drift(tmp_path):
+    from app.job_sources.canary import check_snapshot, run_canaries
+
+    html = tmp_path / "board.html"
+    html.write_text("<div>v1</div>")
+    (tmp_path / "board.html.sha256").write_text("deadbeef\n")
+    bad = check_snapshot("board.html", tmp_path)
+    assert bad["ok"] is False
+    (tmp_path / "board.html.sha256").write_text(bad["digest"] + "\n")
+    good = check_snapshot("board.html", tmp_path)
+    assert good["ok"] is True
+    batch = run_canaries(["greenhouse_career.html", "lever_career.html", "workday_career.html"])
+    assert batch["ok"] is True
+    assert batch["checked"] == 3
