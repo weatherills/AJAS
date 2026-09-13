@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AppNav } from '../components/AppNav'
 import { chartBars } from '../lib/metrics'
+import { adapterHealthRows, toggleMute, type AdapterHealth } from '../lib/adapterHealth'
 import { digestCopy, notificationInbox, pushNotification, type AppNotification } from '../lib/notifications'
 import { json, request, setUserId } from '../api/live'
 import { auditCsv, filterAudit, type AuditRow } from '../lib/audit'
@@ -17,6 +18,7 @@ export function OpsPage() {
   const [drift, setDrift] = useState<Drift | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [traceError, setTraceError] = useState<string | null>(null)
+  const [adapterRows, setAdapterRows] = useState<AdapterHealth[]>(() => adapterHealthRows())
   const [notes, setNotes] = useState<AppNotification[]>(() => notificationInbox())
   const [digest, setDigest] = useState(() => digestCopy())
   const [auditActor, setAuditActor] = useState('')
@@ -156,6 +158,27 @@ export function OpsPage() {
             <li key={row.source}>
               {row.source} — fetched {row.fetched}, errors {row.errors}
               {row.capHit ? ' (cap hit)' : ''}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section className="editor-section">
+        <h2>Adapter health</h2>
+        <p className="muted">Last successful fetch and HTML snapshot drift. Mute noisy adapters to stop paging.</p>
+        <ul>
+          {adapterRows.map((row) => (
+            <li key={row.source}>
+              {row.source} — last success {row.lastSuccessAt || 'never'}
+              {row.drift ? ' · drift' : ''}
+              {row.muted ? ' · muted' : ''}{' '}
+              <button
+                type="button"
+                className="link-btn"
+                aria-label={`${row.muted ? 'Unmute' : 'Mute'} ${row.source}`}
+                onClick={() => setAdapterRows((prev) => toggleMute(prev, row.source))}
+              >
+                {row.muted ? 'Unmute' : 'Mute'}
+              </button>
             </li>
           ))}
         </ul>
