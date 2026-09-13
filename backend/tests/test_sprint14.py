@@ -427,3 +427,12 @@ def test_cover_letters_tone_style_presets():
     assert warm["tone"] == "warm"
     assert "warm" in warm["presets"]
 
+# === S14-45 ===
+
+def test_attachment_manager_multi_resume_profiles():
+    from app.sprint14.product import attach_profile, reset
+
+    reset()
+    row = attach_profile(user_id="ada", resume_id="r1", name="IC")
+    assert row["resumeId"] == "r1"
+
