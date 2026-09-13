@@ -261,3 +261,11 @@ def test_skill_extractor_v3_phrase_chunker_negation():
     assert row["schema"] == "ajas.skills.v3"
     assert row["chunks"]
 
+# === S14-26 ===
+
+def test_resume_parser_v3_impact_bullets_scoring():
+    from app.sprint14.parse import impact_bullets
+
+    row = impact_bullets(["Increased conversion 12%", "Responsible for on-call"])
+    assert row["impactCount"] >= 1
+
