@@ -78,6 +78,17 @@ for req in backend/requirements.txt functions/requirements.txt api/requirements.
   [ -f "$req" ] && pip install -r "$req"
 done
 
+# Test/dev tooling (pytest & friends) so the documented test suite runs.
+for devreq in backend/requirements-dev.txt requirements-dev.txt; do
+  [ -f "$devreq" ] && pip install -r "$devreq"
+done
+
+# Azure Functions host reads local.settings.json; seed it from the checked-in
+# example so `func start` works out of the box. Never overwrite an existing one.
+if [ -f backend/local.settings.json.example ] && [ ! -f backend/local.settings.json ]; then
+  cp backend/local.settings.json.example backend/local.settings.json
+fi
+
 # --- Frontend ----------------------------------------------------------------
 # Install web dependencies once a frontend workspace exists.
 for pkg in frontend/package.json web/package.json ui/package.json; do

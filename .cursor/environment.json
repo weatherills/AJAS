@@ -2,5 +2,21 @@
   "name": "AJAS (AI Job Application System)",
   "user": "ubuntu",
   "install": "if [ -f .cursor/install.sh ]; then bash .cursor/install.sh; else echo 'skip install: .cursor/install.sh not on this ref'; fi",
-  "start": "if [ -f .cursor/start.sh ]; then bash .cursor/start.sh; else echo 'skip start: .cursor/start.sh not on this ref'; fi"
+  "start": "if [ -f .cursor/start.sh ]; then bash .cursor/start.sh; else echo 'skip start: .cursor/start.sh not on this ref'; fi",
+  "ports": [
+    { "name": "frontend", "port": 3000 },
+    { "name": "backend", "port": 7071 }
+  ],
+  "terminals": [
+    {
+      "name": "backend",
+      "description": "Azure Functions host (API + workers) on http://localhost:7071/api. Depends on Azurite from start.sh.",
+      "command": "cd \"$(git rev-parse --show-toplevel)\" && source .venv/bin/activate && cd backend && func start"
+    },
+    {
+      "name": "frontend",
+      "description": "Vite dev server for the React UI on http://localhost:3000 (proxies /api to the backend).",
+      "command": "cd \"$(git rev-parse --show-toplevel)/frontend\" && npm run dev"
+    }
+  ]
 }
