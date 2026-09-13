@@ -581,3 +581,20 @@ def test_e2e_email_parser_templates_invite_reject_neutral():
     assert invite["intent"] == "interview"
     assert reject["intent"] == "rejection"
     assert neutral["intent"] in {"generic", "follow_up"}
+
+
+def test_salary_geo_negation_edge_cases():
+    from app.job_sources.geocode import geocode
+    from app.job_sources.salary import parse_salary_v2
+    from app.matching.skills_v2 import extract_skills_v2
+
+    yenish = parse_salary_v2("CAD 95k to 120k")
+    assert yenish["currency"] == "CAD"
+    london = geocode("London", "", "UK")
+    assert london["found"] is True
+    skills = extract_skills_v2("Required: Python.\nNo Java.\nIs not required: COBOL")
+    joined = " ".join(skills["skills"])
+    denied = " ".join(skills["negated"])
+    assert "python" in joined
+    assert "java" in denied
+    assert "cobol" in denied
