@@ -30,3 +30,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 ## Batch 2 gate
 - tests/lint/typecheck green after task 20
 
+- [x] 021 Geocoding: city/state/country → lat/lon cache

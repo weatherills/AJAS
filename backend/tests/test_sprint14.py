@@ -215,3 +215,13 @@ def test_normalization_currency_normalization_tcc_note():
     assert row["tcc"] is True
     assert row["usdMin"] > 0
 
+# === S14-21 ===
+
+def test_geocoding_city_state_country_lat_lon_cache():
+    from app.sprint14.parse import geo_cache
+
+    sea = geo_cache("Seattle", "WA")
+    assert sea["found"] is True
+    assert sea["cached"] is True
+    assert sea["lat"]
+
