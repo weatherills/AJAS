@@ -35,3 +35,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 025 Session security: device/session management UI
 - [x] 026 Audit trail v2: before/after diffs for critical changes
 - [x] 027 Consent management: cookie and tracking preferences
+- [x] 028 Email provider integration v2: OAuth-based IMAP/SMTP

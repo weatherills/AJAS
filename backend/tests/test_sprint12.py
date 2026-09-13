@@ -6,6 +6,7 @@ from pathlib import Path
 from app.mail.scan import EICAR_SIGNATURE
 from app.sprint12 import VERSION
 from app.sprint12 import billing as billing_mod
+from app.sprint12 import mail_v2 as mail_mod
 from app.sprint12 import platform as platform_mod
 from app.sprint12 import product as product_mod
 from app.sprint12 import ranking as ranking_mod
@@ -21,6 +22,7 @@ def setup_function() -> None:
     sharing_mod.reset()
     ranking_mod.reset()
     security_mod.reset()
+    mail_mod.reset()
     product_mod.reset()
     platform_mod.reset()
 
@@ -205,10 +207,15 @@ def test_consent_cookie_preferences():
     assert saved["choices"]["marketing"] is False
     assert security_mod.export_consent_log("ada")[0]["version"] == "ajas.consent.v1"
 
+def test_oauth_imap_smtp_mailbox():
+    row = mail_mod.connect_oauth_mailbox(user_id="ada", provider="imap", refresh_token="rt")
+    assert row["protocol"] == "oauth2"
+    assert row["status"] == "connected"
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 27
+    assert COMPLETED == 28
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
