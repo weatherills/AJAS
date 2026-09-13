@@ -405,7 +405,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 85
+    assert COMPLETED == 86
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -576,3 +576,7 @@ def test_adapter_success_error_latency_charts():
 def test_empty_state_copy_for_jobs():
     empty = platform_mod.empty_state("jobs")
     assert "Greenhouse" in empty["title"]
+
+def test_onboarding_help_docs_exist():
+    docs = platform_mod.knowledge_base()
+    assert any(row["id"] == "threshold" for row in docs)

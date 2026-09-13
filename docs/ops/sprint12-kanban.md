@@ -111,3 +111,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 083 Rate limit headers: expose in API responses
 - [x] 084 Pagination standards: cursor-based pagination everywhere
 - [x] 085 Error pages/empty states polish across app
+- [x] 086 Onboarding tour and contextual help
