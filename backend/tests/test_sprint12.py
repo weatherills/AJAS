@@ -88,7 +88,7 @@ def test_stripe_checkout_and_invoice_webhook():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 7
+    assert COMPLETED == 8
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -100,3 +100,11 @@ def test_plan_tiers_feature_gates():
     billing_mod.assign_plan(tenant.id, "team")
     assert billing_mod.feature_allowed(tenant.id, "recruiter_portal") is True
     assert billing_mod.feature_allowed(tenant.id, "sso") is True
+
+def test_invoice_webhook_status_sync_only():
+    tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
+    billing_mod.assign_plan(tenant.id, "pro")
+    billing_mod.handle_stripe_webhook(
+        {"type": "invoice.paid", "data": {"object": {"id": "in_s12", "tenantId": tenant.id, "amount_paid": 2900, "status": "paid"}}}
+    )
+    assert billing_mod.invoices_for(tenant.id)[0]["id"] == "in_s12"

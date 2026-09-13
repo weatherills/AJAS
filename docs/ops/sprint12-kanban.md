@@ -9,3 +9,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 005 Billing: metered usage counters (ingest/match/apply/email)
 - [x] 006 Billing: plan tiers (Free, Pro, Team) with feature gates
 - [x] 007 Billing: Stripe subscription + metered billing integration
+- [x] 008 Billing: webhook handling and invoice status sync
