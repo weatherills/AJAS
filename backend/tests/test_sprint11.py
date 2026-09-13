@@ -391,3 +391,12 @@ def test_email_interview_time_tz_normalization():
     assert hit["utc"] == "2026-03-03T19:00:00Z"
     iso = parse_interview_time("Meet 2026-09-13 09:30", timezone_name="UTC")
     assert iso["utc"] == "2026-09-13T09:30:00Z"
+
+
+def test_email_signature_quoted_text_stripping():
+    from app.mail.strip_quotes import strip_quoted
+
+    body = "Please reply Tuesday.\n\n--\nAva Recruiter\n> old quote\nOn Mon Jane wrote:\nprior"
+    assert strip_quoted(body) == "Please reply Tuesday."
+    quoted = "Can you join?\n> On Mon, Jane wrote:\n> prior thread"
+    assert strip_quoted(quoted) == "Can you join?"
