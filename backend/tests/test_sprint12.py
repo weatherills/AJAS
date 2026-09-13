@@ -183,10 +183,16 @@ def test_secret_rotation_scheduler_and_drift_alert():
     assert security_mod.secret_drift("webhook", first["checksum"]) is False
     assert security_mod.secret_drift("webhook", "deadbeef") is True
 
+def test_google_sso_oidc_scaffold():
+    start = security_mod.google_oauth_start(redirect_uri="https://ajas.local/cb", tenant_id="t1")
+    assert "accounts.google.com" in start["authorizationUrl"]
+    done = security_mod.google_oauth_finish(state=start["state"], code="ok", email="ada@acme.test")
+    assert done["provider"] == "google"
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 23
+    assert COMPLETED == 24
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
