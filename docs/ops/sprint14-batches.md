@@ -36,3 +36,9 @@ Final gate after task 99.
 - Typecheck: clean
 - Lint: existing warnings only
 
+- Batch 4 after task 40
+- Backend: 820 passed in 1.95s
+- Frontend:       Tests  137 passed (137)
+- Typecheck: clean
+- Lint: existing warnings only
+
