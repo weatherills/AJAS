@@ -355,7 +355,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 67
+    assert COMPLETED == 68
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -476,3 +476,10 @@ def test_cover_letter_preview_substitutes_variables():
 def test_profile_completeness_lists_missing_education():
     meter = product_mod.profile_completeness({"email": "a@b.c", "phone": "1", "skills": ["a", "b", "c", "d", "e"], "experience": [{}], "education": [], "summary": ""})
     assert "education" in meter["suggestions"]
+
+def test_multi_resume_picks_skill_overlap():
+    best = product_mod.pick_best_resume(
+        [{"id": "r1", "skills": ["sales"]}, {"id": "r2", "skills": ["python", "azure"]}],
+        {"title": "Azure Python engineer", "skills": ["python"]},
+    )
+    assert best["id"] == "r2"
