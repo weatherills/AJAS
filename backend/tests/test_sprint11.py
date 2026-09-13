@@ -169,3 +169,15 @@ def test_benefits_perks_schema_extraction():
     assert parsed["canonical"] == list(CANONICAL)
     for key in ("health_insurance", "dental", "vision", "401k", "equity", "pto", "parental_leave", "remote_stipend", "learning_budget"):
         assert key in parsed["benefits"]
+
+
+def test_onsite_percent_and_travel_requirement_fields():
+    from app.job_sources.work_arrangement import work_arrangement
+
+    hybrid = work_arrangement("3 days a week in-office, occasional travel, 80% remote ok")
+    assert hybrid["onsite_percent"] == 60
+    assert hybrid["travel_percent"] == 10
+    travel = work_arrangement("Travel up to 25%, no remote")
+    assert travel["travel_percent"] == 25
+    none = work_arrangement("Fully remote, no travel")
+    assert none["travel_percent"] == 0
