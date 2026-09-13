@@ -249,3 +249,13 @@ def test_preferred_tech_stack_boost_from_prds():
     assert "python" in result["hits"]
     assert result["boost"] > 0
     assert "python" in PRD_STACK
+
+def test_employment_type_alignment_ft_pt_contract():
+    from app.matching.employment import alignment, normalize_employment_type
+
+    assert normalize_employment_type("Full-time") == "full_time"
+    assert normalize_employment_type("C2C contract") == "contract"
+    hit = alignment("full time", "FT")
+    miss = alignment("full time", "part-time")
+    assert hit["aligned"] is True and hit["delta"] == 0.0
+    assert miss["aligned"] is False and miss["delta"] < 0
