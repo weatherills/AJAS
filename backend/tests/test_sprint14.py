@@ -518,3 +518,11 @@ def test_observability_trace_ids_across_ingest_apply():
     assert row["span"]["traceId"] == "s14-trace"
     assert row["viewer"]["count"] >= 1
 
+# === S14-54 ===
+
+def test_metrics_dashboards_app_charts_page():
+    from app.sprint14.product import charts
+
+    page = charts([{"x": 1, "y": 2}])
+    assert page["page"] == "metrics"
+
