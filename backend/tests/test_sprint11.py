@@ -339,3 +339,14 @@ def test_apply_form_state_machine_core():
     assert next_state("review", "submit") == "submit"
     assert next_state("submit", "ok") == "done"
     assert next_state("questions", "next", payload="<div class='g-recaptcha'>") == "needs_manual"
+
+def test_apply_upload_fallback_retrier():
+    from app.auto_apply.upload_retry import upload_with_retry
+    calls = {"n": 0}
+    def send():
+        calls["n"] += 1
+        return {"ok": calls["n"] >= 2}
+    out = upload_with_retry(send, attempts=3)
+    assert out["ok"] is True and out["attempts"] == 2
+    blocked = upload_with_retry(lambda: {"ok": False, "captcha": True}, attempts=3)
+    assert blocked["action"] == "needs_manual"
