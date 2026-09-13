@@ -196,3 +196,18 @@ def test_embeddings_reindex_sweeper_retries_then_indexes():
     second = sweeper.sweep(limit=1)
     assert second["indexed"] == 1
     assert "job-1" in sweeper.indexed
+
+
+def test_vector_store_tombstone_and_vacuum():
+    from app.matching.vectors import VectorStore
+
+    store = VectorStore()
+    store.upsert("a", [1.0, 0.0])
+    store.upsert("b", [0.0, 1.0])
+    store.delete("a")
+    assert store.get("a") is None
+    store.live["a"] = [1.0, 0.0]
+    result = store.vacuum()
+    assert "a" not in store.live
+    assert result["live"] == 1
+    assert result["tombstones"] == 1
