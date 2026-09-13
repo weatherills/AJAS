@@ -109,3 +109,8 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 077 Accessibility: WCAG audit fixes (list/detail/filter)
 - [x] 078 I18N: prepare strings + base locale (en)
 - [x] 079 Mobile UX: responsive layout polish
+- [x] 080 Docs: Sprint 14 operations guide
+
+## Batch 8 gate
+- tests/lint/typecheck green after task 80
+

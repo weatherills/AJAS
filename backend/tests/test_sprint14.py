@@ -752,3 +752,12 @@ def test_mobile_ux_responsive_layout_polish():
     assert mobile_layout(390) == "phone"
     assert mobile_layout(1024) == "desktop"
 
+# === S14-80 ===
+
+def test_docs_sprint_14_operations_guide():
+    from app.sprint14.platform import ops_guide
+
+    text = ops_guide()
+    assert "sprint14" in text.lower() or "Sprint 14" in text
+    assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint14.md").is_file()
+
