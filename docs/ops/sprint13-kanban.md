@@ -88,3 +88,20 @@ Landed on `main` as `[S13]` commits.
 
 - [x] 061 Docs: adapter authoring guide v2
 - [x] 062 Docs: API cookbook with examples
+
+## CodeSpring
+
+Synced to `main` after Sprint 13.
+
+- 62 `[S13]` task cards marked **done** (titles match git commits)
+- 6 `[S13] Batch N hardening` cards marked **done**
+- `[S13] Release: Sprint 13 wrap-up and documentation` marked **done**
+- Todo / in-progress: empty
+
+## Final gate (after task 62)
+
+- Backend: 780 passed
+- Frontend: 135 passed
+- Typecheck: clean
+- Lint: existing warnings only
+- Health `version`: `sprint13`
