@@ -114,3 +114,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 ## Batch 8 gate
 - tests/lint/typecheck green after task 80
 
+- [x] 081 Docs: API examples and curl snippets v2

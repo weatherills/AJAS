@@ -761,3 +761,12 @@ def test_docs_sprint_14_operations_guide():
     assert "sprint14" in text.lower() or "Sprint 14" in text
     assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint14.md").is_file()
 
+# === S14-81 ===
+
+def test_docs_api_examples_and_curl_snippets_v2():
+    from app.sprint14.platform import api_examples
+
+    examples = api_examples()
+    assert any("curl" in row["example"] for row in examples)
+    assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint14-api-cookbook.md").is_file()
+
