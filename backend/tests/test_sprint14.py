@@ -289,3 +289,10 @@ def test_vector_store_compaction_tombstone_vacuum_job_v2():
     assert out["schema"] == "ajas.vector.vacuum.v2"
     assert "live" in out
 
+# === S14-29 ===
+
+def test_matching_recency_time_decay_factor_v2():
+    from app.sprint14.matching import recency_v2
+
+    assert recency_v2(months_ago=6) > recency_v2(months_ago=40)
+

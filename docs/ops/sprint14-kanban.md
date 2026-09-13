@@ -38,3 +38,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 026 Resume parser v3: impact bullets + scoring
 - [x] 027 Embeddings: incremental reindex sweeper + retries
 - [x] 028 Vector store: compaction/tombstone vacuum job v2
+- [x] 029 Matching: recency/time-decay factor v2
