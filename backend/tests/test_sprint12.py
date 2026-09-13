@@ -413,6 +413,31 @@ def test_help_changelog_etl_funnel_analytics_legal():
     pentest = platform_mod.file_pentest(title="XSS in JD html", severity="medium")
     assert pentest["status"] == "triage"
 
+def test_http_tenants_billing_and_security_headers():
+    import json
+
+    import azure.functions as func
+
+    from app.features.sprint12 import tenants as tenants_http
+    from app.http import json_response
+
+    req = func.HttpRequest(
+        method="POST",
+        url="http://localhost/api/v1/tenants",
+        headers={"Authorization": "Bearer ada"},
+        params={},
+        body=json.dumps({"name": "Northwind"}).encode(),
+    )
+    resp = tenants_http(req)
+    body = json.loads(resp.get_body())
+    assert resp.status_code == 200
+    assert body["name"] == "Northwind"
+    assert resp.headers.get("Content-Security-Policy")
+    assert resp.headers.get("X-RateLimit-Limit")
+    probe = json_response({"ok": True})
+    assert probe.headers.get("X-Content-Type-Options") == "nosniff"
+    assert "X-RateLimit-Remaining" in (probe.headers.get("Access-Control-Expose-Headers") or "")
+
 def test_coverage_gate_documents_80_percent_target():
     assert ops_mod.ci_plan()["coverageGate"] == 0.4
     assert ops_mod.ci_plan()["backend"]["parallel"] == "pytest -n auto"
@@ -420,7 +445,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 95
+    assert COMPLETED == 96
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
