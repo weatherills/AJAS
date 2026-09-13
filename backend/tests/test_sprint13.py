@@ -163,3 +163,13 @@ def test_role_mapping_title_normalization_v3():
     sre = normalize_title_v3("Staff SRE")
     assert "Site Reliability" in sre["normalized"]
 
+# === S13-13 ===
+
+def test_keyword_alerts_saved_search_email_triggers():
+    from app.sprint13.product import keyword_alert, reset
+
+    reset()
+    row = keyword_alert(user_id="ada", query="python seattle", hits=[{"id": "j1"}])
+    assert row["channel"] == "email"
+    assert row["hits"][0]["id"] == "j1"
+
