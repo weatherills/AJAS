@@ -661,3 +661,12 @@ def test_health_endpoints_v2_dependency_matrix_and_version():
     assert body["version"] == "sprint10"
     assert body["dependencyMatrix"]["workers"]["match"] is True
     assert "cosmos" in body["dependencyMatrix"]
+
+
+def test_hot_query_cache_ttl():
+    from app.query_cache import get_item, reset, set_item
+
+    reset()
+    set_item("jobs:ada", ["j1"], ttl_sec=10, now=100)
+    assert get_item("jobs:ada", now=105) == ["j1"]
+    assert get_item("jobs:ada", now=111) is None
