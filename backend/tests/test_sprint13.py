@@ -632,3 +632,20 @@ def test_email_reply_planner_suggested_replies_with_tone_controls():
     assert "warm" in plan["controls"]
     assert plan["tone"] == "warm"
 
+# === S13-56 ===
+
+def test_apply_profile_multi_profile_switcher_per_role_type():
+    from app.sprint13.product import reset, save_profile, switch_profile
+
+    reset()
+    eng = save_profile(user_id="ada", name="IC", role_type="engineering")
+    pm = save_profile(user_id="ada", name="PM", role_type="pm")
+    active = switch_profile(pm["id"], user_id="ada")
+    assert active["active"] is True
+    assert eng["id"] != pm["id"]
+    try:
+        switch_profile(pm["id"], user_id="bob")
+        raise AssertionError("expected")
+    except PermissionError:
+        pass
+

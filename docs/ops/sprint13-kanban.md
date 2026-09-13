@@ -77,3 +77,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 053 Queue workers: graceful shutdown and draining
 - [x] 054 Follow-up heuristics v2: weekday/hour windows
 - [x] 055 Email reply planner: suggested replies with tone controls
+- [x] 056 Apply profile: multi-profile switcher per role type
