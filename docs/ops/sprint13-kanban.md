@@ -53,3 +53,8 @@ Landed on `main` as `[S13]` commits.
 - [x] 037 Normalization v3: onsite/hybrid/remote detection improvements
 - [x] 038 Normalization v3: job type taxonomy (FT/PT/Contract/Intern)
 - [x] 039 Crawl frontier: adaptive scheduling using success/error rates
+- [x] 040 Ingestion adapters v3: Wellfound session refresh guard
+
+## Batch 4 gate
+- tests/lint/typecheck green after task 40
+

@@ -443,3 +443,14 @@ def test_crawl_frontier_adaptive_scheduling_using_success_error_rates():
     assert healthy["delaySec"] < sick["delaySec"]
     assert healthy["successRate"] > sick["successRate"]
 
+# === S13-40 ===
+
+def test_ingestion_adapters_v3_wellfound_session_refresh_guard():
+    from app.flags import feature_flags
+    from app.sprint13.ingest import reset, wellfound_guard
+
+    reset()
+    assert feature_flags()["wellfound_adapter"] is False
+    assert wellfound_guard(session_age_min=10)["refresh"] is False
+    assert wellfound_guard(session_age_min=50)["stale"] is True
+
