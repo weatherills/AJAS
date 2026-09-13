@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.flags import feature_enabled
+from app.job_sources.circuit import allow as circuit_allow
 from app.job_sources.robots import can_fetch
 
 ALLOWED_FIXTURE_HOSTS = frozenset({"fixtures.ajas.local", "localhost", "127.0.0.1"})
@@ -65,6 +66,8 @@ def _normalize_row(source: str, job: dict[str, Any]) -> dict[str, Any]:
 def load_fixture_jobs(source: str, payload: Any, *, listing_url: str | None = None) -> list[dict[str, Any]]:
     flag = SOURCE_FLAGS.get(source)
     if not flag or not feature_enabled(flag):
+        return []
+    if not circuit_allow(source):
         return []
     if listing_url and not can_fetch(listing_url):
         return []

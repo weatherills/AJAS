@@ -66,3 +66,18 @@ def test_rotating_user_agents_and_retry_jitter():
     assert delay == 0.5
     noisy = jittered_backoff(2, jitter=0.3)
     assert 0 <= noisy <= 8.0
+
+
+def test_circuit_breaker_opens_after_repeated_5xx():
+    from app.job_sources.circuit import allow, record_status, reset, snapshot
+
+    reset("glassdoor")
+    for _ in range(4):
+        snap = record_status("glassdoor", 503)
+        assert snap.disabled is False
+    snap = record_status("glassdoor", 503)
+    assert snap.disabled is True
+    assert allow("glassdoor") is False
+    assert snapshot("glassdoor").open is True
+    record_status("glassdoor", 200)
+    assert allow("glassdoor") is True
