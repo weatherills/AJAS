@@ -18,6 +18,10 @@ export const FLAG_DEFAULTS: Record<string, boolean> = {
   respect_robots: true,
   site_policy_consent: false,
   data_retention_purge: true,
+  gap_penalty: true,
+  stack_boost: true,
+  fair_norm: true,
+  ann_recall: false,
 }
 
 export function mergeFlags(overrides: Record<string, boolean> | null | undefined): Record<string, boolean> {
