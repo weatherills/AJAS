@@ -2039,6 +2039,85 @@ select:focus-visible {
   }
 }
 
+/* Sprint 10: phone layout for feed, filters, settings, and nav (≤640px). */
+@media (max-width: 640px) {
+  .page {
+    padding: 1.15rem max(0.85rem, env(safe-area-inset-right)) 5.5rem max(0.85rem, env(safe-area-inset-left));
+  }
+
+  .app-nav {
+    gap: 0.2rem 0.5rem;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.85rem;
+    scrollbar-width: thin;
+  }
+
+  .app-nav a {
+    font-size: 0.8rem;
+    white-space: nowrap;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .feed-page .library-header,
+  .library-page .library-header,
+  .feed-header-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .feed-header-actions button,
+  .feed-filters button,
+  .editor-section button {
+    min-height: 44px;
+  }
+
+  .feed-header-actions button {
+    width: 100%;
+  }
+
+  .feed-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .feed-status {
+    grid-template-columns: 1fr;
+  }
+
+  .feed-source {
+    flex-direction: column;
+  }
+
+  .job-drawer {
+    inset: 0;
+    width: 100%;
+    max-width: 100vw;
+    border-radius: 0;
+    padding: 0.85rem max(0.85rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(0.85rem, env(safe-area-inset-left));
+  }
+
+  .feed-filters {
+    padding-bottom: max(5rem, env(safe-area-inset-bottom));
+  }
+
+  .editor-section input,
+  .editor-section select,
+  .editor-section textarea,
+  .user-field input {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .two-col,
+  .slider-row,
+  .apply-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (prefers-color-scheme: light) {
   .review-drawer,
   .job-drawer {
