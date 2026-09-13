@@ -601,3 +601,14 @@ def test_queue_health_stuck_job_detector_auto_requeue():
     out = stuck_jobs([{"id": "j1", "ageSec": 9}, {"id": "j2", "ageSec": 400}])
     assert out["requeued"][0]["id"] == "j2"
 
+# === S14-63 ===
+
+def test_dead_letter_queue_ui_inspect_retry_redaction():
+    from app.dlq import reset as reset_dlq
+    from app.sprint14.ops import dlq_view
+
+    reset_dlq()
+    out = dlq_view({"id": "d1", "token": "secret", "title": "Staff"})
+    assert out["stored"]["payload"]["token"] == "[redacted]"
+    assert out["retry"]
+
