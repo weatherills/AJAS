@@ -162,3 +162,14 @@ def test_source_adapter_centralized_backoff_jitter_policy():
     assert later["delaySec"] >= early["delaySec"]
     assert later["jitter"] is True
 
+# === S14-15 ===
+
+def test_source_adapter_http_fingerprint_randomization():
+    from app.sprint14.ingest import fingerprint, reset
+
+    reset()
+    one = fingerprint("board-a")
+    two = fingerprint("board-b")
+    assert one["randomized"] is True
+    assert one["ua"] and two["ua"]
+
