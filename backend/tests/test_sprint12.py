@@ -299,7 +299,7 @@ def test_backup_restore_and_dr_checklist():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 45
+    assert COMPLETED == 46
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -373,3 +373,8 @@ def test_oncall_escalation_notifies_full_schedule():
     ops_mod.set_oncall([{"name": "ada"}, {"name": "linus"}, {"name": "grace"}])
     routed = ops_mod.route_alert("critical")
     assert [row["name"] for row in routed["notified"]] == ["ada", "linus", "grace"]
+
+def test_dr_rpo_rto_checklist():
+    spec = ops_mod.dr_checklist()
+    assert spec["rpo"] == "1h"
+    assert spec["rto"]

@@ -59,3 +59,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 043 Logging UI: searchable structured logs with filters
 - [x] 044 Alert routing: on-call schedules and escalation policies
 - [x] 045 Backup/restore: nightly backups and restore playbook
+- [x] 046 Disaster recovery: RPO/RTO doc and drill checklist
