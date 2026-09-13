@@ -365,3 +365,29 @@ def test_cover_letter_parameterize_resume_highlights():
         limit=1,
     )
     assert picks and "python" in picks[0]["text"].lower()
+
+
+def test_email_oauth2_token_refresh_and_errors():
+    from app.mail.oauth_hardening import refresh_access_token
+
+    ok = refresh_access_token(refresh_token="r1", access_token="a1")
+    assert ok["ok"] is True and ok["accessToken"] == "a1"
+    dead = refresh_access_token(refresh_token="r1", status=401, body="invalid_grant")
+    assert dead["ok"] is False and dead["action"] == "reconnect"
+    scope = refresh_access_token(refresh_token="r1", status=403, body="insufficient_scope")
+    assert scope["action"] == "reconsent"
+    busy = refresh_access_token(refresh_token="r1", status=429)
+    assert busy["retry"] is True and busy["action"] == "retry"
+    missing = refresh_access_token(refresh_token="")
+    assert missing["action"] == "reconnect"
+
+
+def test_email_interview_time_tz_normalization():
+    from app.mail.interview_time import parse_interview_time
+
+    hit = parse_interview_time("Interview on March 3, 2026 at 2:00 pm", location="New York")
+    assert hit["ok"] is True
+    assert hit["timezone"] == "America/New_York"
+    assert hit["utc"] == "2026-03-03T19:00:00Z"
+    iso = parse_interview_time("Meet 2026-09-13 09:30", timezone_name="UTC")
+    assert iso["utc"] == "2026-09-13T09:30:00Z"

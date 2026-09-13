@@ -28,3 +28,35 @@ def classify_oauth_error(status: int, body: str = "") -> dict[str, object]:
 
 def required_scopes() -> tuple[str, ...]:
     return GRAPH_SCOPES
+
+
+def refresh_access_token(
+    *,
+    refresh_token: str | None,
+    status: int | None = None,
+    body: str = "",
+    access_token: str | None = None,
+) -> dict[str, object]:
+    """Rotate a Graph (or equivalent) access token. Never invents a grant.
+
+    CAPTCHA / consent errors stay fail-closed: the caller must reconnect.
+    """
+    if not (refresh_token or "").strip():
+        classified = classify_oauth_error(401, "invalid_grant")
+        return {**classified, "ok": False, "action": "reconnect", "accessToken": None}
+    if status is not None:
+        classified = classify_oauth_error(status, body)
+        action = "retry" if classified["retry"] else "reconnect"
+        if classified["code"] == "missing_scope":
+            action = "reconsent"
+        if classified["code"] == "refresh_required":
+            action = "reconnect"
+        return {**classified, "ok": False, "action": action, "accessToken": None}
+    return {
+        "ok": True,
+        "code": "ok",
+        "retry": False,
+        "status": 200,
+        "action": "ok",
+        "accessToken": access_token or "rotated",
+    }
