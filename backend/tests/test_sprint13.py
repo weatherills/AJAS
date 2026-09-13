@@ -494,3 +494,14 @@ def test_ingestion_adapters_v3_linkedin_resilience_captcha_fallback():
     assert ok["ok"] is True
     assert ok["bypass"] is False
 
+# === S13-44 ===
+
+def test_observability_structured_tracing_context_propagation():
+    from app.sprint13.ops import propagate, reset, trace_viewer
+
+    reset()
+    first = propagate("ingest", trace_id="shared")
+    second = propagate("match", trace_id="shared")
+    assert first["traceId"] == second["traceId"] == "shared"
+    assert trace_viewer(trace_id="shared")["count"] == 2
+
