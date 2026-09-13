@@ -33,3 +33,18 @@ def test_monster_adapter_v1_html_api_hybrid():
     assert "json" in out["paths"] and "html" in out["paths"]
     assert out["flag"] is False
 
+# === S14-03 ===
+
+def test_hired_adapter_v1_with_auth_session():
+    from app.job_sources.hired import clear_token
+    from app.sprint14.ingest import hired_v1, reset
+
+    reset()
+    clear_token()
+    gated = hired_v1({"jobs": []})
+    assert gated["bypass"] is False
+    assert gated["action"] in {"needs_auth", "continue"}
+    captcha = hired_v1({"jobs": []}, html="please complete the captcha")
+    assert captcha["bypass"] is False
+    assert captcha["action"] == "needs_manual"
+
