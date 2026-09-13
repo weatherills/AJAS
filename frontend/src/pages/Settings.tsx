@@ -42,6 +42,7 @@ import {
   sourceTitle,
 } from '../lib/jobs'
 import { LearningPanel } from './Learning'
+import { loadRedactionFields, saveRedactionFields, type RedactionField } from '../lib/sprint13'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -146,6 +147,7 @@ export function SettingsPage() {
     { site: 'greenhouse', cap: 20, consent: false, used: 0, windowMinutes: 1440 },
     { site: 'lever', cap: 20, consent: false, used: 0, windowMinutes: 1440 },
   ])
+  const [redactFields, setRedactFields] = useState<RedactionField[]>(() => loadRedactionFields())
   const [allowlistText, setAllowlistText] = useState('boards.greenhouse.io, jobs.lever.co, graph.microsoft.com')
   const [allowlistAudit, setAllowlistAudit] = useState(() => [recordAllowlistAudit('admin', 'boards.greenhouse.io, jobs.lever.co, graph.microsoft.com')])
   const [doc, setDoc] = useState<SettingsDoc | null>(null)
@@ -701,6 +703,25 @@ export function SettingsPage() {
         >
           Forget my account
         </button>
+        <fieldset className="redact-fields">
+          <legend>Field-level log redaction</legend>
+          <p className="muted">Strip these fields from operator logs and exports for this browser.</p>
+          {(['email', 'phone', 'resume'] as RedactionField[]).map((field) => (
+            <label key={field}>
+              <input
+                type="checkbox"
+                checked={redactFields.includes(field)}
+                onChange={(event) => {
+                  const next = event.target.checked
+                    ? [...new Set([...redactFields, field])]
+                    : redactFields.filter((item) => item !== field)
+                  setRedactFields(saveRedactionFields(next))
+                }}
+              />
+              Redact {field}
+            </label>
+          ))}
+        </fieldset>
       </section>
 
       <section className="editor-section" aria-labelledby="allowlist-heading">

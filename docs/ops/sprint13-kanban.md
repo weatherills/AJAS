@@ -62,3 +62,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 042 Ingestion adapters v3: Indeed HTML/JSON dual-path parser
 - [x] 043 Ingestion adapters v3: LinkedIn resilience + captcha fallback
 - [x] 044 Observability: structured tracing context propagation
+- [x] 045 Privacy: field-level redaction config UI

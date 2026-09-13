@@ -505,3 +505,15 @@ def test_observability_structured_tracing_context_propagation():
     assert first["traceId"] == second["traceId"] == "shared"
     assert trace_viewer(trace_id="shared")["count"] == 2
 
+# === S13-45 ===
+
+def test_privacy_field_level_redaction_config_ui():
+    from app.sprint13.security import apply_field_redaction, reset, set_field_redaction
+
+    reset()
+    set_field_redaction("t1", ["email", "phone"])
+    out = apply_field_redaction("t1", {"email": "ada@example.test", "title": "Staff", "notes": "ada@example.test"})
+    assert out["email"] == "[redacted]"
+    assert out["title"] == "Staff"
+    assert "[email]" in out["notes"]
+
