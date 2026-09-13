@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AppNav } from '../components/AppNav'
+import { digestCopy, notificationInbox, pushNotification, type AppNotification } from '../lib/notifications'
 import { json, request, setUserId } from '../api/live'
 
 type Slo = { route: string; budgetMs: number; p95Ms: number | null; samples: number; ok: boolean }
@@ -13,6 +14,8 @@ export function OpsPage() {
   const [drift, setDrift] = useState<Drift | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [traceError, setTraceError] = useState<string | null>(null)
+  const [notes, setNotes] = useState<AppNotification[]>(() => notificationInbox())
+  const [digest, setDigest] = useState(() => digestCopy())
 
   useEffect(() => {
     void (async () => {
@@ -62,7 +65,29 @@ export function OpsPage() {
           </p>
         )}
       </section>
-      <section className="editor-section ops-slo">
+      <section className="editor-section">
+        <h2>Notification center</h2>
+        <p className="muted">In-app toasts plus the digest email payload for unread events.</p>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            pushNotification({ kind: 'digest', title: 'Ops ping', body: 'SLO sample recorded.' })
+            setNotes(notificationInbox())
+            setDigest(digestCopy())
+          }}
+        >
+          Preview toast
+        </button>
+        <p>{digest}</p>
+        <ul>
+          {notes.slice(0, 8).map((item) => (
+            <li key={item.id}>
+              {item.title} — {item.body}
+            </li>
+          ))}
+        </ul>
+      </section>
         <h2>SLOs</h2>
         {slo.length === 0 || slo.every((row) => row.samples === 0) ? (
           <p className="muted">No live samples yet. Open Review or the Job Feed, then reload Ops.</p>

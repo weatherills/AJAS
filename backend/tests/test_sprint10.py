@@ -356,3 +356,13 @@ def test_followup_sla_24_and_72_hour_reminders():
     assert late["due"] == [24, 72]
     replied = followup_reminders(last_inbound_at=inbound, last_outbound_at=now - timedelta(hours=1), now=now)
     assert replied["replied"] is True
+
+
+def test_notification_center_toasts_and_digest():
+    from app.notify import digest_email, push, reset
+
+    reset()
+    push(kind="match", title="New match", body="Staff Engineer at Acme")
+    digest = digest_email()
+    assert digest["count"] == 1
+    assert "Staff Engineer" in digest["text"]
