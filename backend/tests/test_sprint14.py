@@ -862,3 +862,11 @@ def test_maintenance_consolidate_duplicate_utils():
 
     assert "api_query" in consolidate_note()
 
+# === S14-93 ===
+
+def test_maintenance_queue_configuration_cleanup_v2():
+    from app.sprint14.ops import queue_cleanup
+
+    row = queue_cleanup()
+    assert "ingest" in row["queues"]
+
