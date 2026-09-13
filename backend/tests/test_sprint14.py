@@ -141,3 +141,13 @@ def test_source_adapter_rotating_proxies_abstraction_health():
     assert row["healthy"] is True
     assert row["active"]
 
+# === S14-13 ===
+
+def test_source_adapter_robots_txt_crawl_delay_compliance_toggle():
+    from app.sprint14.ingest import reset, robots_toggle
+
+    reset()
+    row = robots_toggle("https://example.com/jobs", respect=True)
+    assert row["respect"] is True
+    assert row["allow"] is False
+
