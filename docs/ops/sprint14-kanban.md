@@ -134,3 +134,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 094 Errors: better remediation hints everywhere
 - [x] 095 CLI: reindex embeddings for resume/job
 - [x] 096 Webhooks: signed callbacks for adapter outcomes
+- [x] 097 Health: dependency matrix endpoint v3

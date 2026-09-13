@@ -892,3 +892,12 @@ def test_webhooks_signed_callbacks_for_adapter_outcomes():
     row = webhook_event(secret="k", body='{"ok":true}', event="adapter.ok")
     assert row["event"] == "adapter.ok"
 
+# === S14-97 ===
+
+def test_health_dependency_matrix_endpoint_v3():
+    from app.sprint14.ops import health_matrix
+
+    row = health_matrix()
+    assert row["schema"] == "ajas.health.v3"
+    assert row["version"] == "sprint14"
+
