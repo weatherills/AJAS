@@ -303,3 +303,11 @@ def test_resume_achievements_vs_responsibilities_classifier():
     result = classify_resume(["Increased conversion 12%", "Responsible for on-call"])
     assert result["achievements"] == 1
     assert result["responsibilities"] == 1
+
+def test_resume_gap_detection_and_annotation():
+    from app.resumes.gap_notes import annotate_gaps
+    bullets = ["Eng Jan 2019 - Dec 2019", "Eng Jan 2021 - present"]
+    notes = {"2019-12-01|2021-01-01": "caregiving"}
+    result = annotate_gaps(bullets, notes=notes)
+    assert result["gaps"]
+    assert result["gaps"][0]["note"] == "caregiving"
