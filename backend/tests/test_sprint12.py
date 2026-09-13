@@ -369,7 +369,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 76
+    assert COMPLETED == 77
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -530,3 +530,9 @@ def test_feature_flags_ui_includes_adapters():
     flags = ops_mod.feature_flags_ui()
     assert "indeed_adapter" in flags
     assert flags["indeed_adapter"] is False
+
+def test_adapter_success_error_latency_charts():
+    from app.source_quotas import record
+    record("lever", fetched=2, errors=1)
+    charts = ops_mod.adapter_charts()
+    assert any(row.get("kind") == "quota" for row in charts)

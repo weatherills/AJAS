@@ -99,3 +99,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 074 Safety: blocklist companies/keywords per tenant
 - [x] 075 Rate policy UI: per-source quotas and toggles
 - [x] 076 Feature flags UI: enable/disable adapters/flows
+- [x] 077 Admin metrics: per-adapter success/error/latency charts
