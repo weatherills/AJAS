@@ -231,7 +231,7 @@ def test_notification_digests_and_web_push():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 31
+    assert COMPLETED == 32
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -269,3 +269,8 @@ def test_explanation_style_narrative_variant():
     ranking_mod.upsert_experiment("explain.style", ["bullet", "narrative"])
     text = ranking_mod.format_explanation("narrative", ["Python", "Azure", "Cosmos"])
     assert "Python" in text and "and Cosmos" in text
+
+def test_web_push_subscription_record():
+    push = mail_mod.subscribe_push(user_id="linus", endpoint="https://push.example/linus", keys={"p256dh": "a", "auth": "b"})
+    assert push["userId"] == "linus"
+    assert push["endpoint"].startswith("https://")
