@@ -34,7 +34,6 @@ import {
   saveFilters,
   skeletonPlaceholders,
   windowedRange,
-  saveFilters,
   boardErrorCopy,
   feedErrorLines,
   jobsListMayHaveChanged,
