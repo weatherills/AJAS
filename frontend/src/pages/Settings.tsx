@@ -28,6 +28,7 @@ import {
   sourceUnconfiguredCopy,
 } from '../lib/settings'
 import { loadApplyPrefs, saveApplyPrefs, type ApplyPrefs } from '../lib/applyPrefs'
+import { buildExportBundle } from '../lib/privacy'
 import {
   addBoardToast,
   boardAddPayload,
@@ -631,6 +632,27 @@ export function SettingsPage() {
           {autoApplyStatus === 'saved' && 'Saved'}
         </p>
         <ApplyPrefsFields />
+      </section>
+
+      <section className="editor-section" aria-labelledby="privacy-heading">
+        <h2 id="privacy-heading">Privacy</h2>
+        <p className="muted">Download a GDPR bundle of jobs, emails, and matches stored for this user.</p>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            const bundle = buildExportBundle(userId)
+            const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = `ajas-gdpr-${userId}.json`
+            link.click()
+            URL.revokeObjectURL(url)
+          }}
+        >
+          Download my data
+        </button>
       </section>
 
       <section className="editor-section" aria-labelledby="learning-prefs-heading">

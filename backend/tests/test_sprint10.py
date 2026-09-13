@@ -427,3 +427,12 @@ def test_adaptive_alert_thresholds_dampen_noise():
     assert baseline and baseline["alert"] is False
     assert spike["alert"] is True
     assert spike["threshold"] > baseline["mean"]
+
+
+def test_gdpr_on_demand_export_bundle():
+    from app.privacy import export_bundle
+
+    bundle = export_bundle(user_id="ada", jobs=[{"id": "j1"}], emails=[], matches=[])
+    assert bundle["userId"] == "ada"
+    assert bundle["format"] == "ajas.gdpr.v1"
+    assert bundle["jobs"][0]["id"] == "j1"
