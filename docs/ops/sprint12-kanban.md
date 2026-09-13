@@ -67,3 +67,4 @@ Landed on `main` as `[S12]` commits.
 
 ## Batch 5 gate
 - tests/lint/typecheck green after task 50
+- [x] 051 Red teaming: prompt/automation abuse scenarios tests
