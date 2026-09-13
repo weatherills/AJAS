@@ -73,3 +73,4 @@ Landed on `main` as `[S13]` commits.
 - tests/lint/typecheck green after task 50
 
 - [x] 051 Retry/backoff v2: jitter strategy per queue
+- [x] 052 Audit logging v2: export to CSV/JSON

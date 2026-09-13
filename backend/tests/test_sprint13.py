@@ -590,3 +590,13 @@ def test_retry_backoff_v2_jitter_strategy_per_queue():
     assert later >= first
     assert later <= 8.0
 
+# === S13-52 ===
+
+def test_audit_logging_v2_export_to_csv_json():
+    from app.sprint13.ops import audit_bundle
+
+    bundle = audit_bundle(events=[{"id": "a1", "action": "kill", "actor": "ada"}])
+    assert bundle["count"] == 1
+    assert "a1" in bundle["csv"]
+    assert bundle["json"][0]["action"] == "kill"
+
