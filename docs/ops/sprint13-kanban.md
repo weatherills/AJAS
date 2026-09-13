@@ -58,3 +58,4 @@ Landed on `main` as `[S13]` commits.
 ## Batch 4 gate
 - tests/lint/typecheck green after task 40
 
+- [x] 041 Ingestion adapters v3: Glassdoor block detection and cool-down

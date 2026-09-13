@@ -454,3 +454,17 @@ def test_ingestion_adapters_v3_wellfound_session_refresh_guard():
     assert wellfound_guard(session_age_min=10)["refresh"] is False
     assert wellfound_guard(session_age_min=50)["stale"] is True
 
+# === S13-41 ===
+
+def test_ingestion_adapters_v3_glassdoor_block_detection_and_cool_down():
+    from app.flags import feature_flags
+    from app.job_sources.circuit import allow as circuit_allow
+    from app.sprint13.ingest import glassdoor_cooldown, reset
+
+    reset()
+    assert feature_flags()["glassdoor_adapter"] is False
+    cool = glassdoor_cooldown(blocked=True, failures=1)
+    assert cool["cooldownMin"] == 15
+    assert cool["allow"] is False
+    assert circuit_allow("glassdoor") is True
+
