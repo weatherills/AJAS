@@ -153,17 +153,23 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
                     setCoverFileError('Cover letter must be under 200 KB.')
                     return
                   }
-                  const reader = new FileReader()
-                  reader.onload = () => {
-                    const text = typeof reader.result === 'string' ? reader.result : ''
-                    if (!text.trim()) {
-                      setCoverFileError('Could not read that file as text. Try a .txt letter or paste it below.')
-                      return
+                  void (async () => {
+                    try {
+                      const name = file.name.toLowerCase()
+                      const textual =
+                        name.endsWith('.txt') ||
+                        name.endsWith('.md') ||
+                        file.type.startsWith('text/')
+                      const text = textual ? (await file.text()).trim() : (await autoApplyApi.extractCoverLetter(file)).trim()
+                      if (!text) {
+                        setCoverFileError('Could not read that file as text. Try a .txt letter or paste it below.')
+                        return
+                      }
+                      setCoverText(text)
+                    } catch (err) {
+                      setCoverFileError(err instanceof Error ? err.message : 'Could not read that file.')
                     }
-                    setCoverText(text)
-                  }
-                  reader.onerror = () => setCoverFileError('Could not read that file.')
-                  reader.readAsText(file)
+                  })()
                 }}
               />
             </label>

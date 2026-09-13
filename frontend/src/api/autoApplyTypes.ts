@@ -70,4 +70,5 @@ export type AutoApplyApi = {
   get(requestId: string): Promise<ApplyDetail>
   cancel(requestId: string): Promise<{ state: string; request_id: string }>
   markManualSubmitted(requestId: string): Promise<{ state: string; request_id: string }>
+  extractCoverLetter(file: File): Promise<string>
 }

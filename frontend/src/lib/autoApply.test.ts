@@ -78,20 +78,27 @@ describe('mock auto-apply api', () => {
     expect(detail.cover_letter_text).toMatch(/Jane Doe/)
   })
 
-  it('stores an uploaded cover letter', async () => {
-    resetAutoApplyMock()
-    const created = await mockAutoApplyApi.create({
-      job_source: 'greenhouse',
-      job_posting_id: 'job-staff',
-      posting_url: 'https://boards.greenhouse.io/demo/jobs/job-staff',
-      cover_letter_mode: 'upload',
-      cover_letter_text: 'Please consider my application.\nJane Doe',
-      consent_approved: true,
+    it('stores an uploaded cover letter', async () => {
+      resetAutoApplyMock()
+      const created = await mockAutoApplyApi.create({
+        job_source: 'greenhouse',
+        job_posting_id: 'job-staff',
+        posting_url: 'https://boards.greenhouse.io/demo/jobs/job-staff',
+        cover_letter_mode: 'upload',
+        cover_letter_text: 'Please consider my application.\nJane Doe',
+        consent_approved: true,
+      })
+      const detail = await mockAutoApplyApi.get(created.request_id)
+      expect(detail.cover_letter_source).toBe('upload')
+      expect(detail.cover_letter_text).toMatch(/Jane Doe/)
     })
-    const detail = await mockAutoApplyApi.get(created.request_id)
-    expect(detail.cover_letter_source).toBe('upload')
-    expect(detail.cover_letter_text).toMatch(/Jane Doe/)
-  })
+
+    it('extracts text from uploaded .txt cover letters', async () => {
+      const text = await mockAutoApplyApi.extractCoverLetter(
+        new File(['Please consider my application.'], 'letter.txt', { type: 'text/plain' }),
+      )
+      expect(text).toBe('Please consider my application.')
+    })
 
   it('requires pasted or uploaded cover letter text', async () => {
     resetAutoApplyMock()

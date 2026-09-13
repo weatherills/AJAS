@@ -8,11 +8,13 @@ import azure.functions as func
 
 from app.auth import AuthError, ForbiddenError, get_principal, require_scopes
 from app.auto_apply.constants import READ_SCOPE, WRITE_SCOPE
+from app.auto_apply.cover import extract_cover_upload
 from app.auto_apply.errors import (
     AutoApplyConflictError,
     AutoApplyNotFoundError,
     AutoApplyValidationError,
 )
+from app.resumes.errors import FileRejectedError
 from app.auto_apply.runtime import get_service
 from app.http import error_response, json_response
 
@@ -31,6 +33,8 @@ def _handle(exc: Exception) -> func.HttpResponse:
         return error_response("UNAUTHENTICATED", str(exc), 401)
     if isinstance(exc, ForbiddenError):
         return error_response("FORBIDDEN", str(exc), 403)
+    if isinstance(exc, FileRejectedError):
+        return error_response(exc.code, str(exc), exc.status_code)
     if isinstance(exc, AutoApplyValidationError):
         pointer = f"/{exc.path}" if getattr(exc, "path", None) else None
         return error_response(
@@ -123,6 +127,28 @@ def auto_apply_manual_submit(req: func.HttpRequest) -> func.HttpResponse:
         principal = _auth(req, WRITE_SCOPE)
         body = get_service().mark_manual_submitted(principal.user_id, req.route_params["request_id"])
         return json_response(body)
+    except Exception as exc:
+        return _handle(exc)
+
+
+def _read_upload(req: func.HttpRequest) -> tuple[str, str | None, bytes]:
+    files = req.files
+    upload = files.get("file") if files else None
+    if upload is None:
+        raise AutoApplyValidationError("Missing multipart field 'file'", path="file")
+    filename = getattr(upload, "filename", None) or "cover.bin"
+    content_type = getattr(upload, "content_type", None)
+    data = upload.read() if hasattr(upload, "read") else upload.stream.read()
+    return filename, content_type, data
+
+
+@bp.route(route="v1/auto-apply/cover-letter/extract", methods=["POST"])
+def auto_apply_cover_extract(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        _auth(req, WRITE_SCOPE)
+        filename, content_type, data = _read_upload(req)
+        text = extract_cover_upload(filename=filename, content_type=content_type, data=data)
+        return json_response({"text": text})
     except Exception as exc:
         return _handle(exc)
 

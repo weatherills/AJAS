@@ -24,4 +24,12 @@ export const liveAutoApplyApi: AutoApplyApi = {
       await request(`/api/v1/auto-apply/requests/${encodeURIComponent(requestId)}/manual-submit`, { method: 'POST' }),
     )
   },
+  async extractCoverLetter(file) {
+    const form = new FormData()
+    form.append('file', file)
+    const data = await json<{ text: string }>(
+      await request('/api/v1/auto-apply/cover-letter/extract', { method: 'POST', body: form }),
+    )
+    return data.text
+  },
 }

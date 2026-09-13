@@ -35,6 +35,7 @@ def _req(
     route: dict | None = None,
     headers: dict | None = None,
     scopes: str | None = None,
+    file: tuple[str, str, bytes] | None = None,
 ) -> func.HttpRequest:
     hdrs = dict(headers or {})
     body = b""
@@ -45,6 +46,15 @@ def _req(
     if json_body is not None:
         hdrs["Content-Type"] = "application/json"
         body = json.dumps(json_body).encode()
+    if file:
+        filename, mime, data = file
+        boundary = "----AjasBoundary"
+        hdrs["Content-Type"] = f"multipart/form-data; boundary={boundary}"
+        body = (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+            f"Content-Type: {mime}\r\n\r\n"
+        ).encode() + data + f"\r\n--{boundary}--\r\n".encode()
     return func.HttpRequest(
         method=method,
         url=url,
@@ -319,3 +329,47 @@ def test_package_zip_helper_includes_readme():
     with zipfile.ZipFile(io.BytesIO(raw)) as zf:
         assert zf.read("cover-letter.txt").decode().strip() == "Hello"
         assert "AJAS" in zf.read("README.txt").decode()
+
+
+def test_extract_cover_letter_from_txt_and_docx():
+    from io import BytesIO
+
+    from docx import Document
+
+    txt = routes.auto_apply_cover_extract(
+        _req(
+            "POST",
+            "http://localhost/api/v1/auto-apply/cover-letter/extract",
+            file=("letter.txt", "text/plain", b"Please consider my application."),
+        )
+    )
+    assert txt.status_code == 200
+    assert _body(txt)["text"] == "Please consider my application."
+
+    document = Document()
+    document.add_paragraph("Dear hiring team, I am a staff engineer.")
+    buf = BytesIO()
+    document.save(buf)
+    docx = routes.auto_apply_cover_extract(
+        _req(
+            "POST",
+            "http://localhost/api/v1/auto-apply/cover-letter/extract",
+            file=(
+                "letter.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                buf.getvalue(),
+            ),
+        )
+    )
+    assert docx.status_code == 200
+    assert "staff engineer" in _body(docx)["text"]
+
+    legacy = routes.auto_apply_cover_extract(
+        _req(
+            "POST",
+            "http://localhost/api/v1/auto-apply/cover-letter/extract",
+            file=("letter.doc", "application/msword", b"not-a-real-doc"),
+        )
+    )
+    assert legacy.status_code == 400
+    assert "doc" in _body(legacy)["error"]["message"].lower()

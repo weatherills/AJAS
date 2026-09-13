@@ -114,6 +114,7 @@ def test_function_app_registers_auto_apply_routes(function_names):
     assert "auto_apply_get" in function_names
     assert "auto_apply_cancel" in function_names
     assert "auto_apply_manual_submit" in function_names
+    assert "auto_apply_cover_extract" in function_names
     assert "auto_apply_webhook" in function_names
     assert "auto_apply_process_queued" in function_names
     assert "health" in function_names

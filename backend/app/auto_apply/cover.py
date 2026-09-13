@@ -8,6 +8,7 @@ from app.auto_apply.models import AutoApplyAttempt
 
 MAX_COVER_CHARS = 4000
 COVER_MAX_TOKENS = 400
+COVER_UPLOAD_MAX_BYTES = 200_000
 
 
 def canned_cover_letter(
@@ -76,3 +77,43 @@ def cover_from_mode(mode: str, attempt: AutoApplyAttempt, profile: dict[str, str
         if isinstance(uploaded, str) and uploaded.strip():
             return uploaded.strip()[:MAX_COVER_CHARS]
     return None
+
+
+def extract_cover_upload(*, filename: str, content_type: str | None, data: bytes) -> str:
+    """Turn an uploaded cover-letter file into plain text."""
+    from app.auto_apply.errors import AutoApplyValidationError
+    from app.resumes.errors import FileRejectedError
+    from app.resumes.files import DOCX, PDF, extract_text, sniff_mime
+
+    if not data:
+        raise AutoApplyValidationError("File is empty", path="file")
+    if len(data) > COVER_UPLOAD_MAX_BYTES:
+        raise AutoApplyValidationError("Cover letter must be under 200 KB.", path="file")
+    name = (filename or "cover.bin").lower()
+    mime = (content_type or "").split(";")[0].strip().lower()
+    if name.endswith(".doc") and not name.endswith(".docx"):
+        raise AutoApplyValidationError(
+            "Legacy .doc files are not supported. Upload a PDF or DOCX, or paste the letter.",
+            path="file",
+        )
+    if name.endswith(".txt") or name.endswith(".md") or mime in {"text/plain", "text/markdown"}:
+        text = data.decode("utf-8", errors="replace").strip()
+        if not text:
+            raise AutoApplyValidationError("Could not read that file as text.", path="file")
+        return text[:MAX_COVER_CHARS]
+    try:
+        sniffed = sniff_mime(filename, content_type)
+    except FileRejectedError as exc:
+        raise AutoApplyValidationError(str(exc), path="file") from exc
+    if sniffed not in {PDF, DOCX}:
+        raise AutoApplyValidationError("Upload a PDF, DOCX, or plain-text cover letter.", path="file")
+    try:
+        text = extract_text(filename, sniffed, data).strip()
+    except FileRejectedError as exc:
+        raise AutoApplyValidationError(str(exc), path="file") from exc
+    if not text:
+        raise AutoApplyValidationError(
+            "No text could be extracted from that file. Paste the letter instead.",
+            path="file",
+        )
+    return text[:MAX_COVER_CHARS]

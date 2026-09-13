@@ -20,14 +20,6 @@ Mail, Auto-Apply, Matching, Learning, Review, and Job Sources Cosmos adapters ru
 
 **Impact:** Latency and cost grow with data size; a Functions instance can mix tenants in that in-memory snapshot.
 
-### Cover letter “Upload” cannot read PDF or Word files
-
-The Apply modal accepts `.pdf`, `.doc`, and `.docx`, then `FileReader.readAsText`. Binary files fail or paste garbage. `.txt` / `.md` and the paste box work.
-
-**Where:** `frontend/src/components/ApplyModal.tsx`
-
-**Impact:** Users who pick a PDF cover letter see an error and must paste text.
-
 ### Greenhouse / Lever live submit is off unless flagged
 
 `AUTO_APPLY_LIVE_SUBMIT` defaults to false. Without the flag and vendor API keys, API-path attempts record a simulated submit. Turning the flag on in production has not been verified against real Greenhouse/Lever.

@@ -67,7 +67,8 @@ export async function request(path: string, init: RequestInit = {}): Promise<Res
   const csrf = getCsrfToken()
   if (csrf && !headers.has('X-CSRF-Token')) headers.set('X-CSRF-Token', csrf)
   const method = (init.method || 'GET').toUpperCase()
-  if (method !== 'GET' && method !== 'HEAD' && !headers.has('Content-Type') && init.body) {
+  const isForm = typeof FormData !== 'undefined' && init.body instanceof FormData
+  if (method !== 'GET' && method !== 'HEAD' && !headers.has('Content-Type') && init.body && !isForm) {
     headers.set('Content-Type', 'application/json')
   }
   const resp = await fetch(path, { ...init, headers, credentials: 'include' })

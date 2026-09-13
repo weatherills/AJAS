@@ -128,4 +128,13 @@ export const mockAutoApplyApi: AutoApplyApi = {
     row.state_history = [...row.state_history, { event: 'manually_submitted', at: stamped }]
     return { state: 'submitted', request_id: requestId }
   },
+  async extractCoverLetter(file) {
+    const name = file.name.toLowerCase()
+    if (name.endsWith('.txt') || name.endsWith('.md') || file.type.startsWith('text/')) {
+      const text = (await file.text()).trim()
+      if (!text) throw new Error('Could not read that file as text.')
+      return text
+    }
+    throw new Error('Paste the letter, or use a .txt file in mock mode. PDF and DOCX need the live API.')
+  },
 }
