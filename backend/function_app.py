@@ -23,6 +23,7 @@ from app.features.settings import bp as settings_bp
 from app.features.source_ingestion import bp as job_source_bp
 from app.features.sprint12 import bp as sprint12_bp
 from app.features.sprint13 import bp as sprint13_bp
+from app.features.sprint14 import bp as sprint14_bp
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
@@ -39,3 +40,4 @@ app.register_blueprint(ops_bp)
 app.register_blueprint(auth_session_bp)
 app.register_blueprint(sprint12_bp)
 app.register_blueprint(sprint13_bp)
+app.register_blueprint(sprint14_bp)

@@ -38,7 +38,7 @@ def test_version_is_sprint12():
     from app.features.health import _status_payload
 
     assert VERSION == "sprint12"
-    assert _status_payload()["version"] == "sprint13"
+    assert _status_payload()["version"] == "sprint14"
 
 def test_multi_tenant_org_workspace_scoping():
     tenant = tenants_mod.create_tenant(name="Acme Labs", owner_id="ada")
