@@ -37,3 +37,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 027 Consent management: cookie and tracking preferences
 - [x] 028 Email provider integration v2: OAuth-based IMAP/SMTP
 - [x] 029 Email classification v2: fine-grained labels (offer, interview, nurture)
+- [x] 030 Calendar integration: parse/schedule interview invites

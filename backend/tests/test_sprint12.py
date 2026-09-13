@@ -217,10 +217,15 @@ def test_email_classification_v2_labels():
     assert mail_mod.classify_message("Offer and compensation package")["label"] == "offer"
     assert mail_mod.classify_message("stay in touch talent community")["label"] == "nurture"
 
+def test_calendar_invite_parse():
+    parsed = mail_mod.parse_invite("See you 2026-09-15 14:00 in the office")
+    assert parsed["startsAt"].startswith("2026-09-15T14:00")
+    assert parsed["needsManual"] is False
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 29
+    assert COMPLETED == 30
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
