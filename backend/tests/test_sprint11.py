@@ -231,3 +231,13 @@ def test_ann_recall_evaluation_harness():
     assert ranked[0][0] == "a"
     metrics = evaluate_recall(store, [{"vector": [1.0, 0.0, 0.0], "relevant": ["a", "b"]}], k=2)
     assert metrics["recall"] == 1.0
+
+def test_skills_gap_penalty_curve_calibration():
+    from app.matching.gap_penalty import apply_gap_penalty, gap_penalty
+
+    assert gap_penalty(0) == 0.0
+    assert 0 < gap_penalty(1) < gap_penalty(4) <= 35.0
+    job = "Required:\n- kubernetes\n- rust\n"
+    adjusted = apply_gap_penalty(80.0, "python azure", job)
+    assert adjusted["missing"] >= 1
+    assert adjusted["score"] < 80.0
