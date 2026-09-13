@@ -8,18 +8,23 @@ from app.review.constants import READ_SCOPE, WRITE_SCOPE
 
 ROLE_USER = "user"
 ROLE_ADMIN = "admin"
-ROLES = (ROLE_USER, ROLE_ADMIN)
+ROLE_OWNER = "owner"
+ROLES = (ROLE_USER, ROLE_ADMIN, ROLE_OWNER)
 
 USER_SCOPES = frozenset({READ_SCOPE, WRITE_SCOPE, AUTO_APPLY_READ, AUTO_APPLY_WRITE})
 ADMIN_SCOPES = USER_SCOPES | frozenset({"admin", "read:ops", "write:ops"})
+OWNER_SCOPES = ADMIN_SCOPES | frozenset({"owner", "purge"})
 
 ROLE_SCOPES = {
     ROLE_USER: USER_SCOPES,
     ROLE_ADMIN: ADMIN_SCOPES,
+    ROLE_OWNER: OWNER_SCOPES,
 }
 
 
 def role_for_principal(principal: Principal) -> str:
+    if "owner" in principal.scopes or principal.user_id in {"owner", "local-owner"}:
+        return ROLE_OWNER
     if "admin" in principal.scopes:
         return ROLE_ADMIN
     return ROLE_USER
@@ -41,7 +46,9 @@ def permissions_payload(principal: Principal) -> dict:
             "review": True,
             "apply": True,
             "settings": True,
-            "ops": role == ROLE_ADMIN,
-            "learningAdmin": role == ROLE_ADMIN,
+            "ops": role in {ROLE_ADMIN, ROLE_OWNER},
+            "learningAdmin": role in {ROLE_ADMIN, ROLE_OWNER},
+            "purge": role == ROLE_OWNER,
+            "flags": role in {ROLE_ADMIN, ROLE_OWNER},
         },
     }
