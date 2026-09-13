@@ -670,3 +670,13 @@ def test_hot_query_cache_ttl():
     set_item("jobs:ada", ["j1"], ttl_sec=10, now=100)
     assert get_item("jobs:ada", now=105) == ["j1"]
     assert get_item("jobs:ada", now=111) is None
+
+
+def test_batch_db_writes_for_ingestion_and_logs():
+    from app.batch_writes import flush_batches
+
+    seen: list[int] = []
+    result = flush_batches([{"id": i} for i in range(12)], size=5, writer=lambda batch: seen.append(len(batch)))
+    assert result["batches"] == 3
+    assert result["written"] == 12
+    assert seen == [5, 5, 2]
