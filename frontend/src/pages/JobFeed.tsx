@@ -13,6 +13,7 @@ import { ToastStack } from '../components/Toast'
 import { apiToPercent, isSourceNotConfiguredError } from '../lib/settings'
 import { jobHaystack, matchedTerms, resumeHaystack, storedMatchesForJobs } from '../lib/matching'
 import { jobHref, useHashSearch } from '../lib/routes'
+import { bulkDismiss, dismissSnackbar } from '../lib/dismiss'
 import { unifiedDiff } from '../lib/jdDiff'
 import { preselectReady } from '../lib/status'
 import {
@@ -50,7 +51,7 @@ import {
   takeLastVisit,
 } from '../lib/jobs'
 
-type Toast = { id: number; text: string; tone?: 'info' | 'error' }
+type Toast = { id: number; text: string; tone?: 'info' | 'error'; actionLabel?: string; onAction?: () => void }
 
 const lastVisit = takeLastVisit()
 
@@ -81,6 +82,8 @@ export function JobFeedPage() {
   const [onlyThreshold, setOnlyThreshold] = useState(false)
   const [whyMatch, setWhyMatch] = useState<MatchView | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [dismissedIds, setDismissedIds] = useState<string[]>([])
+  const lastDismiss = useRef<{ remaining: string[]; dismissed: { id: string }[] } | null>(null)
   const [applyJob, setApplyJob] = useState<JobCard | null>(null)
   const [saveOverride, setSaveOverride] = useState<Record<string, boolean>>({})
   const [listMinHeight, setListMinHeight] = useState(0)
@@ -89,7 +92,9 @@ export function JobFeedPage() {
   const [drawerTab, setDrawerTab] = useState<'details' | 'emails'>('details')
   const [sourcesReady, setSourcesReady] = useState(false)
   const [jdDiff, setJdDiff] = useState<{ changed: boolean; lines: string[] } | null>(null)
+  const [sourceSaving, setSourceSaving] = useState<JobSourceName | null>(null)
   const search = useHashSearch()
+  const toastId = useRef(1)
   const jdVersions = useRef<Record<string, string>>({})
   const sentinel = useRef<HTMLDivElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -104,10 +109,10 @@ export function JobFeedPage() {
   loadingRef.current = loading
   loadingMoreRef.current = loadingMore
 
-  const toast = (text: string, tone: Toast['tone'] = 'info') => {
+  const toast = (text: string, tone: Toast['tone'] = 'info', extra?: Pick<Toast, 'actionLabel' | 'onAction'>) => {
     const id = toastId.current++
-    setToasts((prev) => [...prev, { id, text, tone }])
-    window.setTimeout(() => setToasts((prev) => prev.filter((item) => item.id !== id)), 5000)
+    setToasts((prev) => [...prev, { id, text, tone, ...extra }])
+    window.setTimeout(() => setToasts((prev) => prev.filter((item) => item.id !== id)), extra?.onAction ? 8000 : 5000)
   }
 
   const query = useMemo(
@@ -565,8 +570,8 @@ export function JobFeedPage() {
   const sourceUnconfigured = statuses.filter((item) => !sourceIsConfiguredStatus(item))
   const sourcesOff = filters.sources.length === 0 && statuses.some((item) => sourceIsConfiguredStatus(item))
   const visibleItems = useMemo(
-    () => items.filter((job) => matchesExtraFilters(job, filters)),
-    [items, filters],
+    () => items.filter((job) => matchesExtraFilters(job, filters) && !dismissedIds.includes(job.id)),
+    [items, filters, dismissedIds],
   )
   const windowRange = useMemo(
     () => windowedRange(visibleItems.length, listScrollTop, listViewport),
@@ -990,6 +995,27 @@ export function JobFeedPage() {
                   }}
                 >
                   Apply selected ({selectedIds.length})
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={!selectedIds.length}
+                  onClick={() => {
+                    const snap = bulkDismiss(visibleItems.map((job) => job.id), selectedIds)
+                    lastDismiss.current = snap
+                    setDismissedIds((prev) => [...prev, ...snap.dismissed.map((item) => item.id)])
+                    setSelectedIds([])
+                    toast(dismissSnackbar(snap.dismissed.length), 'info', {
+                      actionLabel: 'Undo',
+                      onAction: () => {
+                        const current = lastDismiss.current
+                        if (!current) return
+                        setDismissedIds((prev) => prev.filter((id) => !current.dismissed.some((item) => item.id === id)))
+                      },
+                    })
+                  }}
+                >
+                  Dismiss selected
                 </button>
               </div>
             <ul className="job-list" role="list" aria-label="Job postings" style={listMinHeight ? { minHeight: listMinHeight } : undefined}>
