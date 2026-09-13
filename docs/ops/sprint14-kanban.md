@@ -120,3 +120,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 084 Docs: release process + rollback steps v2
 - [x] 085 Data: migration scripts for indices/tables v2
 - [x] 086 Data: backfill historical salary fields v2
+- [x] 087 Data: vector store compaction v3

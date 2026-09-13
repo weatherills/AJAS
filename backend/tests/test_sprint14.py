@@ -812,3 +812,13 @@ def test_data_backfill_historical_salary_fields_v2():
     assert out["count"] == 1
     assert out["items"][0]["min"]
 
+# === S14-87 ===
+
+def test_data_vector_store_compaction_v3():
+    from app.sprint14.matching import reset
+    from app.sprint14.ops import compact_v3
+
+    reset()
+    row = compact_v3()
+    assert row["schema"] == "ajas.vector.vacuum.v3"
+
