@@ -25,3 +25,5 @@ Final gate:
 
 
 - Batch 5: green after task 50
+
+- Batch 6: green after task 60

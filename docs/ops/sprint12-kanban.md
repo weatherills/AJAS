@@ -77,3 +77,6 @@ Landed on `main` as `[S12]` commits.
 - [x] 058 Offline/Retry UX: queue failed actions with resume
 - [x] 059 Export matches: CSV with filters and column chooser
 - [x] 060 Saved searches: name, pin, and share saved filters
+
+## Batch 6 gate
+- tests/lint/typecheck green after task 60
