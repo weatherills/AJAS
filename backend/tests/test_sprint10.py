@@ -330,3 +330,14 @@ def test_sender_reputation_warmup_and_daily_cap():
     assert day_one["allowed"] is False
     warmed = can_send(ReputationState(day=date(2026, 9, 13), sent=5, age_days=10))
     assert warmed["allowed"] is True
+
+
+def test_reply_templates_v2_placeholders_and_preview():
+    from app.mail.templates_v2 import preset, render_template
+
+    rendered = render_template("Hi {{first_name}} at {{company}}", {"first_name": "Ada"})
+    assert rendered["complete"] is False
+    assert "company" in rendered["missing"]
+    full = preset("interested", {"first_name": "Ada", "role": "Staff", "company": "Acme"})
+    assert "Ada" in full["preview"]
+    assert full["complete"] is True
