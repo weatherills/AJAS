@@ -598,3 +598,14 @@ def test_salary_geo_negation_edge_cases():
     assert "python" in joined
     assert "java" in denied
     assert "cobol" in denied
+
+
+def test_html_snapshots_exist_for_new_adapters():
+    from pathlib import Path
+
+    fixtures = Path(__file__).parent / "fixtures" / "job_boards"
+    glassdoor = (fixtures / "glassdoor.html").read_text()
+    wellfound = (fixtures / "wellfound.html").read_text()
+    assert "gd-html-1" in glassdoor
+    assert "wf-html-1" in wellfound
+    assert "not scraped live" in glassdoor.lower() or "fixture" in glassdoor.lower()
