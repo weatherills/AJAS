@@ -620,3 +620,12 @@ def test_backfill_re_normalize_historical_jobs():
     out = renormalize([{"title": "Staff", "company": "Acme", "location": "Seattle, WA", "body": "python $140k-$160k"}])
     assert out["count"] == 1
 
+# === S14-65 ===
+
+def test_cli_verify_adapters_dry_run_single_source():
+    from app.sprint14.platform import cli_verify
+
+    cmds = cli_verify()
+    assert any("ziprecruiter" in cmd for cmd in cmds)
+    assert (Path(__file__).resolve().parents[2] / "scripts" / "verify_adapters.py").is_file()
+

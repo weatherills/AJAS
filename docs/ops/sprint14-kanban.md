@@ -90,3 +90,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 062 Queue health: stuck-job detector + auto-requeue
 - [x] 063 Dead-letter queue UI: inspect/retry with redaction
 - [x] 064 Backfill: re-normalize historical jobs
+- [x] 065 CLI: verify adapters + dry-run single source
