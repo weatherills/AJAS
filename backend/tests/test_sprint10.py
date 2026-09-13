@@ -733,3 +733,13 @@ def test_proxy_rotation_pool_health_checks():
     snap = snapshot()
     assert snap["healthy"] == 1
     assert first.url not in snap["urls"]
+
+
+def test_captcha_detection_hitl_stub_never_bypasses():
+    from app.auto_apply.captcha import apply_gate, detect
+
+    blocked = detect("<div class='g-recaptcha'></div>")
+    assert blocked["captcha"] is True
+    assert blocked["action"] == "needs_manual"
+    assert blocked["bypass"] is False
+    assert apply_gate("thanks for applying") == "continue"
