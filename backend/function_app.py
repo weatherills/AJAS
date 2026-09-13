@@ -21,6 +21,7 @@ from app.features.resume_management import bp as resume_bp
 from app.features.review_decision import bp as review_bp
 from app.features.settings import bp as settings_bp
 from app.features.source_ingestion import bp as job_source_bp
+from app.features.sprint12 import bp as sprint12_bp
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
@@ -35,3 +36,4 @@ app.register_blueprint(email_bp)
 app.register_blueprint(learning_bp)
 app.register_blueprint(ops_bp)
 app.register_blueprint(auth_session_bp)
+app.register_blueprint(sprint12_bp)

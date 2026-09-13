@@ -11,6 +11,7 @@ import azure.functions as func
 from app.cors import cors_headers
 from app.errors import error_meta
 from app.request_context import ensure_request_id
+from app.sprint12.security import SECURITY_HEADERS
 
 _current_req = None
 
@@ -23,6 +24,7 @@ def bind_http_request(req: func.HttpRequest | None) -> None:
 def _base_headers(extra: dict[str, str] | None = None) -> dict[str, str]:
     headers = {"Content-Type": "application/json"}
     headers["X-Request-Id"] = ensure_request_id()
+    headers.update(SECURITY_HEADERS)
     headers.update(cors_headers(_current_req))
     if extra:
         headers.update({key: str(value) for key, value in extra.items() if value is not None})

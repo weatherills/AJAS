@@ -29,7 +29,7 @@ def cors_headers(req: func.HttpRequest | None = None) -> dict[str, str]:
         "Access-Control-Allow-Origin": chosen,
         "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Request-Id, X-User-Id, X-Role, X-CSRF-Token, X-Webhook-Secret, Idempotency-Key, If-Match",
         "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE, OPTIONS",
-        "Access-Control-Expose-Headers": "X-Request-Id, X-CSRF-Token, Retry-After",
+        "Access-Control-Expose-Headers": "X-Request-Id, X-CSRF-Token, Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset",
         "Access-Control-Max-Age": "600",
     }
     if chosen != "*":
