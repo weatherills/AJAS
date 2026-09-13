@@ -107,3 +107,23 @@ def test_geocode_city_state_country_is_cached():
     missing = geocode("Atlantis", "OC", "US")
     assert missing["found"] is False
     assert missing["lat"] is None
+
+
+def test_jd_text_cleaner_v2_sections_and_bullets():
+    from app.job_sources.enrich import clean_job_description_v2
+
+    raw = """
+About the role
+Build the matching pipeline
+Responsibilities
+* Own ingestion
+1) Ship ranking
+Benefits
+Free snacks
+"""
+    cleaned = clean_job_description_v2(raw)
+    assert "Benefits:" not in cleaned["text"]
+    assert "- Own ingestion" in cleaned["bullets"]
+    assert "- Ship ranking" in cleaned["bullets"]
+    assert "responsibilities" in cleaned["sections"]
+    assert "benefits" not in cleaned["sections"]

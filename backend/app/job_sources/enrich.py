@@ -16,6 +16,11 @@ _SALARY = re.compile(
     re.I,
 )
 _SINGLE = re.compile(r"\$\s*(\d{2,3}(?:,\d{3})?)(?:\s*k)?", re.I)
+_HEADING = re.compile(
+    r"(?im)^(responsibilities|about the role|what you.?ll do|requirements|qualifications|"
+    r"must have|nice to have|benefits|about (?:us|the company)|equal opportunity)\s*:?\s*$"
+)
+_BULLET = re.compile(r"^(?:[\-\*•–]|\d+[.)]|[a-z][.)])\s+", re.I)
 
 
 def clean_job_description(text: str) -> str:
@@ -34,6 +39,41 @@ def clean_job_description(text: str) -> str:
             break
         lines.append(stripped)
     return "\n".join(lines).strip()
+
+
+def normalize_bullet(line: str) -> str:
+    stripped = (line or "").strip()
+    if not stripped:
+        return ""
+    if _BULLET.match(stripped):
+        return "- " + _BULLET.sub("", stripped).strip()
+    return stripped
+
+
+def clean_job_description_v2(text: str) -> dict[str, object]:
+    """Section heuristics plus bullet normalization for JD bodies."""
+    sections: dict[str, list[str]] = {}
+    current = "body"
+    for raw in (text or "").splitlines():
+        stripped = raw.strip()
+        if not stripped:
+            continue
+        heading = _HEADING.match(stripped)
+        if heading:
+            current = heading.group(1).lower()
+            sections.setdefault(current, [])
+            continue
+        sections.setdefault(current, []).append(normalize_bullet(stripped))
+    drop = {"benefits", "about us", "about the company", "equal opportunity"}
+    kept_keys = [key for key in sections if key not in drop]
+    lines: list[str] = []
+    for key in kept_keys:
+        if key != "body":
+            lines.append(key.title() + ":")
+        lines.extend(sections[key])
+        lines.append("")
+    cleaned = "\n".join(lines).strip()
+    return {"text": cleaned, "sections": {key: sections[key] for key in kept_keys}, "bullets": [line for line in cleaned.splitlines() if line.startswith("- ")]}
 
 
 def parse_salary(text: str) -> dict[str, int | None]:
