@@ -824,3 +824,26 @@ def test_location_radius_boosts_distance_aware():
     assert close["within"] is True
     assert close["boost"] >= far["boost"]
     assert far["km"] > 100
+
+
+def test_visa_work_auth_country_rules():
+    from app.matching.visa import visa_rules
+
+    us = visa_rules("US citizen required", "Canadian citizen", country="US")
+    sponsor = visa_rules("H1B visa sponsorship", "needs visa sponsorship", country="US")
+    assert us["boost"] < 0
+    assert "citizen_only" in us["flags"]
+    assert sponsor["boost"] > 0
+
+
+def test_cross_encoder_rerank_stage():
+    from app.matching.rerank import rerank
+
+    ranked = rerank(
+        [
+            {"id": "a", "resume": "python azure kubernetes", "job": "java cobol"},
+            {"id": "b", "resume": "python azure kubernetes", "job": "python azure"},
+        ]
+    )
+    assert ranked[0]["id"] == "b"
+    assert ranked[0]["rerank"] > ranked[1]["rerank"]
