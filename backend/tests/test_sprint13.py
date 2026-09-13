@@ -698,3 +698,16 @@ def test_docs_adapter_authoring_guide_v2():
     assert guide.is_file()
     assert "Fixture-only" in guide.read_text()
 
+# === S13-62 ===
+
+def test_docs_api_cookbook_with_examples():
+    from app.sprint13 import COMPLETED, VERSION
+    from app.sprint13.platform import api_cookbook
+
+    examples = api_cookbook()
+    assert any("jobs" in row["example"] for row in examples)
+    cookbook = Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint13-api-cookbook.md"
+    assert cookbook.is_file()
+    assert COMPLETED == 62
+    assert VERSION == "sprint13"
+
