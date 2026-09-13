@@ -403,3 +403,13 @@ def test_currency_support_fx_normalization_and_display_rules():
     assert shown["currency"] == "EUR"
     assert shown["local"] == 100
 
+# === S13-36 ===
+
+def test_salary_parsing_v3_equity_plus_bonus_components():
+    from app.sprint13.parse import salary_v3
+
+    parsed = salary_v3("$120k-$150k plus equity of $50k and bonus of $20k")
+    assert parsed["schema"] == "ajas.salary.v3"
+    assert parsed["equity"] == 50000
+    assert parsed["bonus"] == 20000
+

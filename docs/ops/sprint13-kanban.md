@@ -49,3 +49,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 033 JD cleaner v3: boilerplate classifier using heuristics+ML
 - [x] 034 Location geocoding v2: suburb/metro rollups and radius
 - [x] 035 Currency support: FX normalization and display rules
+- [x] 036 Salary parsing v3: equity + bonus components
