@@ -49,3 +49,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 033 Ranking: pairwise training data generator
 - [x] 034 Ranking: calibration monitor dashboard v2
 - [x] 035 Explanations: counterfactual suggestions
+- [x] 036 Explanations: highlight missing must-have skills

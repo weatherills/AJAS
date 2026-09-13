@@ -349,3 +349,10 @@ def test_explanations_counterfactual_suggestions():
     row = counterfactual(["Python"], ["Python", "Go"])
     assert row["add"] == ["Go"]
 
+# === S14-36 ===
+
+def test_explanations_highlight_missing_must_have_skills():
+    from app.sprint14.matching import missing_must_haves
+
+    assert missing_must_haves(["Python"], ["Python", "SQL"]) == ["SQL"]
+
