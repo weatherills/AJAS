@@ -629,3 +629,12 @@ def test_cli_verify_adapters_dry_run_single_source():
     assert any("ziprecruiter" in cmd for cmd in cmds)
     assert (Path(__file__).resolve().parents[2] / "scripts" / "verify_adapters.py").is_file()
 
+# === S14-66 ===
+
+def test_e2e_ingestion_ranking_explain_regressions():
+    from app.sprint14.ops import e2e_rank_explain
+
+    path = e2e_rank_explain()
+    assert path["ok"] is True
+    assert path["explain"] is True
+

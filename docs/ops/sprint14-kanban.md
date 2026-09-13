@@ -91,3 +91,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 063 Dead-letter queue UI: inspect/retry with redaction
 - [x] 064 Backfill: re-normalize historical jobs
 - [x] 065 CLI: verify adapters + dry-run single source
+- [x] 066 E2E: ingestion→ranking→explain regressions
