@@ -122,3 +122,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 086 Data: backfill historical salary fields v2
 - [x] 087 Data: vector store compaction v3
 - [x] 088 Data: retention sweep job v3
+- [x] 089 Maintenance: dependency updates + security audit

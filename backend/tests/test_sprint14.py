@@ -832,3 +832,11 @@ def test_data_retention_sweep_job_v3():
     row = retain("t1", 30)
     assert row["days"] == 30
 
+# === S14-89 ===
+
+def test_maintenance_dependency_updates_security_audit():
+    from app.sprint13.security import sast_findings
+
+    report = sast_findings()
+    assert report["critical"] == 0
+
