@@ -81,3 +81,8 @@ Landed on `main` as `[S13]` commits.
 - [x] 057 Backfill tool v2: safe chunking and progress UI
 - [x] 058 API v2: search/sort/filter consistency
 - [x] 059 Cleanup: orphaned records sweeper jobs
+- [x] 060 Mobile UX v2: bottom nav and gestures
+
+## Batch 6 gate
+- tests/lint/typecheck green after task 60
+

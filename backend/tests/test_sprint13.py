@@ -679,3 +679,11 @@ def test_cleanup_orphaned_records_sweeper_jobs():
     assert out["count"] == 1
     assert out["orphans"][0]["id"] == "gone"
 
+# === S13-60 ===
+
+def test_mobile_ux_v2_bottom_nav_and_gestures():
+    from app.sprint13.product import bottom_nav
+
+    hrefs = [item["href"] for item in bottom_nav()]
+    assert hrefs == ["#/jobs", "#/review", "#/apply", "#/email", "#/settings"]
+
