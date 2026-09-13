@@ -85,3 +85,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 063 Bulk apply v2: site-specific captchas/manual steps handling
 - [x] 064 Cover letter library: manage and favorite templates
 - [x] 065 Cover letter variables: preview and validation rules
+- [x] 066 Profile completeness meter and suggestions

@@ -344,7 +344,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 65
+    assert COMPLETED == 66
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -461,3 +461,7 @@ def test_cover_letter_preview_substitutes_variables():
     cover = product_mod.save_cover(user_id="ada", name="eng", body="Hi {{candidate}} applying for {{role}} at {{company}}. {{highlight}}")
     preview = product_mod.preview_cover(cover, {"candidate": "Ada", "role": "Eng", "company": "Acme", "highlight": "Python"})
     assert "Ada" in preview and "Acme" in preview
+
+def test_profile_completeness_lists_missing_education():
+    meter = product_mod.profile_completeness({"email": "a@b.c", "phone": "1", "skills": ["a", "b", "c", "d", "e"], "experience": [{}], "education": [], "summary": ""})
+    assert "education" in meter["suggestions"]
