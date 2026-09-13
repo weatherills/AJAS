@@ -415,3 +415,64 @@ def test_followup_snooze_until_business_hours():
     same = snooze_until(now=weekday, until=weekday, business_hours=True)
     assert same["until"].startswith("2026-09-14T10:30:00")
     assert same["rolled"] is False
+
+
+def test_distributed_trace_propagation_across_workers():
+    from app.request_context import current_request_id, set_request_id
+    from app.tracing import bind_worker, propagate, start_span
+
+    set_request_id("trace-s11")
+    headers = propagate()
+    assert headers["X-Request-Id"] == "trace-s11"
+    bound = bind_worker(headers)
+    assert bound == "trace-s11"
+    assert current_request_id() == "trace-s11"
+    span = start_span("worker.ingest")
+    assert span["traceId"] == "trace-s11"
+
+
+def test_structured_error_contexts_with_request_ids():
+    from app.observability import error_context
+    from app.request_context import set_request_id
+
+    set_request_id("req-42")
+    ctx = error_context(code="APPLY_FAILED", message="user ada@example.com failed", jobId="job-1")
+    assert ctx["requestId"] == "req-42"
+    assert ctx["code"] == "APPLY_FAILED"
+    assert "[redacted-email]" in ctx["message"]
+    assert ctx["jobId"] == "job-1"
+
+
+def test_per_source_success_latency_histograms():
+    from app.source_metrics import histogram, observe, reset
+
+    reset()
+    observe("greenhouse", ok=True, latency_ms=40)
+    observe("greenhouse", ok=False, latency_ms=900)
+    body = histogram("greenhouse")
+    assert body["count"] == 2
+    assert body["ok"] == 1
+    assert body["buckets"]["le_50"] == 1
+    assert body["buckets"]["le_1000"] == 1
+
+
+def test_noisy_adapter_mute_unmute():
+    from app.adapter_mute import is_muted, listing, mute, reset, unmute
+    from app.ingestion_alerts import maybe_alert
+
+    reset()
+    mute("workday")
+    assert is_muted("workday")
+    assert listing() == ["workday"]
+    assert maybe_alert(failure_count=9, source="workday") is False
+    unmute("workday")
+    assert is_muted("workday") is False
+
+
+def test_pii_scrubbing_rules_v2():
+    from app.privacy_review import scrub_v2
+
+    out = scrub_v2({"email": "ada@example.com", "note": "call +1 (555) 555-0100", "nested": {"token": "secret"}})
+    assert out["email"] == "[redacted]"
+    assert "[redacted-phone]" in out["note"]
+    assert out["nested"]["token"] == "[redacted]"

@@ -11,6 +11,11 @@ _request_id: ContextVar[str | None] = ContextVar("ajas_request_id", default=None
 _user_id: ContextVar[str | None] = ContextVar("ajas_user_id", default=None)
 
 
+def set_request_id(request_id: str) -> str:
+    _request_id.set(request_id)
+    return request_id
+
+
 def bind_request(req: func.HttpRequest, *, user_id: str | None = None) -> str:
     from app.http import bind_http_request
 

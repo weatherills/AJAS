@@ -51,3 +51,17 @@ def snapshot(*, limit: int = 50) -> dict[str, Any]:
     rows = list(_traces)[-limit:]
     rows.reverse()
     return {"items": rows, "count": len(_traces)}
+
+
+def propagate(trace_id: str | None = None) -> dict[str, str]:
+    tid = trace_id or current_request_id() or str(uuid4())
+    return {"X-Request-Id": tid}
+
+
+def bind_worker(headers: dict[str, str] | None = None) -> str:
+    from app.request_context import set_request_id
+
+    incoming = headers or {}
+    tid = incoming.get("X-Request-Id") or incoming.get("x-request-id") or current_request_id() or str(uuid4())
+    set_request_id(tid)
+    return tid
