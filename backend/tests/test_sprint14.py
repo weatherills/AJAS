@@ -778,3 +778,11 @@ def test_docs_observability_metrics_how_to_v2():
     assert "trace" in metrics_howto().lower()
     assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint14-observability.md").is_file()
 
+# === S14-83 ===
+
+def test_docs_data_model_diagrams_refresh():
+    from app.sprint14.platform import data_model
+
+    assert "matches" in data_model()
+    assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint14-data-model.md").is_file()
+
