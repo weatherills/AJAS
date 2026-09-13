@@ -511,3 +511,13 @@ def test_dead_letter_queue_inspect_retry_redaction():
     assert row["payload"]["token"] == "[redacted]"
     assert inspect("dlq-1")["status"] == "dead"
     assert retry("dlq-1")["status"] == "queued"
+
+
+def test_backfill_renormalizes_historical_jobs():
+    from app.job_sources.backfill import backfill_jobs
+
+    result = backfill_jobs(
+        [{"title": "Staff Engineer", "company": "Acme", "location": "Remote", "body": "Compensation $120,000-$150,000\npython azure"}]
+    )
+    assert result["count"] == 1
+    assert result["items"][0]["salaryMin"] == 120000
