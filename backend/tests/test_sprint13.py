@@ -316,3 +316,13 @@ def test_matching_features_seniority_ladder_calibration_data():
     assert staff["level"] > intern["level"]
     assert intern["label"] == "intern"
 
+# === S13-28 ===
+
+def test_vector_store_hnsw_parameter_tuning_and_benchmarks():
+    from app.sprint13.matching import hnsw_tune
+
+    loose = hnsw_tune(m=8, ef=32)
+    tight = hnsw_tune(m=32, ef=128)
+    assert tight["recall"] > loose["recall"]
+    assert tight["latencyMs"] > loose["latencyMs"]
+

@@ -37,3 +37,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 025 Matching boosts v2: recent-role weighting curve
 - [x] 026 Matching features: visa/work-authorization rule updates
 - [x] 027 Matching features: seniority ladder calibration data
+- [x] 028 Vector store: HNSW parameter tuning and benchmarks
