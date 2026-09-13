@@ -33,4 +33,8 @@ Batch gates: [sprint11-batches.md](./sprint11-batches.md).
 - Comp: `app.job_sources.comp` (equity / bonus / signing).
 - Matching: batch autotune, embed cache, ANN recall harness, gap penalty,
   PRD stack boost, employment-type alignment, fair-norm, tie-breakers,
-  counterfactual suggestions.
+  counterfactual suggestions, mismatch counts.
+- Resume: achievements vs responsibilities, employment-gap notes, language router.
+- Taxonomy: community synonym import + deprecation aliases (`angularjs` → `javascript`).
+- Apply: multi-step form machine (CAPTCHA → `needs_manual`), upload retrier,
+  role-family cover templates, parameterized resume highlights.
