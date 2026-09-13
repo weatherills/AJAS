@@ -521,3 +521,22 @@ def test_backfill_renormalizes_historical_jobs():
     )
     assert result["count"] == 1
     assert result["items"][0]["salaryMin"] == 120000
+
+
+def test_cli_verify_adapters_dry_run(monkeypatch):
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[2] / "scripts" / "verify_adapters.py"
+    spec = importlib.util.spec_from_file_location("verify_adapters", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    spec.loader.exec_module(mod)
+    monkeypatch.setenv("FLAG_GLASSDOOR_ADAPTER", "false")
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    result = mod.dry_run("glassdoor")
+    assert result["dryRun"] is True
+    assert result["source"] == "glassdoor"
+    assert result["count"] == 0
