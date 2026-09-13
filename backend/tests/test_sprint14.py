@@ -847,3 +847,11 @@ def test_maintenance_lint_type_rules_alignment():
 
     assert "sprint13" in consolidate_note()
 
+# === S14-91 ===
+
+def test_maintenance_remove_dead_flags_code_paths():
+    from app.sprint14.ops import dead_flags
+
+    flags = dead_flags()
+    assert "ziprecruiter_adapter" in flags
+

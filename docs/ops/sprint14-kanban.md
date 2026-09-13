@@ -128,3 +128,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 ## Batch 9 gate
 - tests/lint/typecheck green after task 90
 
+- [x] 091 Maintenance: remove dead flags + code paths
