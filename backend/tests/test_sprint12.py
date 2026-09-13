@@ -344,7 +344,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 63
+    assert COMPLETED == 64
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -451,3 +451,8 @@ def test_filter_operators_contains_starts_regex():
     jobs = [{"title": "Staff Python"}, {"title": "Junior PM"}]
     assert product_mod.apply_filters(jobs, [{"field": "title", "op": "starts-with", "value": "Staff"}])[0]["title"] == "Staff Python"
     assert product_mod.apply_filters(jobs, [{"field": "title", "op": "contains", "value": "pm"}])[0]["title"] == "Junior PM"
+
+def test_cover_letter_favorite_library():
+    cover = product_mod.save_cover(user_id="ada", name="eng", body="Hi {{candidate}} for {{role}} at {{company}}. {{highlight}}", favorite=True)
+    assert cover["favorite"] is True
+    assert cover["valid"] is True

@@ -83,3 +83,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 061 Advanced filters: regex/contains/starts-with operators
 - [x] 062 Query builder UI for complex job filters
 - [x] 063 Bulk apply v2: site-specific captchas/manual steps handling
+- [x] 064 Cover letter library: manage and favorite templates
