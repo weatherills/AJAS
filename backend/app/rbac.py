@@ -42,6 +42,7 @@ def permissions_payload(principal: Principal) -> dict:
         "userId": principal.user_id,
         "role": role,
         "scopes": sorted(principal.scopes or ROLE_SCOPES[role]),
+        "tenantId": getattr(principal, "tenant_id", None) or principal.user_id,
         "permissions": {
             "review": True,
             "apply": True,
@@ -50,5 +51,15 @@ def permissions_payload(principal: Principal) -> dict:
             "learningAdmin": role in {ROLE_ADMIN, ROLE_OWNER},
             "purge": role == ROLE_OWNER,
             "flags": role in {ROLE_ADMIN, ROLE_OWNER},
+            "tenantAdmin": role in {ROLE_ADMIN, ROLE_OWNER},
         },
     }
+
+
+def tenant_allowed(principal: Principal, tenant_id: str | None) -> bool:
+    role = role_for_principal(principal)
+    if role in {ROLE_ADMIN, ROLE_OWNER}:
+        return True
+    if not tenant_id:
+        return True
+    return tenant_id in {principal.user_id, getattr(principal, "tenant_id", None)}
