@@ -17,6 +17,9 @@ import { bulkDismiss, dismissSnackbar } from '../lib/dismiss'
 import { unifiedDiff } from '../lib/jdDiff'
 import { expandedAttr } from '../lib/a11y'
 import { t } from '../lib/i18n'
+import { compareRows, toggleCompareId } from '../lib/compareJobs'
+import { rowActions } from '../lib/quickActions'
+import { TRIAGE_HELP, triageShortcut } from '../lib/triageKeys'
 import {
   ALL_SOURCES,
   alsoFromLabel,
@@ -29,6 +32,7 @@ import {
   loadFilterPresets,
   saveFilterPreset,
   deleteFilterPreset,
+  setPresetAlerts,
   matchesExtraFilters,
   nextFeedSources,
   PAGE_SIZE,
@@ -86,6 +90,7 @@ export function JobFeedPage() {
   const [dismissedIds, setDismissedIds] = useState<string[]>([])
   const lastDismiss = useRef<{ remaining: string[]; dismissed: { id: string }[] } | null>(null)
   const [applyJob, setApplyJob] = useState<JobCard | null>(null)
+  const [compareIds, setCompareIds] = useState<string[]>([])
   const [saveOverride, setSaveOverride] = useState<Record<string, boolean>>({})
   const [listMinHeight, setListMinHeight] = useState(0)
   const [listScrollTop, setListScrollTop] = useState(0)
@@ -579,6 +584,52 @@ export function JobFeedPage() {
     [visibleItems.length, listScrollTop, listViewport],
   )
   const windowedItems = visibleItems.slice(windowRange.start, windowRange.end)
+  const compareJobs = useMemo(
+    () => compareRows(
+      visibleItems.filter((job) => compareIds.includes(job.id)),
+      matches,
+    ),
+    [visibleItems, compareIds, matches],
+  )
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const action = triageShortcut({
+        key: event.key,
+        metaKey: event.metaKey,
+        ctrlKey: event.ctrlKey,
+        altKey: event.altKey,
+        target: event.target as { tagName?: string },
+      })
+      if (!action || !visibleItems.length) return
+      event.preventDefault()
+      const index = Math.max(
+        0,
+        visibleItems.findIndex((job) => job.id === (selected?.id || visibleItems[0].id)),
+      )
+      const current = visibleItems[index]
+      if (action === 'next') {
+        const next = visibleItems[Math.min(visibleItems.length - 1, index + 1)]
+        if (next) selectJob(next)
+      } else if (action === 'prev') {
+        const prev = visibleItems[Math.max(0, index - 1)]
+        if (prev) selectJob(prev)
+      } else if (action === 'apply' && current) {
+        setApplyJob(current)
+      } else if (action === 'dismiss' && current) {
+        setDismissedIds((prev) => (prev.includes(current.id) ? prev : [...prev, current.id]))
+      } else if (action === 'save' && current) {
+        void saveMatch(current)
+      } else if (action === 'why' && current) {
+        const match = matches[current.id]
+        if (match) setWhyMatch(match)
+      } else if (action === 'compare' && current) {
+        setCompareIds((prev) => toggleCompareId(prev, current.id))
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [visibleItems, selected, matches, saveMatch, selectJob])
 
   useEffect(() => {
     if (!selected || !detail) {
@@ -616,6 +667,9 @@ export function JobFeedPage() {
         <div>
           <h1>{t('jobs')}</h1>
           <p className="tagline">Public Greenhouse and Lever postings, merged when they are the same role.</p>
+          <p className="muted" aria-label="Keyboard shortcuts">
+            {TRIAGE_HELP}
+          </p>
         </div>
         <div className="feed-header-actions">
           <button
@@ -870,6 +924,14 @@ export function JobFeedPage() {
                   <button
                     type="button"
                     className="link-btn"
+                    aria-label={`${preset.alertsEnabled ? 'Disable' : 'Enable'} alerts for ${preset.name}`}
+                    onClick={() => setPresets(setPresetAlerts(preset.name, !preset.alertsEnabled))}
+                  >
+                    {preset.alertsEnabled ? 'Alerts on' : 'Alerts off'}
+                  </button>
+                  <button
+                    type="button"
+                    className="link-btn"
                     aria-label={`Delete preset ${preset.name}`}
                     onClick={() => setPresets(deleteFilterPreset(preset.name))}
                   >
@@ -1024,6 +1086,14 @@ export function JobFeedPage() {
                 >
                   Dismiss selected
                 </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={selectedIds.length < 2}
+                  onClick={() => setCompareIds(selectedIds.slice(0, 3))}
+                >
+                  Compare selected ({Math.min(selectedIds.length, 3)})
+                </button>
               </div>
             <ul className="job-list" role="list" aria-label="Job postings" style={listMinHeight ? { minHeight: listMinHeight } : undefined}>
               {windowRange.leading > 0 && <li className="job-window-spacer" style={{ height: windowRange.leading }} aria-hidden="true" />}
@@ -1078,6 +1148,26 @@ export function JobFeedPage() {
                           onWhy={() => match && setWhyMatch(match)}
                           onRetry={() => void scoreJobs([job])}
                         />
+                        <div className="job-quick-actions" role="group" aria-label={`Quick actions for ${job.title}`}>
+                          {rowActions().map((action) => (
+                            <button
+                              key={action.id}
+                              type="button"
+                              className="link-btn"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                if (action.id === 'apply') setApplyJob(job)
+                                if (action.id === 'dismiss') {
+                                  setDismissedIds((prev) => (prev.includes(job.id) ? prev : [...prev, job.id]))
+                                }
+                                if (action.id === 'save') void saveMatch(job)
+                                if (action.id === 'compare') setCompareIds((prev) => toggleCompareId(prev, job.id))
+                              }}
+                            >
+                              {action.id === 'compare' && compareIds.includes(job.id) ? 'Compared' : action.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </li>
@@ -1127,6 +1217,27 @@ export function JobFeedPage() {
             </nav>
           )}
         </div>
+
+        {compareJobs.length > 0 && (
+          <section className="job-compare" aria-label="Compare jobs">
+            <h2>Compare jobs</h2>
+            <div className="job-compare-grid">
+              {compareJobs.map((row) => (
+                <article key={row.id}>
+                  <h3>{row.title}</h3>
+                  <p className="muted">
+                    {row.company} · {row.location}
+                    {row.employmentType ? ` · ${row.employmentType}` : ''}
+                  </p>
+                  <p>{row.score == null ? 'Unscored' : `Score ${row.score}`}</p>
+                  <button type="button" className="link-btn" onClick={() => setCompareIds((prev) => prev.filter((id) => id !== row.id))}>
+                    Remove
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         {selected && (
           <aside className="job-drawer" role="dialog" aria-modal="true" aria-labelledby="job-drawer-title">

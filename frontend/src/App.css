@@ -1114,8 +1114,33 @@ select:focus-visible {
   text-align: left;
 }
 
-.job-card-match {
-  margin-top: 0.7rem;
+.job-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.job-compare {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border, #d4d4d8);
+  border-radius: 8px;
+}
+
+.job-compare-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.thread-group {
+  margin-bottom: 0.75rem;
+}
+
+.thread-group h2 {
+  font-size: 0.85rem;
+  margin: 0 0 0.35rem;
 }
 
 .job-slot.is-filtered {
