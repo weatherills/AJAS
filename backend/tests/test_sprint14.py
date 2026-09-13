@@ -446,3 +446,17 @@ def test_email_imap_labels_mapping_to_internal_states():
     assert row["state"] == "interview"
     assert row["imap"] is False
 
+# === S14-47 ===
+
+def test_email_sender_reputation_guard():
+    from app.sprint14.mail import reset, sender_guard
+
+    reset()
+    ok = sender_guard("ada@example.test", sent_today=2, warmup_cap=20)
+    blocked = sender_guard("ada@example.test", sent_today=20, warmup_cap=20)
+    assert ok["allow"] is True
+    # stored used=2 from first call; second call uses stored 2 unless we reset
+    reset()
+    blocked = sender_guard("ada@example.test", sent_today=20, warmup_cap=20)
+    assert blocked["allow"] is False
+
