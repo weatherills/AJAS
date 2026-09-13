@@ -116,6 +116,30 @@ def pagination_contract(req: func.HttpRequest) -> func.HttpResponse:
     )
 
 
+@bp.route(route="v1/ops/adapters/{source}/mute", methods=["POST"])
+def mute_adapter(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = get_principal(req)
+        require_role(principal, "admin")
+        from app.adapter_mute import mute
+
+        return json_response(mute(req.route_params.get("source") or ""))
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/ops/adapters/{source}/unmute", methods=["POST"])
+def unmute_adapter(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = get_principal(req)
+        require_role(principal, "admin")
+        from app.adapter_mute import unmute
+
+        return json_response(unmute(req.route_params.get("source") or ""))
+    except Exception as exc:
+        return _handle(exc)
+
+
 @bp.route(route="v1/auth/me", methods=["GET"])
 def auth_me(req: func.HttpRequest) -> func.HttpResponse:
     try:

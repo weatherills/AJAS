@@ -13,7 +13,12 @@ log = logging.getLogger("ajas")
 _last_alert: str | None = None
 
 
-def maybe_alert(*, failure_count: int, events: list[dict[str, Any]] | None = None) -> bool:
+def maybe_alert(*, failure_count: int, events: list[dict[str, Any]] | None = None, source: str | None = None) -> bool:
+    if source:
+        from app.adapter_mute import is_muted
+
+        if is_muted(source):
+            return False
     if failure_count < 3:
         return False
     rows = events or []
