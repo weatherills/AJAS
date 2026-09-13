@@ -334,7 +334,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 59
+    assert COMPLETED == 60
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -431,3 +431,8 @@ def test_synthetic_generators_jobs_emails_resumes():
 def test_sensitive_jd_warning_polygraph():
     warn = safety_mod.sensitive_jd("polygraph required plus ITAR")
     assert warn["warning"] is True
+
+def test_saved_search_pin_and_share_token():
+    search = product_mod.save_search(user_id="ada", name="Remote Python", filters=[{"field": "title", "op": "contains", "value": "Python"}], pin=True, share=True)
+    assert search["pinned"] is True
+    assert search["shareToken"]
