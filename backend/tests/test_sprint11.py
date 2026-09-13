@@ -218,3 +218,16 @@ def test_embeddings_cold_start_cache_priming():
     cache.get("python azure")
     assert cache.hits >= 1
     assert cache.misses == 2
+
+def test_ann_recall_evaluation_harness():
+    from app.matching.ann import evaluate_recall, search
+    from app.matching.vectors import VectorStore
+
+    store = VectorStore()
+    store.upsert("a", [1.0, 0.0, 0.0])
+    store.upsert("b", [0.9, 0.1, 0.0])
+    store.upsert("c", [0.0, 1.0, 0.0])
+    ranked = search(store, [1.0, 0.0, 0.0], k=2)
+    assert ranked[0][0] == "a"
+    metrics = evaluate_recall(store, [{"vector": [1.0, 0.0, 0.0], "relevant": ["a", "b"]}], k=2)
+    assert metrics["recall"] == 1.0
