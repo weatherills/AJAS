@@ -134,7 +134,7 @@ def test_shareable_links_and_recruiter_portal():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 13
+    assert COMPLETED == 14
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -154,3 +154,10 @@ def test_invoice_webhook_status_sync_only():
         {"type": "invoice.paid", "data": {"object": {"id": "in_s12", "tenantId": tenant.id, "amount_paid": 2900, "status": "paid"}}}
     )
     assert billing_mod.invoices_for(tenant.id)[0]["id"] == "in_s12"
+
+def test_share_link_expires_independently():
+    tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
+    billing_mod.assign_plan(tenant.id, "pro")
+    link = sharing_mod.create_link(tenant_id=tenant.id, actor_id="ada", target_type="job", target_id="j9", ttl_hours=1)
+    assert sharing_mod.resolve(link["token"]) is not None
+    assert sharing_mod.resolve(link["token"], now=datetime.now(timezone.utc) + timedelta(hours=3)) is None
