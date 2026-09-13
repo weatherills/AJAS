@@ -70,3 +70,13 @@ def test_pii_scanning_ci_hook_to_detect_leaks():
     script = Path(__file__).resolve().parents[2] / "scripts" / "s13_pii_scan.py"
     assert script.is_file()
 
+# === S13-05 ===
+
+def test_e2e_suite_v3_ingestion_matching_apply_happy_path():
+    from app.sprint13.platform import e2e_happy_path
+
+    path = e2e_happy_path()
+    assert path["ok"] is True
+    assert [step["stage"] for step in path["steps"]] == ["ingest", "match", "apply"]
+    assert all(step["ok"] for step in path["steps"])
+
