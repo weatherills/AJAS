@@ -365,3 +365,13 @@ def test_fit_score_per_dimension_sub_scores_ui():
     assert row["total"] == 1
     assert row["bucket"]
 
+# === S14-38 ===
+
+def test_filters_saved_presets_per_user():
+    from app.sprint14.product import list_presets, reset, save_preset
+
+    reset()
+    save_preset(user_id="ada", name="python", filters={"q": "python"})
+    assert list_presets("ada")[0]["name"] == "python"
+    assert list_presets("bob") == []
+
