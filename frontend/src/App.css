@@ -865,6 +865,17 @@ button:disabled {
   pointer-events: none;
 }
 
+.jd-diff {
+  white-space: pre-wrap;
+  font-size: 0.8rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  overflow: auto;
+  max-height: 12rem;
+}
+
 .job-card {
   width: 100%;
   color: inherit;

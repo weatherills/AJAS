@@ -266,3 +266,14 @@ def test_explanation_reason_codes_include_token_spans():
     assert job[spans["matched"][0]["start"] : spans["matched"][0]["end"]].lower() == "python"
     assert spans["missing"][0]["code"] == "missing_skill"
     assert spans["missing"][0]["token"].lower() == "kubernetes"
+
+
+def test_job_description_diff_versions():
+    from app.job_sources.diff import diff_job_description
+
+    previous = "Build crawlers.\nOwn ranking."
+    current = "Build crawlers.\nOwn ranking and explanations."
+    diff = diff_job_description(previous, current)
+    assert diff["changed"] is True
+    assert diff["added"] >= 1
+    assert "+++ current" in diff["unified"]

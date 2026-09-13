@@ -13,6 +13,7 @@ import { ToastStack } from '../components/Toast'
 import { apiToPercent, isSourceNotConfiguredError } from '../lib/settings'
 import { jobHaystack, matchedTerms, resumeHaystack, storedMatchesForJobs } from '../lib/matching'
 import { jobHref, useHashSearch } from '../lib/routes'
+import { unifiedDiff } from '../lib/jdDiff'
 import { preselectReady } from '../lib/status'
 import {
   ALL_SOURCES,
@@ -87,9 +88,9 @@ export function JobFeedPage() {
   const [listViewport, setListViewport] = useState(720)
   const [drawerTab, setDrawerTab] = useState<'details' | 'emails'>('details')
   const [sourcesReady, setSourcesReady] = useState(false)
-  const [sourceSaving, setSourceSaving] = useState<JobSourceName | null>(null)
+  const [jdDiff, setJdDiff] = useState<{ changed: boolean; lines: string[] } | null>(null)
   const search = useHashSearch()
-  const toastId = useRef(1)
+  const jdVersions = useRef<Record<string, string>>({})
   const sentinel = useRef<HTMLDivElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
   const pollMs = useRef(15_000)
@@ -572,6 +573,21 @@ export function JobFeedPage() {
     [visibleItems.length, listScrollTop, listViewport],
   )
   const windowedItems = visibleItems.slice(windowRange.start, windowRange.end)
+
+  useEffect(() => {
+    if (!selected || !detail) {
+      setJdDiff(null)
+      return
+    }
+    const previous = jdVersions.current[selected.id]
+    if (previous && previous !== detail.description) {
+      const diff = unifiedDiff(previous, detail.description)
+      setJdDiff(diff.changed ? diff : null)
+    } else {
+      setJdDiff(null)
+    }
+    jdVersions.current[selected.id] = detail.description
+  }, [selected, detail])
 
   function sourceBlocked(row: SourceStatus | undefined) {
     return (
@@ -1153,6 +1169,12 @@ export function JobFeedPage() {
                 )}
                 <WhyThisScoreInline match={matches[selected.id]} />
                 {detail.descriptionError && <p className="warn-text">{detail.descriptionError}</p>}
+                {jdDiff && (
+                  <section aria-label="Job description updates">
+                    <h3>Description updates</h3>
+                    <pre className="jd-diff">{jdDiff.lines.join('\n')}</pre>
+                  </section>
+                )}
                 <p>{detail.description}</p>
                 <h3>Sources</h3>
                 <ul className="source-links">
