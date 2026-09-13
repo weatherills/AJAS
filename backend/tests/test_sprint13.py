@@ -564,3 +564,17 @@ def test_error_taxonomy_v3_mapping_to_remediation_playbooks():
     assert book["retryable"] is True
     assert "retry" in str(book["remediation"]).lower() or book["status"] == 429
 
+# === S13-50 ===
+
+def test_quotas_v2_per_tenant_source_daily_and_burst_caps():
+    from app.source_quotas import reset as reset_quotas
+    from app.sprint13.ops import quotas_v2, reset
+
+    reset()
+    reset_quotas()
+    burst = quotas_v2("indeed", daily=100, burst=20, used=20)
+    daily = quotas_v2("indeed", daily=100, burst=200, used=100)
+    assert burst["burstHit"] is True
+    assert daily["dailyHit"] is True
+    assert daily["allowed"] is False
+

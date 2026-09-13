@@ -67,3 +67,8 @@ Landed on `main` as `[S13]` commits.
 - [x] 047 Outbound allowlist v2: per-environment gates
 - [x] 048 Idempotency v3: conflict resolution strategies
 - [x] 049 Error taxonomy v3: mapping to remediation playbooks
+- [x] 050 Quotas v2: per-tenant/source daily and burst caps
+
+## Batch 5 gate
+- tests/lint/typecheck green after task 50
+
