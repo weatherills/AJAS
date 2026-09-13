@@ -5,11 +5,11 @@ keyword + semantic scoring, and streamlines review, auto-apply, and email
 follow-up. See `.codespring/project-overview.md` for the product overview and
 `.codespring/CURSOR_RUNBOOK.md` for the phased implementation plan.
 
-> Status: **Sprint 9 — matching evidence, job filters, email intent, operator flags.**
+> Status: **Sprint 12 — tenancy, billing, sharing, localization, operator polish.**
 > Users can upload resumes, scan Greenhouse and Lever into a unified feed, score jobs
 > against a resume with evidence sentences and fit buckets, review matches, auto-apply,
-> persist settings, read/reply to recruiter mail (including interview/rejection intent),
-> and tune ranking from approve/reject decisions.
+> persist settings, read/reply to recruiter mail, tune ranking from decisions, invite
+> teammates into a workspace, and share limited recruiter links on Pro/Team plans.
 
 ## Repository layout
 
@@ -18,6 +18,9 @@ follow-up. See `.codespring/project-overview.md` for the product overview and
 ├── backend/     # Azure Functions app (Python v2 model) — API, workers, timers
 ├── frontend/    # React + TypeScript + Vite web UI
 ├── docs/        # Architecture notes
+├── scripts/     # Operator CLI, seed, adapter verification
+├── sdk/         # JS client scaffold
+├── infra/       # Bicep baseline
 └── .codespring/ # Product overview, runbook, and per-feature PRDs
 ```
 
