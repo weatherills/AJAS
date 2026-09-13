@@ -225,3 +225,18 @@ def test_matching_recency_time_decay():
     assert fresh > 4
     assert stale < 1.5
     assert missing == 0.0
+
+
+def test_matching_fairness_dedupes_near_identical_roles():
+    from app.matching.fairness import dedupe_roles
+
+    rows = [
+        {"title": "Staff Engineer", "company": "Acme", "score": 70},
+        {"title": "Staff Engineer", "company": "Acme", "score": 88},
+        {"title": "Product Designer", "company": "Acme", "score": 60},
+    ]
+    kept = dedupe_roles(rows)
+    titles = [(row["title"], row["score"]) for row in kept]
+    assert ("Staff Engineer", 88) in titles
+    assert ("Staff Engineer", 70) not in titles
+    assert ("Product Designer", 60) in titles
