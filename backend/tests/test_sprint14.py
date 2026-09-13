@@ -48,3 +48,13 @@ def test_hired_adapter_v1_with_auth_session():
     assert captcha["bypass"] is False
     assert captcha["action"] == "needs_manual"
 
+# === S14-04 ===
+
+def test_remoteok_adapter_v1():
+    from app.sprint14.ingest import remoteok_v1, reset
+
+    reset()
+    out = remoteok_v1({"jobs": [{"id": "1", "title": "Remote Python"}]})
+    assert out["jobs"][0]["title"] == "Remote Python"
+    assert out["live"] is False
+
