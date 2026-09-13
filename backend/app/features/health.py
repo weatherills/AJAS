@@ -47,11 +47,26 @@ def _status_payload() -> dict:
             "keyVault": dependencies["keyVault"],
             "workers": workers,
         },
+        "probes": {
+            "storage": {"ok": True, "kind": storage, "live": True},
+            "openai": {"ok": dependencies["openai"], "live": bool(settings.azure_openai_endpoint)},
+            "graph": {"ok": dependencies["graph"], "live": bool(settings.microsoft_client_id)},
+            "keyVault": {"ok": dependencies["keyVault"], "live": bool(settings.key_vault_uri)},
+            "workers": {"ok": all(workers.values()), "live": True, "items": workers},
+        },
     }
 
 
 @bp.route(route="health", methods=["GET", "OPTIONS"])
 def health(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    if req.method.upper() == "OPTIONS":
+        return json_response({"ok": True})
+    return json_response(_status_payload())
+
+
+@bp.route(route="health/matrix", methods=["GET", "OPTIONS"])
+def health_matrix(req: func.HttpRequest) -> func.HttpResponse:
     bind_request(req)
     if req.method.upper() == "OPTIONS":
         return json_response({"ok": True})
