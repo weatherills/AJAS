@@ -37,3 +37,12 @@ Covered: JD version diff, bulk-dismiss undo snackbar, apply field maps, cover-le
 - Lint: restored Settings `userId` state dropped during allowlist UI; remaining warnings pre-existed
 
 Covered: audit CSV UI, error taxonomy v2, pipeline traces, metrics charts, adaptive alerts, GDPR export/purge, outbound allowlist policy UI, secrets hot-reload, per-tenant rate limits.
+
+## Batch 5 (tasks 41–50)
+
+- Backend: 528 passed
+- Frontend: 110 passed
+- Typecheck: clean
+- Lint: existing warnings only
+
+Covered: idempotency window/conflicts, stuck-queue requeue, DLQ redaction UI, job backfill, adapter dry-run CLI, ingestion→rank→explain E2E, email parser templates, salary/geo/negation edges, HTML adapter snapshots, junior/mid/senior/remote seeds.
