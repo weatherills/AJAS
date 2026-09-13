@@ -795,3 +795,11 @@ def test_docs_release_process_rollback_steps_v2():
     assert any("revert" in step for step in steps)
     assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint14-rollback.md").is_file()
 
+# === S14-85 ===
+
+def test_data_migration_scripts_for_indices_tables_v2():
+    from app.sprint14.ops import migrate_indices
+
+    row = migrate_indices()
+    assert "jobs_title" in row["indices"]
+

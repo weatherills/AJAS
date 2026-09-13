@@ -118,3 +118,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 082 Docs: observability/metrics how-to v2
 - [x] 083 Docs: data model diagrams refresh
 - [x] 084 Docs: release process + rollback steps v2
+- [x] 085 Data: migration scripts for indices/tables v2
