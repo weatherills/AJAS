@@ -50,3 +50,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 034 Ranking: calibration monitor dashboard v2
 - [x] 035 Explanations: counterfactual suggestions
 - [x] 036 Explanations: highlight missing must-have skills
+- [x] 037 Fit score: per-dimension sub-scores UI

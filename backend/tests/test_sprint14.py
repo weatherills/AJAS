@@ -356,3 +356,12 @@ def test_explanations_highlight_missing_must_have_skills():
 
     assert missing_must_haves(["Python"], ["Python", "SQL"]) == ["SQL"]
 
+# === S14-37 ===
+
+def test_fit_score_per_dimension_sub_scores_ui():
+    from app.sprint14.matching import sub_scores
+
+    row = sub_scores(keyword=1, semantic=1, recency=1)
+    assert row["total"] == 1
+    assert row["bucket"]
+

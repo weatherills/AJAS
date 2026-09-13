@@ -1,6 +1,7 @@
 import { AppNav } from '../components/AppNav'
 import { changelogEntries, labelledBy } from '../lib/sprint12'
 import { sprint13Changelog } from '../lib/sprint13'
+import { sprint14Changelog } from '../lib/sprint14'
 
 export function ChangelogPage() {
   return (
@@ -13,7 +14,7 @@ export function ChangelogPage() {
         </div>
       </header>
       <ol>
-        {[...sprint13Changelog(), ...changelogEntries()].map((entry) => (
+        {[...sprint14Changelog(), ...sprint13Changelog(), ...changelogEntries()].map((entry) => (
           <li key={entry.version}>
             <strong>{entry.version}</strong>
             <p>{entry.highlights.join(' · ')}</p>
