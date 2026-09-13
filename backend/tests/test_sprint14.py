@@ -612,3 +612,11 @@ def test_dead_letter_queue_ui_inspect_retry_redaction():
     assert out["stored"]["payload"]["token"] == "[redacted]"
     assert out["retry"]
 
+# === S14-64 ===
+
+def test_backfill_re_normalize_historical_jobs():
+    from app.sprint14.ops import renormalize
+
+    out = renormalize([{"title": "Staff", "company": "Acme", "location": "Seattle, WA", "body": "python $140k-$160k"}])
+    assert out["count"] == 1
+

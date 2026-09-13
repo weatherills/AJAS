@@ -89,3 +89,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 061 Idempotency keys v2: persistence window logs
 - [x] 062 Queue health: stuck-job detector + auto-requeue
 - [x] 063 Dead-letter queue UI: inspect/retry with redaction
+- [x] 064 Backfill: re-normalize historical jobs
