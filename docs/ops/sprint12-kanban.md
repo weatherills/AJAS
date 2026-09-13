@@ -116,3 +116,6 @@ Landed on `main` as `[S12]` commits.
 - [x] 088 Changelog page with releases and highlights
 - [x] 089 ETL to warehouse: nightly export to analytics DB
 - [x] 090 BI dashboards: cohort/retention and conversion funnels
+
+## Batch 9 gate
+- tests/lint/typecheck green after task 90
