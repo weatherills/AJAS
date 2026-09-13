@@ -41,3 +41,14 @@ def log_request(
 
 def log_exception(feature: str, route: str, exc: Exception) -> None:
     log.exception("ajas.error feature=%s route=%s error=%s", feature, route, exc)
+
+
+def error_context(*, code: str, message: str, **extra: Any) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "requestId": current_request_id() or "-",
+        "code": code,
+        "message": redact_pii(message),
+    }
+    for key, value in extra.items():
+        payload[key] = redact_pii(str(value)) if isinstance(value, str) else value
+    return payload
