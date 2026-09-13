@@ -45,3 +45,18 @@ def expire_stale(*, now: float | None = None, ttl_sec: float = 86400) -> int:
 
 def conflicts() -> list[dict]:
     return list(_CONFLICTS)
+
+
+def envelope(task_type: str, payload: dict, *, key: str | None = None) -> dict:
+    import hashlib
+    import json
+
+    blob = json.dumps(payload, sort_keys=True, default=str)
+    digest = hashlib.sha256(f"{task_type}|{blob}".encode()).hexdigest()[:24]
+    return {
+        "schema": "ajas.envelope.v2",
+        "type": task_type,
+        "key": key or digest,
+        "fingerprint": digest,
+        "payload": payload,
+    }
