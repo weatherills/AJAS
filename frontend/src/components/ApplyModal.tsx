@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { autoApplyApi, resumeApi } from '../api'
 import type { CoverLetterMode, JobSource } from '../api/autoApplyTypes'
+import type { ResumeListItem } from '../api/resumeTypes'
 import { defaultPostingUrl, inferJobSource } from '../lib/autoApply'
-import { loadApplyPrefs } from '../lib/applyPrefs'
+import { chooseResume, loadApplyPrefs, saveApplyPrefs } from '../lib/applyPrefs'
 
 const FALLBACK_CONTACT = {
   full_name: 'Alex Jobseeker',
@@ -26,6 +27,8 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
   const [jobSource, setJobSource] = useState<JobSource>(inferred)
   const [url, setUrl] = useState(postingUrl || defaultPostingUrl(jobId, inferred))
   const [coverMode, setCoverMode] = useState<CoverLetterMode>(prefs.defaultCoverMode)
+  const [resumes, setResumes] = useState<ResumeListItem[]>([])
+  const [activeResumeId, setActiveResumeId] = useState(resumeId || prefs.defaultResumeId || '')
   const [coverText, setCoverText] = useState('')
   const [coverFileError, setCoverFileError] = useState<string | null>(null)
   const [consent, setConsent] = useState(false)
@@ -40,9 +43,21 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
   }, [])
 
   useEffect(() => {
-    if (!resumeId) return
     void resumeApi
-      .get(resumeId)
+      .list()
+      .then((items) => {
+        setResumes(items)
+        const chosen = chooseResume(items, resumeId || prefs.defaultResumeId || null)
+        if (chosen) setActiveResumeId(chosen)
+      })
+      .catch(() => setResumes([]))
+  }, [resumeId, prefs.defaultResumeId])
+
+  useEffect(() => {
+    const id = activeResumeId || resumeId
+    if (!id) return
+    void resumeApi
+      .get(id)
       .then((detail) => {
         setContact({
           full_name: detail.contact?.fullName?.trim() || FALLBACK_CONTACT.full_name,
@@ -51,7 +66,7 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
         })
       })
       .catch(() => setContact(FALLBACK_CONTACT))
-  }, [resumeId])
+  }, [activeResumeId, resumeId])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -80,7 +95,7 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
         job_source: jobSource,
         job_posting_id: jobId,
         posting_url: posting,
-        resume_id: resumeId || 'resume-active',
+        resume_id: activeResumeId || resumeId || 'resume-active',
         cover_letter_mode: coverMode,
         cover_letter_text: coverMode === 'upload' ? coverText : undefined,
         consent_approved: true,
@@ -115,6 +130,26 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
           <span className={`status-badge status-${jobSource}`}>{jobSource}</span>{' '}
           {programmatic ? 'Programmatic submit available' : 'Manual package — CAPTCHA or unsupported source'}
         </p>
+        <label>
+          Resume / profile version
+          <select
+            value={activeResumeId}
+            onChange={(event) => {
+              const nextId = event.target.value
+              setActiveResumeId(nextId)
+              saveApplyPrefs({ ...prefs, defaultResumeId: nextId })
+            }}
+            aria-label="Resume version for this apply"
+          >
+            {(resumes.length ? resumes : activeResumeId ? [{ id: activeResumeId, fileName: activeResumeId }] : []).map(
+              (item) => (
+                <option key={item.id} value={item.id}>
+                  {'fileName' in item ? item.fileName : item.id}
+                </option>
+              ),
+            )}
+          </select>
+        </label>
         <label>
           Job source
           <select ref={firstRef} value={jobSource} onChange={(event) => setJobSource(event.target.value as JobSource)}>
@@ -205,7 +240,7 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
             <strong>Phone</strong> {contact.phone}
           </p>
           <p>
-            <strong>Resume</strong> {resumeId || 'resume-active'}
+            <strong>Resume</strong> {activeResumeId || resumeId || 'resume-active'}
           </p>
         </section>
         <label className="apply-check">
