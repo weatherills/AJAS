@@ -191,3 +191,13 @@ def test_location_timezone_inference_and_normalization():
     assert infer_timezone("Dublin")["timezone"] == "Europe/Dublin"
     assert infer_timezone("Remote")["timezone"] == "UTC"
     assert infer_timezone("Unknownville")["timezone"] is None
+
+
+def test_salary_equity_bonus_extraction():
+    from app.job_sources.comp import parse_comp
+
+    parsed = parse_comp("$140,000-$165,000 plus 0.15% equity and 10% bonus, signing bonus $10k")
+    assert parsed["min"] == 140000
+    assert parsed["equityPercent"] == 0.15
+    assert parsed["bonusPercent"] == 10
+    assert parsed["signingBonus"] == 10000
