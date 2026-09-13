@@ -14,6 +14,8 @@ Batch test gates: [sprint10-batches.md](./sprint10-batches.md).
 | --- | --- | --- |
 | `FLAG_GLASSDOOR_ADAPTER` | false | Load Glassdoor JSON/HTML **fixtures** (pagination + backoff in-process) |
 | `FLAG_WELLFOUND_ADAPTER` | false | Load Wellfound fixtures; auth helper is a stub, not a live login |
+| `FLAG_WORKDAY_ADAPTER` | false | Load Workday JSON fixtures (no live Workday HTML scrape) |
+| `FLAG_ZIPRECRUITER_ADAPTER` | false | Load ZipRecruiter JSON fixtures with listing backoff |
 | `FLAG_SITE_POLICY_CONSENT` | false | Required before any optional-board HTTP |
 | `FLAG_RESPECT_ROBOTS` | true | Fail closed on robots.txt |
 | `FLAG_INDEED_ADAPTER` | false | Indeed fixtures (Sprint 9) |
@@ -30,6 +32,8 @@ From the repo root (Python path includes `backend/`):
 ```
 python scripts/verify_adapters.py glassdoor
 python scripts/verify_adapters.py wellfound
+python scripts/verify_adapters.py workday
+python scripts/verify_adapters.py ziprecruiter
 python scripts/verify_adapters.py indeed --fixture backend/tests/fixtures/job_boards/indeed.json
 ```
 

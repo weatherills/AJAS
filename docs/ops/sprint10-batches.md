@@ -55,3 +55,12 @@ Covered: idempotency window/conflicts, stuck-queue requeue, DLQ redaction UI, jo
 - Lint: existing warnings only (no new errors)
 
 Covered: jobs/matches pagination+sort helper, scoped automation tokens, webhook HMAC, health v2 dependency matrix, query TTL cache, batch DB writes, WCAG skip-link/filter expanded, English i18n + locale switch, phone layout for core views, Sprint 10 ops/troubleshooting guide.
+
+## Batch 7 (planned backlog remainder)
+
+- Backend: 564 passed
+- Frontend: 115 passed
+- Typecheck: clean
+- Lint: existing warnings only
+
+Covered remaining `[Sprint 10]` Kanban: Workday/ZipRecruiter fixture adapters, proxy pool, CAPTCHA HITL, listing drift, DPIA/robots doc, resume certs/education/timeline/i18n, matching radius/visa/rerank/A-B/active-learning/feedback, Graph OAuth/Outlook/threading, PII review, owner RBAC, retention executor, pipeline SLOs, Slack payloads, quotas, Cosmos index policy, model budgets, Settings flag/limits UI.
