@@ -8,6 +8,7 @@ from app.sprint12 import VERSION
 from app.sprint12 import billing as billing_mod
 from app.sprint12 import ingest as ingest_mod
 from app.sprint12 import mail_v2 as mail_mod
+from app.sprint12 import perf as perf_mod
 from app.sprint12 import platform as platform_mod
 from app.sprint12 import product as product_mod
 from app.sprint12 import ranking as ranking_mod
@@ -25,6 +26,7 @@ def setup_function() -> None:
     security_mod.reset()
     mail_mod.reset()
     ingest_mod.reset()
+    perf_mod.reset()
     product_mod.reset()
     platform_mod.reset()
 
@@ -258,10 +260,25 @@ def test_proxy_failover_and_vector_queue_circuits():
     q = ingest_mod.queue_circuit("match-compute", depth=1000)
     assert q["allow"] is False
 
+def test_match_cache_and_embedding_backpressure():
+    calls = {"n": 0}
+
+    def factory():
+        calls["n"] += 1
+        return [{"id": "m1"}]
+
+    first = perf_mod.cached_matches("ada", factory, ttl_sec=10, now=1)
+    second = perf_mod.cached_matches("ada", factory, ttl_sec=10, now=2)
+    assert first == second and calls["n"] == 1
+    queued = perf_mod.enqueue_embeddings([{"id": i} for i in range(5)], max_depth=3)
+    assert queued["backpressure"] is True and queued["dropped"] == 2
+    flushed = perf_mod.flush_embeddings(batch_size=2)
+    assert flushed["flushed"] == 3
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 38
+    assert COMPLETED == 39
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
