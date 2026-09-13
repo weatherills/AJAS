@@ -19,3 +19,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 011 Source adapter: bot challenge auto-detect + fallback
 - [x] 012 Source adapter: rotating proxies abstraction + health
 - [x] 013 Source adapter: robots.txt/crawl-delay compliance toggle
+- [x] 014 Source adapter: centralized backoff + jitter policy

@@ -151,3 +151,14 @@ def test_source_adapter_robots_txt_crawl_delay_compliance_toggle():
     assert row["respect"] is True
     assert row["allow"] is False
 
+# === S14-14 ===
+
+def test_source_adapter_centralized_backoff_jitter_policy():
+    from app.sprint14.ingest import backoff_policy, reset
+
+    reset()
+    later = backoff_policy(4)
+    early = backoff_policy(1)
+    assert later["delaySec"] >= early["delaySec"]
+    assert later["jitter"] is True
+
