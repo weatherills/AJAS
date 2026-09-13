@@ -147,6 +147,46 @@ def list_settings_audit(req: func.HttpRequest) -> func.HttpResponse:
     )
 
 
+@bp.route(route="v1/saved-searches", methods=["GET", "POST"])
+def saved_searches(req: func.HttpRequest) -> func.HttpResponse:
+    from app.saved_searches import create, listing
+
+    def _handle(principal):
+        if req.method.upper() == "POST":
+            body = _json_body(req)
+            return json_response(
+                create(
+                    user_id=principal.user_id,
+                    name=str(body.get("name") or "Untitled"),
+                    filters=body.get("filters") or {},
+                    alerts=bool(body.get("alertsEnabled")),
+                ),
+                status_code=201,
+            )
+        return json_response({"items": listing(principal.user_id)})
+
+    return _run(req, f"{req.method.upper()} /v1/saved-searches", _handle)
+
+
+@bp.route(route="v1/saved-searches/{id}", methods=["PATCH", "DELETE"])
+def saved_search_item(req: func.HttpRequest) -> func.HttpResponse:
+    from app.saved_searches import delete, update
+    from app.settings.errors import SettingsNotFoundError
+
+    def _handle(principal):
+        search_id = req.route_params["id"]
+        if req.method.upper() == "DELETE":
+            if not delete(search_id, principal.user_id):
+                raise SettingsNotFoundError(search_id)
+            return json_response({"ok": True})
+        body = update(search_id, principal.user_id, _json_body(req))
+        if body is None:
+            raise SettingsNotFoundError(search_id)
+        return json_response(body)
+
+    return _run(req, f"{req.method.upper()} /v1/saved-searches/id", _handle)
+
+
 @bp.queue_trigger(arg_name="msg", queue_name="match-recalc", connection="AzureWebJobsStorage")
 def settings_match_recalc_job(msg: func.QueueMessage) -> None:
     get_service().apply_match_recalc(json.loads(msg.get_body().decode("utf-8")))
