@@ -310,10 +310,14 @@ def test_ci_flaky_coverage_and_synthetics():
     assert "python" in resume["skills"]
     assert "Unfortunately" in email["subject"]
 
+def test_coverage_gate_documents_80_percent_target():
+    assert ops_mod.ci_plan()["coverageGate"] == 0.4
+    assert ops_mod.ci_plan()["backend"]["parallel"] == "pytest -n auto"
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 48
+    assert COMPLETED == 49
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")

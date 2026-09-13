@@ -62,3 +62,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 046 Disaster recovery: RPO/RTO doc and drill checklist
 - [x] 047 CI hardening: parallelize tests and cache dependencies
 - [x] 048 Flaky tests: detect and quarantine framework
+- [x] 049 Test coverage: raise unit coverage to 80% target
