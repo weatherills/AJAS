@@ -7,6 +7,7 @@ from app.config import get_settings
 FLAG_DEFAULTS: dict[str, bool] = {
     "indeed_adapter": False,
     "linkedin_adapter": False,
+    "glassdoor_adapter": False,
     "imap_transport": False,
     "bulk_auto_apply": False,
     "ltr_logging": True,
@@ -21,6 +22,7 @@ def feature_flags() -> dict[str, bool]:
     return {
         "indeed_adapter": bool(settings.flag_indeed_adapter),
         "linkedin_adapter": bool(settings.flag_linkedin_adapter),
+        "glassdoor_adapter": bool(settings.flag_glassdoor_adapter),
         "imap_transport": bool(settings.flag_imap_transport),
         "bulk_auto_apply": bool(settings.flag_bulk_auto_apply),
         "ltr_logging": bool(settings.flag_ltr_logging),

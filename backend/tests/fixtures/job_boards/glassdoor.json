@@ -1,0 +1,32 @@
+{
+  "pages": [
+    {
+      "page": 1,
+      "jobs": [
+        {
+          "id": "gd-1",
+          "title": "Staff Platform Engineer",
+          "company": "Acme",
+          "location": "Remote",
+          "employment_type": "Full-time",
+          "description": "Required: python kubernetes azure. Compensation $180,000-$210,000.",
+          "apply_url": "https://fixtures.ajas.local/glassdoor/gd-1"
+        }
+      ]
+    },
+    {
+      "page": 2,
+      "jobs": [
+        {
+          "id": "gd-2",
+          "title": "Senior Backend Engineer",
+          "company": "Globex",
+          "location": "Austin, TX",
+          "employment_type": "Full-time",
+          "description": "Required: python azure. Compensation $160,000-$190,000.",
+          "apply_url": "https://fixtures.ajas.local/glassdoor/gd-2"
+        }
+      ]
+    }
+  ]
+}
