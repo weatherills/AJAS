@@ -277,3 +277,13 @@ def test_job_description_diff_versions():
     assert diff["changed"] is True
     assert diff["added"] >= 1
     assert "+++ current" in diff["unified"]
+
+
+def test_apply_field_mapping_overrides():
+    from app.auto_apply.field_map import apply_mapping, reset_overrides, set_override
+
+    reset_overrides()
+    profile = {"full_name": "Ada Lovelace", "email": "ada@example.com"}
+    assert apply_mapping("lever", profile)["name"] == "Ada Lovelace"
+    set_override("lever", {"full_name": "candidate_name"})
+    assert apply_mapping("lever", profile)["candidate_name"] == "Ada Lovelace"
