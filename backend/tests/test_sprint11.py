@@ -259,3 +259,15 @@ def test_employment_type_alignment_ft_pt_contract():
     miss = alignment("full time", "part-time")
     assert hit["aligned"] is True and hit["delta"] == 0.0
     assert miss["aligned"] is False and miss["delta"] < 0
+
+def test_ranking_cross_feature_normalization_fairness():
+    from app.matching.fair_norm import normalize_features
+
+    rows = [
+        {"id": "g", "score": 90, "keyword": 80, "semantic": 70, "source": "greenhouse"},
+        {"id": "l", "score": 45, "keyword": 40, "semantic": 35, "source": "lever"},
+    ]
+    out = normalize_features(rows)
+    assert out[0]["score_norm"] == 1.0
+    assert out[1]["score_norm"] == 0.0
+    assert "fair_score" in out[0]
