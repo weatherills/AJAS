@@ -275,10 +275,14 @@ def test_match_cache_and_embedding_backpressure():
     flushed = perf_mod.flush_embeddings(batch_size=2)
     assert flushed["flushed"] == 3
 
+def test_db_index_review_includes_tenant():
+    policy = perf_mod.suggested_indices()
+    assert any(path["path"] == "/tenantId" for path in policy["includedPaths"])
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 40
+    assert COMPLETED == 41
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")

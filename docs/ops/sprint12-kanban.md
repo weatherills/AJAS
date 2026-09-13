@@ -54,3 +54,4 @@ Landed on `main` as `[S12]` commits.
 
 ## Batch 4 gate
 - tests/lint/typecheck green after task 40
+- [x] 041 Performance: DB indices review and migration tuning
