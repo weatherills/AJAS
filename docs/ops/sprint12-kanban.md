@@ -19,3 +19,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 012 Data import: upload resume library (PDF, DOCX) with parsing queue
 - [x] 013 Recruiter portal: limited view to share candidate matches
 - [x] 014 Shareable links: expiring tokens for job/match views
+- [x] 015 Feedback loop: thumbs up/down on match quality per job

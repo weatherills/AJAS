@@ -8,6 +8,7 @@ from app.sprint12 import VERSION
 from app.sprint12 import billing as billing_mod
 from app.sprint12 import platform as platform_mod
 from app.sprint12 import product as product_mod
+from app.sprint12 import ranking as ranking_mod
 from app.sprint12 import sharing as sharing_mod
 from app.sprint12 import tenants as tenants_mod
 
@@ -17,6 +18,7 @@ def setup_function() -> None:
     tenants_mod.reset()
     billing_mod.reset()
     sharing_mod.reset()
+    ranking_mod.reset()
     product_mod.reset()
     platform_mod.reset()
 
@@ -131,10 +133,17 @@ def test_shareable_links_and_recruiter_portal():
     expired = sharing_mod.resolve(link["token"], now=datetime.now(timezone.utc) + timedelta(hours=2))
     assert expired is None
 
+def test_feedback_loop_and_weight_training():
+    ranking_mod.record_feedback(user_id="ada", job_id="j1", vote="up")
+    ranking_mod.record_feedback(user_id="ada", job_id="j2", vote="up")
+    weights = ranking_mod.weights_for("ada")
+    assert weights["semantic"] > 0.6
+    assert abs(weights["keyword"] + weights["semantic"] - 1.0) < 1e-6
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 14
+    assert COMPLETED == 15
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
