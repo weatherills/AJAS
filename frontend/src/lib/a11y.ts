@@ -5,3 +5,7 @@ export function skipLink(): { href: string; label: string } {
 export function expandedAttr(open: boolean): { 'aria-expanded': boolean; 'aria-controls': string } {
   return { 'aria-expanded': open, 'aria-controls': 'ajas-filters' }
 }
+
+export function labelledControl(id: string, labelId: string): { id: string; 'aria-labelledby': string } {
+  return { id, 'aria-labelledby': labelId }
+}

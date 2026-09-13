@@ -71,3 +71,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 052 Content safety: sensitive JD detection and warnings
 - [x] 053 Localization: prepare keys and add fr/es base locales
 - [x] 054 Date/time/number localization support in UI
+- [x] 055 Accessibility v2: keyboard traps and ARIA labeling fixes
