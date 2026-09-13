@@ -106,13 +106,56 @@ export function scoreLabel(score: number): string {
   return 'Poor match'
 }
 
-export function fitBucket(score: number): { key: string; label: string; min: number; score: number } {
+export type FitBucketKey = 'excellent' | 'strong' | 'promising' | 'fair' | 'poor'
+
+export type FitBucket = {
+  key: FitBucketKey
+  label: string
+  min: number
+  score: number
+  color: string
+  tooltip: string
+}
+
+export const FIT_BUCKETS: Record<FitBucketKey, { label: string; min: number; color: string; tooltip: string }> = {
+  excellent: {
+    label: 'Excellent match',
+    min: 85,
+    color: '#34d399',
+    tooltip: '85–100: strongest overlap on must-haves and recent experience.',
+  },
+  strong: {
+    label: 'Strong match',
+    min: 70,
+    color: '#6ee7b7',
+    tooltip: '70–84: likely a good fit; skim remaining gaps before applying.',
+  },
+  promising: {
+    label: 'Promising match',
+    min: 55,
+    color: '#fbbf24',
+    tooltip: '55–69: worth a closer look if the role is high priority.',
+  },
+  fair: {
+    label: 'Fair match',
+    min: 40,
+    color: '#fb923c',
+    tooltip: '40–54: partial overlap; tailor the resume before applying.',
+  },
+  poor: {
+    label: 'Poor match',
+    min: 0,
+    color: '#fca5a5',
+    tooltip: 'Below 40: missing core skills or seniority for this posting.',
+  },
+}
+
+export function fitBucket(score: number): FitBucket {
   const shown = displayScore(score)
-  if (shown >= 85) return { key: 'excellent', label: 'Excellent match', min: 85, score: shown }
-  if (shown >= 70) return { key: 'strong', label: 'Strong match', min: 70, score: shown }
-  if (shown >= 55) return { key: 'promising', label: 'Promising match', min: 55, score: shown }
-  if (shown >= 40) return { key: 'fair', label: 'Fair match', min: 40, score: shown }
-  return { key: 'poor', label: 'Poor match', min: 0, score: shown }
+  const key: FitBucketKey =
+    shown >= 85 ? 'excellent' : shown >= 70 ? 'strong' : shown >= 55 ? 'promising' : shown >= 40 ? 'fair' : 'poor'
+  const meta = FIT_BUCKETS[key]
+  return { key, label: meta.label, min: meta.min, score: shown, color: meta.color, tooltip: meta.tooltip }
 }
 
 export function evidenceSentences(resume: string, job: string, limit = 5): string[] {

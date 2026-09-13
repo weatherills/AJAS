@@ -1124,6 +1124,22 @@ select:focus-visible {
   color: #6ee7b7;
 }
 
+.match-badge.match-bucket-excellent {
+  color: #34d399;
+}
+.match-badge.match-bucket-strong {
+  color: #6ee7b7;
+}
+.match-badge.match-bucket-promising {
+  color: #fbbf24;
+}
+.match-badge.match-bucket-fair {
+  color: #fb923c;
+}
+.match-badge.match-bucket-poor {
+  color: #fca5a5;
+}
+
 .match-meets,
 .match-outdated,
 .match-chip {

@@ -3,9 +3,9 @@ import {
   CHIP_VISIBLE,
   chipOverflow,
   displayScore,
+  fitBucket,
   isOutdated,
   scoreBand,
-  scoreLabel,
   TERM_TOOLTIP,
 } from '../lib/matching'
 
@@ -62,7 +62,7 @@ export function MatchBadge({
   }
 
   const band = scoreBand(match.score)
-  const label = scoreLabel(match.score)
+  const bucket = fitBucket(match.score)
   const shown = displayScore(match.score)
   const meets = match.score >= threshold
   const tooltipTerms = match.terms.slice(0, TERM_TOOLTIP)
@@ -73,16 +73,16 @@ export function MatchBadge({
     <div className="match-badge-wrap">
       <button
         type="button"
-        className={`match-badge match-${band}`}
+        className={`match-badge match-${band} match-bucket-${bucket.key}`}
         aria-describedby={tipId}
-        title={`${match.score.toFixed(1)}% · ${label}`}
+        title={`${match.score.toFixed(1)}% · ${bucket.label}. ${bucket.tooltip}`}
         onClick={(event) => {
           event.stopPropagation()
           onWhy?.()
         }}
       >
         <span className="match-pct">{shown}%</span>
-        <span className="match-label">{label}</span>
+        <span className="match-label">{bucket.label}</span>
       </button>
       {meets && <span className="match-meets">Meets threshold</span>}
       {isOutdated(match.versions) && (
@@ -92,7 +92,10 @@ export function MatchBadge({
       )}
       <div id={tipId} className="match-tooltip" role="tooltip">
         <p>
-          {match.score.toFixed(1)}% · Keywords {Math.round((match.breakdown?.weights.keyword || 0.4) * 100)}% • Semantic{' '}
+          {match.score.toFixed(1)}% · {bucket.label}. {bucket.tooltip}
+        </p>
+        <p>
+          Keywords {Math.round((match.breakdown?.weights.keyword || 0.4) * 100)}% • Semantic{' '}
           {Math.round((match.breakdown?.weights.semantic || 0.6) * 100)}%
         </p>
         {tooltipTerms.length > 0 && <p>Top terms: {tooltipTerms.join(', ')}</p>}

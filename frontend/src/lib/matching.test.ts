@@ -32,6 +32,8 @@ describe('matching display helpers', () => {
   it('calibrates fit buckets and picks evidence sentences', () => {
     expect(fitBucket(91).key).toBe('excellent')
     expect(fitBucket(72).label).toBe('Strong match')
+    expect(fitBucket(91).color).toBe('#34d399')
+    expect(fitBucket(42).tooltip.toLowerCase()).toContain('partial overlap')
     const evidence = evidenceSentences(
       'python azure kubernetes',
       'Build python services on azure. Snack benefits are unlimited. Kubernetes platforms ship matching.',
