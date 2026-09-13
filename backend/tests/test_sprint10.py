@@ -814,3 +814,13 @@ def test_seniority_mapping_includes_lead_staff_principal():
     assert seniority_level("Principal Engineer") == 6
     assert infer_seniority("Lead Platform Engineer")["label"] == "lead"
     assert infer_seniority("Staff Platform Engineer")["label"] == "staff"
+
+
+def test_location_radius_boosts_distance_aware():
+    from app.matching.radius import radius_boost
+
+    close = radius_boost("Seattle", "Seattle", resume_state="WA", job_state="WA")
+    far = radius_boost("Seattle", "Austin", resume_state="WA", job_state="TX")
+    assert close["within"] is True
+    assert close["boost"] >= far["boost"]
+    assert far["km"] > 100
