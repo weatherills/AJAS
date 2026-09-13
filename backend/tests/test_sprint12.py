@@ -261,7 +261,7 @@ def test_proxy_failover_and_vector_queue_circuits():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 37
+    assert COMPLETED == 38
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -313,3 +313,9 @@ def test_lever_board_adapter_shape():
 def test_robots_rate_policy_per_domain():
     policy = ingest_mod.robots_rate_policy("https://jobs.acme.test", crawl_delay=5)
     assert policy["crawlDelaySec"] == 5
+
+def test_queue_circuit_opens_on_depth():
+    closed = ingest_mod.queue_circuit("match-compute", depth=1)
+    assert closed["allow"] is True
+    opened = ingest_mod.queue_circuit("match-compute", depth=10_000)
+    assert opened["allow"] is False

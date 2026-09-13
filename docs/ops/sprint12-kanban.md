@@ -48,3 +48,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 035 Company career pages: sitemap-based generic crawler
 - [x] 036 Anti-bot compliance: robots.txt + rate policy per domain
 - [x] 037 Proxy pool support for scraping with failover
+- [x] 038 Resilience: circuit breaker around vector DB and queues
