@@ -311,3 +311,10 @@ def test_resume_gap_detection_and_annotation():
     result = annotate_gaps(bullets, notes=notes)
     assert result["gaps"]
     assert result["gaps"][0]["note"] == "caregiving"
+
+def test_resume_multilingual_detection_and_routing():
+    from app.resumes.lang_router import route
+    es = route("Experiencia laboral y habilidades en python")
+    assert es["lang"] == "es" and es["route"] == "es_es"
+    en = route("Experience and skills in python")
+    assert en["lang"] == "en"
