@@ -59,6 +59,17 @@ Batch gates: [sprint11-batches.md](./sprint11-batches.md).
 - Worker `X-Request-Id` propagation, structured error contexts, source
   latency histograms, adapter mute, PII scrub v2.
 
+## Compliance, queues, API
+
+- Consent log, GDPR resumes/logs, retention policy map, allowlist audit,
+  tenant RBAC, secret rotation drift, queue backpressure, DLQ sample replay,
+  envelope v2, `/health/matrix` probes.
+- Pool autotune, list/detail cache, batch log/match writes, filter/sort indices,
+  job revisions + diff API, match sort, email `q` filter, saved-search CRUD,
+  ingest-scoped automation tokens, signed webhooks.
+- CLI: `scripts/verify_adapters.py` (includes hired), `scripts/renormalize.py`,
+  embeddings reindex orchestrator, legacy job migrate.
+
 ## Tests
 
 - E2E ingest→match→apply unhappy paths and email threading/follow-up SLAs.
