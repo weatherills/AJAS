@@ -70,3 +70,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 051 Red teaming: prompt/automation abuse scenarios tests
 - [x] 052 Content safety: sensitive JD detection and warnings
 - [x] 053 Localization: prepare keys and add fr/es base locales
+- [x] 054 Date/time/number localization support in UI
