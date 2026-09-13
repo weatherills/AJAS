@@ -476,3 +476,301 @@ def test_pii_scrubbing_rules_v2():
     assert out["email"] == "[redacted]"
     assert "[redacted-phone]" in out["note"]
     assert out["nested"]["token"] == "[redacted]"
+
+
+def test_consent_log_for_automated_applies():
+    from app.auto_apply.consent_log import listing, record, reset
+
+    reset()
+    row = record(user_id="ada", job_id="job-1", resume_id="r1", approved=True)
+    assert row["approved"] is True and row["bulk"] is False
+    assert listing(user_id="ada")[0]["jobId"] == "job-1"
+
+
+def test_user_data_export_bundle_includes_resumes_and_logs():
+    from app.privacy import export_bundle
+
+    bundle = export_bundle(user_id="ada", resumes=[{"id": "r1"}], logs=[{"id": "l1"}])
+    assert bundle["resumes"][0]["id"] == "r1"
+    assert bundle["logs"][0]["id"] == "l1"
+    assert bundle["format"] == "ajas.gdpr.v1"
+
+
+def test_retention_policies_per_artifact_type():
+    from app.retention import expired, policy, retention_days
+
+    assert retention_days("logs") == 30
+    assert policy()["schema"] == "ajas.retention.v1"
+    assert expired("logs", "2020-01-01T00:00:00Z") is True
+
+
+def test_outbound_allowlist_editor_audit():
+    from app.allowlist import audit_log, reset_audit, set_policy
+
+    reset_audit()
+    body = set_policy("Boards.greenhouse.io, jobs.lever.co", actor="ada")
+    assert "boards.greenhouse.io" in body["hosts"]
+    assert audit_log()[0]["actor"] == "ada"
+
+
+def test_permission_model_hardening_multi_tenant():
+    from app.auth import Principal
+    from app.rbac import permissions_payload, tenant_allowed
+
+    user = Principal(user_id="ada", scopes=frozenset())
+    admin = Principal(user_id="local-admin", scopes=frozenset({"admin"}))
+    assert permissions_payload(user)["permissions"]["tenantAdmin"] is False
+    assert tenant_allowed(user, "ada") is True
+    assert tenant_allowed(user, "other") is False
+    assert tenant_allowed(admin, "other") is True
+
+
+def test_secrets_rotation_job_with_drift_detection():
+    from app.secrets_rotate import reset, rotate
+
+    reset()
+    first = rotate("graph", "old-secret")
+    drifted = rotate("graph", "new-secret", previous="wrong")
+    assert first["rotated"] is True
+    assert drifted["drift"] is True
+
+
+def test_adaptive_backpressure_by_queue_depth():
+    from app.queue_backpressure import backpressure
+
+    assert backpressure(10)["mode"] == "open"
+    assert backpressure(120)["mode"] == "slow"
+    assert backpressure(500)["admit"] is False
+
+
+def test_dlq_replayer_with_sampling_guard():
+    from app.dlq import enqueue, replay, reset
+
+    reset()
+    item = enqueue({"id": "dlq-9", "token": "secret"})
+    skipped = replay(item["id"], sample_rate=0.1, roll=0.9)
+    assert skipped["status"] == "sampled_skip"
+    replayed = replay(item["id"], sample_rate=1.0)
+    assert replayed["status"] == "queued"
+
+
+def test_idempotent_task_envelopes_v2():
+    from app.idempotency_v2 import envelope
+
+    one = envelope("ingest", {"source": "greenhouse"})
+    two = envelope("ingest", {"source": "greenhouse"})
+    assert one["schema"] == "ajas.envelope.v2"
+    assert one["fingerprint"] == two["fingerprint"]
+
+
+def test_health_dependency_matrix_live_probes():
+    from app.features.health import _status_payload
+
+    body = _status_payload()
+    assert body["probes"]["workers"]["ok"] is True
+    assert "openai" in body["dependencyMatrix"]
+
+
+def test_db_connection_pool_autotune():
+    from app.db_pool import autotune
+
+    grow = autotune(latency_ms=400, current=4)
+    assert grow["action"] == "grow" and grow["size"] == 6
+    shrink = autotune(latency_ms=10, current=4)
+    assert shrink["action"] == "shrink"
+
+
+def test_caching_layer_for_hot_list_detail_queries():
+    from app.query_cache import get_or_set, reset
+
+    reset()
+    calls = {"n": 0}
+
+    def factory():
+        calls["n"] += 1
+        return {"items": [1]}
+
+    assert get_or_set("jobs:list", factory)["items"] == [1]
+    assert get_or_set("jobs:list", factory)["items"] == [1]
+    assert calls["n"] == 1
+
+
+def test_batch_writer_for_logs_and_matches():
+    from app.batch_writes import write_logs_and_matches
+
+    seen: list[list] = []
+    out = write_logs_and_matches(logs=[{"id": "l1"}], matches=[{"id": "m1"}], size=10, writer=seen.append)
+    assert out["logs"] == 1 and out["matches"] == 1
+    assert out["written"] == 2
+
+
+def test_indices_for_common_filters_sorts():
+    from app.db_indices import FILTER_SORT_INDICES, index_policy
+
+    paths = [item["path"] for item in index_policy()["includedPaths"]]
+    assert "/location" in paths and "/score" in FILTER_SORT_INDICES
+
+
+def test_job_revisions_table_for_jd_diffing():
+    from app.job_sources.revisions import diff_revisions, listing, record, reset
+
+    reset()
+    record("job-1", "Python services")
+    record("job-1", "Python services on Azure")
+    assert len(listing("job-1")) == 2
+    diff = diff_revisions("job-1", 1, 2)
+    assert diff["ok"] is True and diff["changed"] is True
+
+
+def test_api_filter_sort_paginate_matches():
+    from app.list_query import page_rows
+
+    rows = [{"score": 10, "id": "a"}, {"score": 90, "id": "b"}]
+    page = page_rows(rows, cursor=None, limit=1, sort="score", order="desc")
+    assert page["items"][0]["id"] == "b"
+    assert page["nextCursor"] == "1"
+
+
+def test_api_job_revisions_and_diff_endpoints(monkeypatch):
+    import azure.functions as func
+
+    from app.config import get_settings
+    from app.features import source_ingestion as routes
+    from app.job_sources.revisions import reset
+
+    monkeypatch.setenv("AUTH_MODE", "dev")
+    get_settings.cache_clear()
+    reset()
+
+    def req(method, url, *, json_body=None, params=None, route=None):
+        hdrs = {"Authorization": "Bearer local-user"}
+        body = b""
+        if json_body is not None:
+            hdrs["Content-Type"] = "application/json"
+            body = json.dumps(json_body).encode()
+        return func.HttpRequest(method=method, url=url, headers=hdrs, params=params or {}, route_params=route or {}, body=body)
+
+    created = json.loads(
+        routes.job_revisions(req("POST", "http://localhost/api/v1/jobs/j1/revisions", json_body={"description": "v1"}, route={"id": "j1"})).get_body()
+    )
+    assert created["revision"] == 1
+    listed = json.loads(routes.job_revisions(req("GET", "http://localhost/api/v1/jobs/j1/revisions", route={"id": "j1"})).get_body())
+    assert listed["items"][0]["jobId"] == "j1"
+
+
+def test_api_email_thread_query_helpers():
+    from app.mail.thread_query import query_threads
+
+    page = query_threads(
+        [
+            {"id": "t1", "subject": "Interview", "snippet": "Tuesday", "jobId": "j1", "linked": True, "lastMessageAt": "2026-09-13"},
+            {"id": "t2", "subject": "Offer", "snippet": "congrats", "jobId": None, "linked": False, "lastMessageAt": "2026-09-12"},
+        ],
+        q="interview",
+        limit=10,
+    )
+    assert page["items"][0]["id"] == "t1"
+
+
+def test_api_saved_search_crud(monkeypatch):
+    import azure.functions as func
+
+    from app.config import get_settings
+    from app.features import settings as routes
+    from app.saved_searches import reset
+
+    monkeypatch.setenv("AUTH_MODE", "dev")
+    get_settings.cache_clear()
+    reset()
+
+    def req(method, url, *, json_body=None, route=None):
+        hdrs = {"Authorization": "Bearer local-user"}
+        body = b""
+        if json_body is not None:
+            hdrs["Content-Type"] = "application/json"
+            body = json.dumps(json_body).encode()
+        return func.HttpRequest(method=method, url=url, headers=hdrs, params={}, route_params=route or {}, body=body)
+
+    created = json.loads(
+        routes.saved_searches(req("POST", "http://localhost/api/v1/saved-searches", json_body={"name": "Remote", "filters": {"q": "staff"}, "alertsEnabled": True})).get_body()
+    )
+    assert created["alertsEnabled"] is True
+    listed = json.loads(routes.saved_searches(req("GET", "http://localhost/api/v1/saved-searches")).get_body())
+    assert listed["items"][0]["name"] == "Remote"
+
+
+def test_api_auth_scoped_tokens_for_ingestion():
+    from app.automation_tokens import authorize_ingest, issue
+
+    token = issue("ada", ["ingest"])
+    assert authorize_ingest(token.token) is True
+    other = issue("ada", ["apply"])
+    assert authorize_ingest(other.token) is False
+
+
+def test_webhooks_signed_events_for_email_and_applies():
+    from app.webhooks_sig import signed_event, verify_signature
+    import json
+
+    event = signed_event("s3cret", "email.status", {"threadId": "t1"})
+    body = json.dumps({"type": event["type"], "payload": event["payload"]}, sort_keys=True, default=str)
+    assert verify_signature("s3cret", body, event["signature"]) is True
+
+
+def test_cli_adapter_verification_dry_run_includes_hired():
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[2] / "scripts" / "verify_adapters.py"
+    spec = importlib.util.spec_from_file_location("verify_adapters_s11", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    spec.loader.exec_module(mod)
+    assert "hired" in mod.ADAPTERS
+    result = mod.dry_run("hired")
+    assert result["dryRun"] is True
+
+
+def test_cli_bulk_renormalize_with_current_rules():
+    from app.job_sources.legacy_migrate import migrate_job
+
+    row = migrate_job({"title": "Eng", "location": "Austin, TX", "description": "health insurance and 10% equity"})
+    assert row["normalized"] is True
+    assert row["timezone"]["timezone"] == "America/Chicago"
+
+
+def test_backfill_embeddings_reindex_orchestrator():
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[2] / "scripts" / "reindex_embeddings.py"
+    spec = importlib.util.spec_from_file_location("reindex_embeddings_s11", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    spec.loader.exec_module(mod)
+    body = mod.orchestrate(batch_size=10)
+    assert body["orchestrated"] is True
+    assert "reindexed" in body
+
+
+def test_backfill_migrate_legacy_jobs_to_new_normalization():
+    from app.job_sources.legacy_migrate import migrate_many
+
+    out = migrate_many([{"title": "Eng", "location": "Remote", "description": "python"}])
+    assert out["count"] == 1
+    assert out["items"][0]["schema"] == "ajas.job.v2"
+
+
+def test_html_snapshots_for_new_sources():
+    from app.job_sources.canary import check_snapshot
+
+    assert check_snapshot("hired_career.html")["ok"] is True
+    assert check_snapshot("indeed_career.html")["ok"] is True
+
+
+def test_email_templates_invite_reject_reschedule():
+    from app.mail.parser_templates import TEMPLATES
+
+    assert "invite" in TEMPLATES and "reject" in TEMPLATES and "reschedule" in TEMPLATES
+    invite = (FIXTURES / "email" / "invite.txt").read_text()
+    assert "interview" in invite.lower()
