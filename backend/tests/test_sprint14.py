@@ -173,3 +173,12 @@ def test_source_adapter_http_fingerprint_randomization():
     assert one["randomized"] is True
     assert one["ua"] and two["ua"]
 
+# === S14-16 ===
+
+def test_normalization_contract_types():
+    from app.sprint14.parse import contract_type
+
+    assert contract_type("Full-time role") == "ft"
+    assert contract_type("Internship") == "intern"
+    assert contract_type("Contract") == "contract"
+
