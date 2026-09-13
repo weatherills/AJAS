@@ -58,3 +58,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 ## Batch 4 gate
 - tests/lint/typecheck green after task 40
 
+- [x] 041 Job detail: JD version diff view

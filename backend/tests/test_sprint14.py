@@ -392,3 +392,11 @@ def test_job_list_perf_windowed_list_skeletons():
     assert win["virtualized"] is True
     assert len(win["ids"]) == 20
 
+# === S14-41 ===
+
+def test_job_detail_jd_version_diff_view():
+    from app.sprint14.product import jd_diff
+
+    diff = jd_diff("Need Java", "Need Python")
+    assert diff["changed"] is True
+
