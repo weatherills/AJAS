@@ -755,3 +755,10 @@ def test_source_change_detection_dom_api_drift():
     assert first["firstSeen"] is True
     assert second["changed"] is False
     assert third["changed"] is True
+
+
+def test_dpia_robots_policy_doc_exists():
+    doc = Path(__file__).resolve().parents[2] / "docs" / "ops" / "dpia-robots.md"
+    text = doc.read_text()
+    assert "FLAG_RESPECT_ROBOTS" in text
+    assert "fixture-only" in text.lower() or "Fixture-only" in text
