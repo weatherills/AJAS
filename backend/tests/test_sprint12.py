@@ -7,6 +7,7 @@ from app.mail.scan import EICAR_SIGNATURE
 from app.sprint12 import VERSION
 from app.sprint12 import billing as billing_mod
 from app.sprint12 import platform as platform_mod
+from app.sprint12 import product as product_mod
 from app.sprint12 import tenants as tenants_mod
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -14,6 +15,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 def setup_function() -> None:
     tenants_mod.reset()
     billing_mod.reset()
+    product_mod.reset()
     platform_mod.reset()
 
 def test_version_is_sprint12():
@@ -112,10 +114,15 @@ def test_gdpr_bundle_json_and_csv():
     assert bundle["format"] == "ajas.gdpr.v2"
     assert "jobs,j1" in bundle["csv"]
 
+def test_resume_library_import_queue():
+    row = product_mod.enqueue_resume_import(user_id="ada", filename="cv.pdf")
+    assert row["status"] == "queued"
+    assert product_mod.import_queue("ada")[0]["filename"] == "cv.pdf"
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 11
+    assert COMPLETED == 12
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")

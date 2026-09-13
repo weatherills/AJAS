@@ -16,3 +16,4 @@ Landed on `main` as `[S12]` commits.
 ## Batch 1 gate
 - tests/lint/typecheck green after task 10
 - [x] 011 Data export: user/tenant GDPR bundle (JSON + CSV)
+- [x] 012 Data import: upload resume library (PDF, DOCX) with parsing queue
