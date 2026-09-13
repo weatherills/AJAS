@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { MatchView } from '../api/matchingTypes'
+import { copyText, explanationClipboardPayload } from '../lib/clipboard'
 import { EXPLAIN_MAX, EXPLAIN_PREVIEW, truncateExplanation } from '../lib/matching'
 import { Modal } from './Modal'
 
@@ -37,6 +38,16 @@ export function WhyThisScore({ match, onClose }: { match: MatchView; onClose: ()
         </ul>
       )}
       <div className="modal-actions">
+        <button
+          type="button"
+          className="secondary"
+          aria-label="Copy explanation"
+          onClick={() => {
+            void copyText(explanationClipboardPayload(match))
+          }}
+        >
+          Copy
+        </button>
         <button type="button" className="secondary" onClick={onClose}>
           Close
         </button>
