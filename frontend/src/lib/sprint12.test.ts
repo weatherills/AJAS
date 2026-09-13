@@ -4,6 +4,8 @@ import { cycleTheme, resolveTheme } from './theme'
 import {
   labelledBy,
   tableToCardLayout,
+  enqueueOffline,
+  replayOffline,
 } from './sprint12'
 
 
@@ -28,5 +30,7 @@ describe('sprint12 product helpers', () => {
     expect(labelledBy('help-h')['aria-labelledby']).toBe('help-h')
     expect(tableToCardLayout(390)).toBe('cards')
     expect(tableToCardLayout(900)).toBe('table')
+    const queued = enqueueOffline([], { id: 'a1', type: 'apply', payload: {} })
+    expect(replayOffline(queued).replayed).toEqual(['a1'])
   })
 })

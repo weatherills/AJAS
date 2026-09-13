@@ -74,3 +74,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 055 Accessibility v2: keyboard traps and ARIA labeling fixes
 - [x] 056 Dark mode theme and toggle
 - [x] 057 Mobile polish: navigation and table-to-card transforms
+- [x] 058 Offline/Retry UX: queue failed actions with resume
