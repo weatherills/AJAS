@@ -252,3 +252,12 @@ def test_salary_parsing_v3_multi_currency_bands():
     assert row["min"]
     assert row["schema"] == "ajas.salary.v3"
 
+# === S14-25 ===
+
+def test_skill_extractor_v3_phrase_chunker_negation():
+    from app.sprint14.parse import skills_negation
+
+    row = skills_negation("Need python and azure. Not java.")
+    assert row["schema"] == "ajas.skills.v3"
+    assert row["chunks"]
+
