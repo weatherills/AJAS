@@ -25,7 +25,15 @@ def test_multi_tenant_org_workspace_scoping():
     assert [row["id"] for row in tenants_mod.scoped(records, tenant_id=tenant.id, user_id="ada")] == ["j1"]
     assert tenants_mod.scoped(records, tenant_id=tenant.id, user_id="bob") == []
 
+def test_tenant_onboarding_invite_email():
+    tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
+    invite = tenants_mod.invite_member(tenant_id=tenant.id, actor_id="ada", email="linus@example.test", role="admin")
+    assert invite.status == "pending"
+    assert tenants_mod.outbox()[0]["template"] == "tenant.invite"
+    membership = tenants_mod.accept_invite(token=invite.token, user_id="linus")
+    assert membership.role == "admin"
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 1
+    assert COMPLETED == 2
