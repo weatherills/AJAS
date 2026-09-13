@@ -50,3 +50,7 @@ def _from_html(source: str, html: str, listing_url: str | None) -> list[dict[str
 
 def greenhouse_career_jobs(html: str, *, listing_url: str | None = None) -> list[dict[str, Any]]:
     return _from_html("greenhouse_career", html, listing_url)
+
+
+def lever_career_jobs(html: str, *, listing_url: str | None = None) -> list[dict[str, Any]]:
+    return _from_html("lever_career", html, listing_url)

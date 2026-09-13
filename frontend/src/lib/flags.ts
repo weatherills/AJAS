@@ -11,6 +11,7 @@ export const FLAG_DEFAULTS: Record<string, boolean> = {
   ziprecruiter_adapter: false,
   hired_adapter: false,
   greenhouse_career_adapter: false,
+  lever_career_adapter: false,
   imap_transport: false,
   bulk_auto_apply: false,
   ltr_logging: true,

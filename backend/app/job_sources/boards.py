@@ -24,6 +24,7 @@ SOURCE_FLAGS = {
     "ziprecruiter": "ziprecruiter_adapter",
     "hired": "hired_adapter",
     "greenhouse_career": "greenhouse_career_adapter",
+    "lever_career": "lever_career_adapter",
 }
 
 

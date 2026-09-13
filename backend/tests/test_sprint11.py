@@ -79,3 +79,20 @@ def test_greenhouse_career_page_fixture_parser(monkeypatch):
     monkeypatch.setenv("FLAG_GREENHOUSE_CAREER_ADAPTER", "false")
     get_settings.cache_clear()
     assert greenhouse_career_jobs(html) == []
+
+
+def test_lever_career_page_fixture_parser(monkeypatch):
+    from app.job_sources.career_pages import lever_career_jobs
+
+    html = (FIXTURES / "job_boards" / "lever_career.html").read_text()
+    monkeypatch.setenv("FLAG_LEVER_CAREER_ADAPTER", "true")
+    get_settings.cache_clear()
+    from app.job_sources import boards as boards_mod
+
+    monkeypatch.setattr(boards_mod, "can_fetch", lambda target, parser=None, respect=None: True)
+    rows = lever_career_jobs(html, listing_url="https://fixtures.ajas.local/lever")
+    assert rows[0]["source_posting_id"] == "lv-c-1"
+    assert rows[0]["company"] == "Fabrikam"
+    monkeypatch.setenv("FLAG_LEVER_CAREER_ADAPTER", "false")
+    get_settings.cache_clear()
+    assert lever_career_jobs(html) == []
