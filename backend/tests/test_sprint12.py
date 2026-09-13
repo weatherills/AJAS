@@ -8,6 +8,7 @@ from app.sprint12 import VERSION
 from app.sprint12 import billing as billing_mod
 from app.sprint12 import platform as platform_mod
 from app.sprint12 import product as product_mod
+from app.sprint12 import sharing as sharing_mod
 from app.sprint12 import tenants as tenants_mod
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -15,6 +16,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 def setup_function() -> None:
     tenants_mod.reset()
     billing_mod.reset()
+    sharing_mod.reset()
     product_mod.reset()
     platform_mod.reset()
 
@@ -119,10 +121,20 @@ def test_resume_library_import_queue():
     assert row["status"] == "queued"
     assert product_mod.import_queue("ada")[0]["filename"] == "cv.pdf"
 
+def test_shareable_links_and_recruiter_portal():
+    tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
+    billing_mod.assign_plan(tenant.id, "team")
+    link = sharing_mod.create_link(tenant_id=tenant.id, actor_id="ada", target_type="match", target_id="m1", ttl_hours=1)
+    view = sharing_mod.recruiter_view(link["token"], match={"score": 88, "summary": "Strong Python", "highlights": ["azure"]})
+    assert view["limited"] is True
+    assert view["match"]["score"] == 88
+    expired = sharing_mod.resolve(link["token"], now=datetime.now(timezone.utc) + timedelta(hours=2))
+    assert expired is None
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 12
+    assert COMPLETED == 13
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")

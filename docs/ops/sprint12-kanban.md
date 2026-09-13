@@ -17,3 +17,4 @@ Landed on `main` as `[S12]` commits.
 - tests/lint/typecheck green after task 10
 - [x] 011 Data export: user/tenant GDPR bundle (JSON + CSV)
 - [x] 012 Data import: upload resume library (PDF, DOCX) with parsing queue
+- [x] 013 Recruiter portal: limited view to share candidate matches
