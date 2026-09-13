@@ -44,3 +44,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 031 Notification digests: daily/weekly emails with key events
 - [x] 032 Web push notifications setup and subscription UX
 - [x] 033 Job source integrations: Greenhouse job boards adapter
+- [x] 034 Job source integrations: Lever job boards adapter

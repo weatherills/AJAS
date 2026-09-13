@@ -239,7 +239,7 @@ def test_greenhouse_and_lever_board_adapters():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 33
+    assert COMPLETED == 34
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -282,3 +282,8 @@ def test_web_push_subscription_record():
     push = mail_mod.subscribe_push(user_id="linus", endpoint="https://push.example/linus", keys={"p256dh": "a", "auth": "b"})
     assert push["userId"] == "linus"
     assert push["endpoint"].startswith("https://")
+
+def test_lever_board_adapter_shape():
+    rows = ingest_mod.lever_board_jobs({"data": [{"id": "lv1", "text": "Staff PM", "hostedUrl": "https://jobs.lever.co/x/lv1", "categories": {"team": "Acme"}}]})
+    assert rows[0]["source"] == "lever"
+    assert rows[0]["source_posting_id"] == "lv1"
