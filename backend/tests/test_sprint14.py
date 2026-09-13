@@ -673,3 +673,11 @@ def test_seed_data_v3_resumes_by_seniority_remote():
     assert seed["bySeniority"] is True
     assert {row["seniority"] for row in seed["resumes"]}
 
+# === S14-71 ===
+
+def test_api_pagination_sorting_on_jobs_matches():
+    from app.sprint13.platform import api_query
+
+    rows = api_query([{"id": "2", "title": "B"}, {"id": "1", "title": "A"}], q=None, sort="id", order="asc")
+    assert rows["items"][0]["id"] == "1"
+

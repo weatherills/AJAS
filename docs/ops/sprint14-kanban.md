@@ -100,3 +100,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 ## Batch 7 gate
 - tests/lint/typecheck green after task 70
 
+- [x] 071 API: pagination/sorting on jobs/matches
