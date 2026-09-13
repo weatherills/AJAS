@@ -17,3 +17,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 10
 
 - [x] 011 Source adapter: bot challenge auto-detect + fallback
+- [x] 012 Source adapter: rotating proxies abstraction + health

@@ -131,3 +131,13 @@ def test_source_adapter_bot_challenge_auto_detect_fallback():
     ok = bot_challenge("normal job html")
     assert ok["ok"] is True and ok["bypass"] is False
 
+# === S14-12 ===
+
+def test_source_adapter_rotating_proxies_abstraction_health():
+    from app.sprint14.ingest import proxy_health, reset
+
+    reset()
+    row = proxy_health("http://proxy.ajas.local:8080")
+    assert row["healthy"] is True
+    assert row["active"]
+
