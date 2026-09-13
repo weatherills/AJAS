@@ -192,3 +192,10 @@ def test_normalization_benefits_parsing():
     assert row["relocation"] is True
     assert "health_insurance" in row["benefits"] or row["equity"]
 
+# === S14-18 ===
+
+def test_normalization_skills_canonicalization_v3():
+    from app.sprint14.parse import skills_canon
+
+    assert "python" in skills_canon(["py", "Python3"])
+
