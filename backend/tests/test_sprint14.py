@@ -99,3 +99,14 @@ def test_greenhouse_company_board_crawler():
     assert out["live"] is False
     assert any("Staff" in str(job.get("title")) for job in out["jobs"])
 
+# === S14-09 ===
+
+def test_lever_company_board_crawler():
+    from app.sprint14.ingest import lever_board, reset
+
+    reset()
+    html = (FIXTURES / "lever_career.html").read_text()
+    out = lever_board(html)
+    assert out["source"] == "lever"
+    assert out["live"] is False
+
