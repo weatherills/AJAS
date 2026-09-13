@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { editorIsReady, validateClientFile, validateEditor } from './validation'
+import { profilesFor, upsertResumeProfile } from './resumeProfiles'
 
 describe('resume client validation', () => {
   it('rejects unsupported and oversized files', () => {
@@ -26,5 +27,12 @@ describe('resume client validation', () => {
         education: [],
       }),
     ).toBe(true)
+  })
+
+  it('stores tagged resume profiles per user', () => {
+    upsertResumeProfile('ada', { profileId: 'p1', resumeId: 'r1', label: 'Staff backend', tags: ['backend', 'remote'] })
+    upsertResumeProfile('ada', { profileId: 'p2', resumeId: 'r2', label: 'Frontend', tags: ['frontend'] })
+    expect(profilesFor('ada')).toHaveLength(2)
+    expect(profilesFor('ada', 'remote').map((item) => item.label)).toEqual(['Staff backend'])
   })
 })

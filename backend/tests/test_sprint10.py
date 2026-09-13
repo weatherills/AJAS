@@ -299,3 +299,14 @@ def test_cover_letter_tone_presets():
     assert "excited" in enthusiastic["text"].lower()
     assert "consideration" in formal["text"].lower()
     assert concise["label"] == "Concise"
+
+
+def test_resume_profiles_with_tags():
+    from app.resumes.profiles import ResumeProfile, list_profiles, reset_profiles, upsert_profile
+
+    reset_profiles()
+    upsert_profile("ada", ResumeProfile("p1", "r1", "Staff backend", ["backend", "remote"]))
+    upsert_profile("ada", ResumeProfile("p2", "r2", "Frontend", ["frontend"]))
+    assert len(list_profiles("ada")) == 2
+    remote = list_profiles("ada", tag="remote")
+    assert [row.label for row in remote] == ["Staff backend"]
