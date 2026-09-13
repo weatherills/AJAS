@@ -176,3 +176,23 @@ Experience:
     assert "32%" in top["text"] or "32" in "".join(top["metrics"])
     assert int(top["score"]) >= 80
     assert result["impactScore"] > 0
+
+
+def test_embeddings_reindex_sweeper_retries_then_indexes():
+    from app.matching.reindex import ReindexSweeper
+
+    calls = {"n": 0}
+
+    def flaky(texts: list[str]) -> list[list[float]]:
+        calls["n"] += 1
+        if calls["n"] < 2:
+            raise RuntimeError("embed timeout")
+        return [[0.1, 0.2] for _ in texts]
+
+    sweeper = ReindexSweeper(embed=flaky, max_attempts=3)
+    sweeper.enqueue("job-1", "python azure matching")
+    first = sweeper.sweep(limit=1)
+    assert first["retried"] == 1
+    second = sweeper.sweep(limit=1)
+    assert second["indexed"] == 1
+    assert "job-1" in sweeper.indexed
