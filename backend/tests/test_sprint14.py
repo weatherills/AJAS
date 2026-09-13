@@ -305,3 +305,12 @@ def test_matching_dedupe_near_identical_roles_per_company_v2():
     assert len(rows) == 1
     assert rows[0]["id"] == "b"
 
+# === S14-31 ===
+
+def test_matching_multilingual_jd_support_detect_translate():
+    from app.sprint14.matching import multilingual_jd
+
+    es = multilingual_jd("Experiencia laboral y habilidades")
+    assert es["lang"] == "es"
+    assert es["translate"] is True
+

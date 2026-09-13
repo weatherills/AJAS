@@ -44,3 +44,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 ## Batch 3 gate
 - tests/lint/typecheck green after task 30
 
+- [x] 031 Matching: multilingual JD support (detect + translate)
