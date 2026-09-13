@@ -17,6 +17,8 @@ GOLDEN = {
     "workday_career.html": None,
     "glassdoor.html": None,
     "wellfound.html": None,
+    "hired_career.html": None,
+    "indeed_career.html": None,
 }
 
 
