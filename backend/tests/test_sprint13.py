@@ -92,3 +92,17 @@ def test_e2e_suite_v3_retries_and_partial_failure_flows():
     assert apply_steps[0]["ok"] is False
     assert apply_steps[1]["ok"] is True
 
+# === S13-07 ===
+
+def test_fixtures_v3_updated_html_snapshots_per_source():
+    from app.sprint13.platform import fixtures_v3
+
+    snap = fixtures_v3()
+    assert snap["schema"] == "ajas.fixtures.v3"
+    assert snap["count"] >= 6
+    assert any(name.startswith("glassdoor") for name in snap["html"])
+    assert any(name.endswith(".sha256") for name in snap["hashes"])
+    root = Path(__file__).parent / "fixtures" / "job_boards"
+    assert (root / "glassdoor.html.sha256").is_file()
+    assert (root / "wellfound.html.sha256").is_file()
+

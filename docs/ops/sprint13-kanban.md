@@ -8,3 +8,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 004 PII scanning: CI hook to detect leaks
 - [x] 005 E2E suite v3: ingestion→matching→apply happy path
 - [x] 006 E2E suite v3: retries and partial failure flows
+- [x] 007 Fixtures v3: updated HTML snapshots per source
