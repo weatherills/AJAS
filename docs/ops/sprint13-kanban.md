@@ -25,3 +25,8 @@ Landed on `main` as `[S13]` commits.
 - [x] 017 UI: job change diff visualization improvements
 - [x] 018 UI: match explanation inline chips with hover details
 - [x] 019 UI performance: virtualized table for 10k jobs
+- [x] 020 Saved searches: auto-refresh and notifications
+
+## Batch 2 gate
+- tests/lint/typecheck green after task 20
+

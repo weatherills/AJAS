@@ -230,3 +230,14 @@ def test_ui_performance_virtualized_table_for_10k_jobs():
     assert win["end"] - win["start"] == 20
     assert win["ids"][0] == 500
 
+# === S13-20 ===
+
+def test_saved_searches_auto_refresh_and_notifications():
+    from app.sprint13.product import refresh_saved_search
+
+    stale = refresh_saved_search(stale_after_min=15, age_min=30)
+    assert stale["refresh"] is True
+    assert stale["notify"] is True
+    fresh = refresh_saved_search(stale_after_min=15, age_min=5)
+    assert fresh["refresh"] is False
+
