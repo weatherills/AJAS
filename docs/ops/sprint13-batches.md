@@ -13,3 +13,10 @@ After every 10 Sprint 13 tasks: backend pytest, frontend `npm test`,
 | 6 | 51–62 ops/docs | Jitter, drain, mobile nav, adapter guide, cookbook |
 
 Final gate after task 62.
+
+- Batch 1 after task 10
+- Backend: 728 passed in 1.88s
+- Frontend:       Tests  130 passed (130)
+- Typecheck: clean
+- Lint: existing warnings only
+
