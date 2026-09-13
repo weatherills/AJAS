@@ -436,3 +436,13 @@ def test_attachment_manager_multi_resume_profiles():
     row = attach_profile(user_id="ada", resume_id="r1", name="IC")
     assert row["resumeId"] == "r1"
 
+# === S14-46 ===
+
+def test_email_imap_labels_mapping_to_internal_states():
+    from app.sprint14.mail import imap_label, reset
+
+    reset()
+    row = imap_label("Interview")
+    assert row["state"] == "interview"
+    assert row["imap"] is False
+

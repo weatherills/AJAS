@@ -63,3 +63,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 043 Apply: per-site field mapping overrides
 - [x] 044 Cover letters: tone/style presets
 - [x] 045 Attachment manager: multi-resume profiles
+- [x] 046 Email: IMAP labels mapping to internal states
