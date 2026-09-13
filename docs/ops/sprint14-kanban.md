@@ -115,3 +115,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 80
 
 - [x] 081 Docs: API examples and curl snippets v2
+- [x] 082 Docs: observability/metrics how-to v2

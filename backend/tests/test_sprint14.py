@@ -770,3 +770,11 @@ def test_docs_api_examples_and_curl_snippets_v2():
     assert any("curl" in row["example"] for row in examples)
     assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint14-api-cookbook.md").is_file()
 
+# === S14-82 ===
+
+def test_docs_observability_metrics_how_to_v2():
+    from app.sprint14.platform import metrics_howto
+
+    assert "trace" in metrics_howto().lower()
+    assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint14-observability.md").is_file()
+
