@@ -295,3 +295,14 @@ def test_matching_boosts_v2_recent_role_weighting_curve():
     assert recent_role_boost(months_ago=6) > recent_role_boost(months_ago=24)
     assert recent_role_boost(months_ago=48) < 1.0
 
+# === S13-26 ===
+
+def test_matching_features_visa_work_authorization_rule_updates():
+    from app.sprint13.matching import visa_rule
+
+    ok = visa_rule("US", authorized=True)
+    gated = visa_rule("US", authorized=False)
+    assert ok["boost"] == 1.0
+    assert gated["gate"] is True
+    assert gated["boost"] < 1.0
+

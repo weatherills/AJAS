@@ -35,3 +35,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 023 Explanations v2: evidence grouping by skill/domain
 - [x] 024 Near-duplicate job collapse: per-company rollup in results
 - [x] 025 Matching boosts v2: recent-role weighting curve
+- [x] 026 Matching features: visa/work-authorization rule updates
