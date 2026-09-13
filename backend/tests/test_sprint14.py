@@ -469,3 +469,14 @@ def test_replies_variable_placeholders_preview_v2():
     assert "Staff" in row["preview"]
     assert "role" in row["placeholders"]
 
+# === S14-49 ===
+
+def test_follow_ups_auto_reminders_at_24_72h():
+    from datetime import datetime, timezone
+
+    from app.sprint14.mail import reminder_slots
+
+    row = reminder_slots(datetime(2026, 9, 13, tzinfo=timezone.utc))
+    assert row["send24"] is True
+    assert "T" in row["h24"] and "T" in row["h72"]
+
