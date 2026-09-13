@@ -93,3 +93,4 @@ Landed on `main` as `[S12]` commits.
 
 ## Batch 7 gate
 - tests/lint/typecheck green after task 70
+- [x] 071 Duplicate company resolver: merge variants (Inc./LLC)

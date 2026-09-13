@@ -369,7 +369,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 70
+    assert COMPLETED == 71
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -501,3 +501,7 @@ def test_multi_resume_picks_skill_overlap():
 def test_job_freshness_marks_stale():
     fresh = product_mod.freshness(80, 50)
     assert fresh["stale"] is True
+
+def test_merge_company_inc_llc_variants():
+    groups = product_mod.merge_companies(["Acme Inc.", "Acme LLC", "Beta Co"])
+    assert set(groups["acme"]) == {"Acme Inc.", "Acme LLC"}
