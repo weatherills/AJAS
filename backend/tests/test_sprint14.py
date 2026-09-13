@@ -409,3 +409,12 @@ def test_bulk_actions_bulk_dismiss_undo_snackbar():
     assert snap["remaining"] == ["a", "c"]
     assert snap["undo"] == ["b"]
 
+# === S14-43 ===
+
+def test_apply_per_site_field_mapping_overrides():
+    from app.sprint14.product import field_map
+
+    row = field_map(site="greenhouse", fields={"phone": "mobile"})
+    assert row["overrides"] is True
+    assert row["fields"]["phone"] == "mobile"
+
