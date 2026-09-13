@@ -176,3 +176,10 @@ def feature_flags_ui() -> dict[str, bool]:
     from app.flags import feature_flags
     return feature_flags()
 
+def slo_widgets() -> dict[str, dict[str, float]]:
+    return {
+        "ingest": {"slo": 0.99, "windowHours": 24},
+        "match": {"slo": 0.995, "windowHours": 24},
+        "apply": {"slo": 0.99, "windowHours": 24},
+    }
+
