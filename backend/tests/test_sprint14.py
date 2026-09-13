@@ -460,3 +460,12 @@ def test_email_sender_reputation_guard():
     blocked = sender_guard("ada@example.test", sent_today=20, warmup_cap=20)
     assert blocked["allow"] is False
 
+# === S14-48 ===
+
+def test_replies_variable_placeholders_preview_v2():
+    from app.sprint14.mail import reply_preview
+
+    row = reply_preview(intent="followup", role="Staff")
+    assert "Staff" in row["preview"]
+    assert "role" in row["placeholders"]
+

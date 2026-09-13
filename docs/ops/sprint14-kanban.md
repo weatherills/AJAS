@@ -65,3 +65,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 045 Attachment manager: multi-resume profiles
 - [x] 046 Email: IMAP labels mapping to internal states
 - [x] 047 Email: sender reputation guard (daily cap + warmup)
+- [x] 048 Replies: variable placeholders + preview v2
