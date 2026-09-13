@@ -325,7 +325,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 51
+    assert COMPLETED == 52
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -418,3 +418,7 @@ def test_synthetic_generators_jobs_emails_resumes():
     assert job["company"]
     assert resume["skills"]
     assert email["kind"] == "reject"
+
+def test_sensitive_jd_warning_polygraph():
+    warn = safety_mod.sensitive_jd("polygraph required plus ITAR")
+    assert warn["warning"] is True
