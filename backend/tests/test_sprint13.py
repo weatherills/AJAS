@@ -106,3 +106,13 @@ def test_fixtures_v3_updated_html_snapshots_per_source():
     assert (root / "glassdoor.html.sha256").is_file()
     assert (root / "wellfound.html.sha256").is_file()
 
+# === S13-08 ===
+
+def test_seed_data_v3_diverse_resumes_and_roles():
+    from app.sprint13.platform import seed_v3
+
+    seed = seed_v3()
+    assert seed["diverse"] is True
+    assert len(seed["resumes"]) == 4
+    assert len(seed["jobs"]) == 6
+
