@@ -443,7 +443,7 @@ export function feedSourcesQueryParam(sources: JobSourceName[]): string {
 const PRESET_KEY = 'ajas.jobFeed.presets.v1'
 const PRESET_MEMORY = new Map<string, string>()
 
-export type FeedPreset = { name: string; userId: string; filters: JobFilters }
+export type FeedPreset = { name: string; userId: string; filters: JobFilters; alertsEnabled?: boolean }
 
 function presetStorageKey(userId: string): string {
   return `${PRESET_KEY}:${userId || 'local'}`
@@ -486,7 +486,7 @@ export function saveFilterPreset(name: string, filters: JobFilters, userId = 'lo
   if (!trimmed) return loadFilterPresets(userId)
   const next = [
     ...loadFilterPresets(userId).filter((item) => item.name !== trimmed),
-    { name: trimmed, userId, filters: { ...filters } },
+    { name: trimmed, userId, filters: { ...filters }, alertsEnabled: false },
   ]
   writePresetStore(presetStorageKey(userId), JSON.stringify(next))
   return next
@@ -494,6 +494,14 @@ export function saveFilterPreset(name: string, filters: JobFilters, userId = 'lo
 
 export function deleteFilterPreset(name: string, userId = 'local'): FeedPreset[] {
   const next = loadFilterPresets(userId).filter((item) => item.name !== name)
+  writePresetStore(presetStorageKey(userId), JSON.stringify(next))
+  return next
+}
+
+export function setPresetAlerts(name: string, enabled: boolean, userId = 'local'): FeedPreset[] {
+  const next = loadFilterPresets(userId).map((item) =>
+    item.name === name ? { ...item, alertsEnabled: enabled } : item,
+  )
   writePresetStore(presetStorageKey(userId), JSON.stringify(next))
   return next
 }

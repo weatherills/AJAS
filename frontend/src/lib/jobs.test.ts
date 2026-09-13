@@ -24,6 +24,7 @@ import {
   loadFilterPresets,
   saveFilterPreset,
   deleteFilterPreset,
+  setPresetAlerts,
   refreshToastForStatuses,
   sourceChipPatch,
   sourceErrorCopy,
@@ -173,7 +174,9 @@ describe('job feed helpers', () => {
     saveFilterPreset('Onsite', { ...defaultFilters(), location: 'Austin' }, 'linus')
     expect(loadFilterPresets('ada')).toHaveLength(1)
     expect(loadFilterPresets('ada')[0].filters.q).toBe('staff')
+    expect(loadFilterPresets('ada')[0].alertsEnabled).toBe(false)
     expect(loadFilterPresets('linus')[0].filters.location).toBe('Austin')
+    expect(setPresetAlerts('Remote staff', true, 'ada')[0].alertsEnabled).toBe(true)
     deleteFilterPreset('Remote staff', 'ada')
     expect(loadFilterPresets('ada')).toEqual([])
   })
