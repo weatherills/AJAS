@@ -271,3 +271,19 @@ def test_explanations_v2_evidence_grouping_by_skill_domain():
     assert groups["domain"]
     assert groups["other"]
 
+# === S13-24 ===
+
+def test_near_duplicate_job_collapse_per_company_rollup():
+    from app.sprint13.matching import collapse_company
+
+    rows = collapse_company(
+        [
+            {"id": "a", "company": "Acme", "score": 70},
+            {"id": "b", "company": "Acme", "score": 90},
+            {"id": "c", "company": "Beta", "score": 80},
+        ]
+    )
+    acme = next(row for row in rows if row["companyKey"] == "acme")
+    assert acme["id"] == "b"
+    assert acme["rollupCount"] == 2
+
