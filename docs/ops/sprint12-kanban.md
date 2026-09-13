@@ -60,3 +60,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 044 Alert routing: on-call schedules and escalation policies
 - [x] 045 Backup/restore: nightly backups and restore playbook
 - [x] 046 Disaster recovery: RPO/RTO doc and drill checklist
+- [x] 047 CI hardening: parallelize tests and cache dependencies

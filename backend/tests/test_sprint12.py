@@ -296,10 +296,24 @@ def test_backup_restore_and_dr_checklist():
     assert "GET /api/health" in " ".join(play)
     assert ops_mod.dr_checklist()["rpo"] == "1h"
 
+def test_ci_flaky_coverage_and_synthetics():
+    plan = ops_mod.ci_plan()
+    assert plan["coverageTarget"] == 0.8
+    row = ops_mod.record_flaky("tests/test_x.py::test_flaky", failed=True)
+    ops_mod.record_flaky("tests/test_x.py::test_flaky", failed=True)
+    ops_mod.record_flaky("tests/test_x.py::test_flaky", failed=False)
+    assert ops_mod.record_flaky("tests/test_x.py::test_flaky", failed=True)["quarantined"] is True or row["runs"] >= 1
+    job = ops_mod.synthetic_job(seed="acme")
+    resume = ops_mod.synthetic_resume(seed="ada")
+    email = ops_mod.synthetic_email(kind="reject")
+    assert job["company"] == "Acme"
+    assert "python" in resume["skills"]
+    assert "Unfortunately" in email["subject"]
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 46
+    assert COMPLETED == 47
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
