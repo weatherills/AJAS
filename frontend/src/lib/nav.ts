@@ -10,6 +10,8 @@ export const NAV_LINKS: NavLink[] = [
   { href: '#/learning', label: 'Learning' },
   { href: '#/settings', label: 'Settings' },
   { href: '#/ops', label: 'Ops' },
+  { href: '#/admin', label: 'Admin' },
+  { href: '#/help', label: 'Help' },
 ]
 
 export function hashPath(hash: string): string {

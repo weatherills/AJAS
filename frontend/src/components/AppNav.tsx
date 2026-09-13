@@ -1,5 +1,6 @@
 import { skipLink } from '../lib/a11y'
 import { NAV_LINKS, navIsActive } from '../lib/nav'
+import { ThemeToggle } from './ThemeToggle'
 
 export function AppNav() {
   const hash = typeof window === 'undefined' ? '#/' : window.location.hash || '#/'
@@ -15,6 +16,7 @@ export function AppNav() {
           {link.label}
         </a>
       ))}
+      <ThemeToggle />
       </nav>
     </>
   )

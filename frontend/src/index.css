@@ -25,9 +25,14 @@ code {
   font-family: ui-monospace, Consolas, monospace;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #1e293b;
-    background-color: #f8fafc;
-  }
+html[data-theme='light'] {
+  color: #1e293b;
+  background-color: #f8fafc;
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color: #e2e8f0;
+  background-color: #0f172a;
+  color-scheme: dark;
 }
