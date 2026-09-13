@@ -172,10 +172,15 @@ def test_html_sanitizer_strips_script_and_handlers():
     assert "javascript:" not in clean.lower()
     assert "&lt;" in security_mod.escape_text("<b>")
 
+def test_pii_context_aware_redaction():
+    blob = "Reach ada@example.test at 415-555-1212 ssn 123-45-6789"
+    log = security_mod.redact_pii(blob, context="log")
+    assert "[email]" in log and "[phone]" in log and "[ssn]" in log
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 21
+    assert COMPLETED == 22
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
