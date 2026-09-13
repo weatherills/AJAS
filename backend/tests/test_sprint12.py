@@ -405,7 +405,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 83
+    assert COMPLETED == 84
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")

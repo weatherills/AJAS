@@ -109,3 +109,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 081 Public API keys: create/revoke and scopes UI
 - [x] 082 SDK scaffold: JS client for public API
 - [x] 083 Rate limit headers: expose in API responses
+- [x] 084 Pagination standards: cursor-based pagination everywhere
