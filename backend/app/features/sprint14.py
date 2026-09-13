@@ -30,7 +30,7 @@ def _ok(payload) -> func.HttpResponse:
 
 
 @bp.route(route="v1/s14/status", methods=["GET", "OPTIONS"])
-def status(req: func.HttpRequest) -> func.HttpResponse:
+def s14_status(req: func.HttpRequest) -> func.HttpResponse:
     bind_request(req)
     if req.method.upper() == "OPTIONS":
         return json_response({"ok": True})
@@ -40,7 +40,7 @@ def status(req: func.HttpRequest) -> func.HttpResponse:
 
 
 @bp.route(route="v1/s14/health", methods=["GET"])
-def health(req: func.HttpRequest) -> func.HttpResponse:
+def s14_health(req: func.HttpRequest) -> func.HttpResponse:
     bind_request(req)
     from app.sprint14.ops import health_matrix
 
@@ -48,7 +48,7 @@ def health(req: func.HttpRequest) -> func.HttpResponse:
 
 
 @bp.route(route="v1/s14/search", methods=["GET"])
-def search(req: func.HttpRequest) -> func.HttpResponse:
+def s14_search(req: func.HttpRequest) -> func.HttpResponse:
     bind_request(req)
     try:
         get_principal(req)
@@ -62,7 +62,7 @@ def search(req: func.HttpRequest) -> func.HttpResponse:
 
 
 @bp.route(route="v1/s14/traces", methods=["GET"])
-def traces(req: func.HttpRequest) -> func.HttpResponse:
+def s14_traces(req: func.HttpRequest) -> func.HttpResponse:
     bind_request(req)
     try:
         get_principal(req)

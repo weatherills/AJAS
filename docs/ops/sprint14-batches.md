@@ -17,3 +17,10 @@ After every 10 Sprint 14 tasks: backend pytest, frontend `npm test`,
 | 10 | 91–99 maintenance | Dead flags, CLI, health v3, remote flags |
 
 Final gate after task 99.
+
+- Batch 1 after task 10
+- Backend: 790 passed in 1.90s
+- Frontend:       Tests  135 passed (135)
+- Typecheck: clean
+- Lint: existing warnings only
+
