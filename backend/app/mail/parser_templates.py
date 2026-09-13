@@ -15,4 +15,8 @@ TEMPLATES = {
         "subject": "Thanks for chatting",
         "body": "Great connecting today. We will follow up if there is another role that fits.",
     },
+    "reschedule": {
+        "subject": "Need to reschedule your interview",
+        "body": "Can we move Tuesday's interview to 2026-09-15 14:00? Reply with a better time if needed.",
+    },
 }
