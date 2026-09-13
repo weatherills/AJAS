@@ -642,3 +642,13 @@ def test_scoped_automation_tokens():
     assert authorize(token.token, "ingest") is True
     assert authorize(token.token, "match") is False
     assert "nope" not in token.scopes
+
+
+def test_webhook_signature_verification():
+    from app.webhooks_sig import sign_payload, verify_signature
+
+    body = '{"event":"ingest.completed","jobId":"gd-1"}'
+    header = sign_payload("s3cret", body)
+    assert header.startswith("sha256=")
+    assert verify_signature("s3cret", body, header) is True
+    assert verify_signature("s3cret", body, "sha256=deadbeef") is False
