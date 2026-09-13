@@ -11,3 +11,8 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 007 Workable adapter v1
 - [x] 008 Greenhouse company board crawler
 - [x] 009 Lever company board crawler
+- [x] 010 Ashby company board crawler
+
+## Batch 1 gate
+- tests/lint/typecheck green after task 10
+

@@ -110,3 +110,13 @@ def test_lever_company_board_crawler():
     assert out["source"] == "lever"
     assert out["live"] is False
 
+# === S14-10 ===
+
+def test_ashby_company_board_crawler():
+    from app.sprint14.ingest import ashby_board, reset
+
+    reset()
+    out = ashby_board(payload={"jobs": [{"id": "a1", "title": "Ashby Role"}]})
+    assert out["crawler"] == "fixture"
+    assert out["flag"] is False
+
