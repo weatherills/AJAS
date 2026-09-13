@@ -332,3 +332,12 @@ def test_ranking_pairwise_training_data_generator():
     pairs = pairwise_rows([{"id": "a", "score": 90}, {"id": "b", "score": 10}])
     assert pairs[0]["chosen"] == "a"
 
+# === S14-34 ===
+
+def test_ranking_calibration_monitor_dashboard_v2():
+    from app.sprint14.matching import calibration_monitor
+
+    row = calibration_monitor([91, 80, 40])
+    assert row["n"] == 3
+    assert row["A"] >= 1
+

@@ -47,3 +47,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 031 Matching: multilingual JD support (detect + translate)
 - [x] 032 Ranking: feedback logging for LTR (click/open/reply)
 - [x] 033 Ranking: pairwise training data generator
+- [x] 034 Ranking: calibration monitor dashboard v2
