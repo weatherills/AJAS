@@ -912,3 +912,16 @@ def test_idempotency_conflict_inspector_tool_v2():
     row = idem_log("k", "b", {"v": 2})
     assert row["status"] == "conflict"
 
+# === S14-99 ===
+
+def test_feature_flags_remote_toggles_with_audit_v2():
+    from app.sprint14 import COMPLETED, VERSION
+    from app.sprint14.ops import flags_audit, reset
+
+    reset()
+    row = flags_audit(actor="ada", name="ziprecruiter_adapter", enabled=False)
+    assert row["live"] is False
+    assert row["audit"]
+    assert VERSION == "sprint14"
+    assert COMPLETED == 99
+
