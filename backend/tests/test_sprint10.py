@@ -716,3 +716,20 @@ def test_ziprecruiter_adapter_v1_fixture_throttling(monkeypatch):
     monkeypatch.setenv("FLAG_ZIPRECRUITER_ADAPTER", "false")
     get_settings.cache_clear()
     assert ziprecruiter_jobs(payload) == []
+
+
+def test_proxy_rotation_pool_health_checks():
+    from app.job_sources.proxies import add, next_proxy, record_result, reset, snapshot
+
+    reset()
+    add("https://proxy-a.ajas.local:8443")
+    add("https://proxy-b.ajas.local:8443")
+    first = next_proxy()
+    second = next_proxy()
+    assert first and second and first.url != second.url
+    record_result(first.url, False)
+    record_result(first.url, False)
+    record_result(first.url, False)
+    snap = snapshot()
+    assert snap["healthy"] == 1
+    assert first.url not in snap["urls"]
