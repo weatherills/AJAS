@@ -371,3 +371,13 @@ def test_resume_parser_v3_achievements_metric_detection():
     assert 12.0 in hit["percents"]
     assert hit["money"]
 
+# === S13-33 ===
+
+def test_jd_cleaner_v3_boilerplate_classifier_using_heuristics_ml():
+    from app.sprint13.parse import boilerplate_score
+
+    noisy = boilerplate_score("Equal opportunity employer. Benefits include ping pong. We're a family.")
+    clean = boilerplate_score("Build ingestion adapters in Python.")
+    assert noisy["boilerplate"] is True
+    assert clean["boilerplate"] is False
+
