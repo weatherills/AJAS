@@ -287,3 +287,11 @@ def test_near_duplicate_job_collapse_per_company_rollup():
     assert acme["id"] == "b"
     assert acme["rollupCount"] == 2
 
+# === S13-25 ===
+
+def test_matching_boosts_v2_recent_role_weighting_curve():
+    from app.sprint13.matching import recent_role_boost
+
+    assert recent_role_boost(months_ago=6) > recent_role_boost(months_ago=24)
+    assert recent_role_boost(months_ago=48) < 1.0
+

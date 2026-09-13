@@ -34,3 +34,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 022 Fit score calibration v2: bucket thresholds A/B test
 - [x] 023 Explanations v2: evidence grouping by skill/domain
 - [x] 024 Near-duplicate job collapse: per-company rollup in results
+- [x] 025 Matching boosts v2: recent-role weighting curve
