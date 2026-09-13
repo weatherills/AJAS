@@ -6,6 +6,7 @@ import {
   tableToCardLayout,
   enqueueOffline,
   replayOffline,
+  exportCsv,
 } from './sprint12'
 
 
@@ -32,5 +33,6 @@ describe('sprint12 product helpers', () => {
     expect(tableToCardLayout(900)).toBe('table')
     const queued = enqueueOffline([], { id: 'a1', type: 'apply', payload: {} })
     expect(replayOffline(queued).replayed).toEqual(['a1'])
+    expect(exportCsv([{ title: 'Staff', score: 91 }], ['title', 'score'])).toContain('title,score')
   })
 })

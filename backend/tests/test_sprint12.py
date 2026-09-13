@@ -318,6 +318,15 @@ def test_red_team_and_sensitive_jd():
     warn = safety_mod.sensitive_jd("This role requires a polygraph and ITAR clearance")
     assert warn["warning"] is True
 
+def test_query_builder_filters_saved_search_and_csv():
+    jobs = [{"title": "Staff Python", "company": "Acme"}, {"title": "PM", "company": "Other"}]
+    filtered = product_mod.apply_filters(jobs, [{"field": "title", "op": "regex", "value": r"^Staff"}])
+    assert len(filtered) == 1
+    search = product_mod.save_search(user_id="ada", name="Staff", filters=[{"field": "title", "op": "contains", "value": "Staff"}], pin=True, share=True)
+    assert search["pinned"] is True and search["shareToken"]
+    csv_text = product_mod.export_matches_csv([{"title": "Staff", "score": 91}], ["title", "score"])
+    assert "title,score" in csv_text
+
 def test_coverage_gate_documents_80_percent_target():
     assert ops_mod.ci_plan()["coverageGate"] == 0.4
     assert ops_mod.ci_plan()["backend"]["parallel"] == "pytest -n auto"
@@ -325,7 +334,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 58
+    assert COMPLETED == 59
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
