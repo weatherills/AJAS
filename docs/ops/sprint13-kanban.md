@@ -24,3 +24,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 016 UI: keyboard shortcuts for triage (accept/dismiss)
 - [x] 017 UI: job change diff visualization improvements
 - [x] 018 UI: match explanation inline chips with hover details
+- [x] 019 UI performance: virtualized table for 10k jobs

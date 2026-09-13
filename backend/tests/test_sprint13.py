@@ -220,3 +220,13 @@ def test_ui_match_explanation_inline_chips_with_hover_details():
     chips = explanation_chips(["Azure", "fintech"])
     assert {c["label"] for c in chips} == {"Azure", "fintech"}
 
+# === S13-19 ===
+
+def test_ui_performance_virtualized_table_for_10k_jobs():
+    from app.sprint13.product import virtual_window
+
+    win = virtual_window(10_000, start=500, height=20)
+    assert win["virtualized"] is True
+    assert win["end"] - win["start"] == 20
+    assert win["ids"][0] == 500
+
