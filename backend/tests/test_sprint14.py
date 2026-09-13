@@ -58,3 +58,13 @@ def test_remoteok_adapter_v1():
     assert out["jobs"][0]["title"] == "Remote Python"
     assert out["live"] is False
 
+# === S14-05 ===
+
+def test_remotive_adapter_v1():
+    from app.sprint14.ingest import remotive_v1, reset
+
+    reset()
+    out = remotive_v1({"jobs": [{"id": "1", "title": "Remotive Role"}]})
+    assert out["source"] == "remotive"
+    assert out["flag"] is False
+

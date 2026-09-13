@@ -6,3 +6,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 002 Monster adapter v1 (HTML + API hybrid)
 - [x] 003 Hired adapter v1 with auth/session
 - [x] 004 RemoteOK adapter v1
+- [x] 005 Remotive adapter v1
