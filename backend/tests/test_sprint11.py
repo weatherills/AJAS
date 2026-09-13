@@ -271,3 +271,23 @@ def test_ranking_cross_feature_normalization_fairness():
     assert out[0]["score_norm"] == 1.0
     assert out[1]["score_norm"] == 0.0
     assert "fair_score" in out[0]
+
+def test_ranking_tie_breakers_for_identical_scores():
+    from app.matching.ties import sort_with_ties
+
+    rows = [
+        {"id": "b", "score": 80, "posted_at": "2026-01-01", "source_type": "lever"},
+        {"id": "a", "score": 80, "posted_at": "2026-06-01", "source_type": "greenhouse"},
+        {"id": "c", "score": 90, "posted_at": "2026-01-01", "source_type": "greenhouse"},
+    ]
+    ordered = sort_with_ties(rows)
+    assert [row["id"] for row in ordered] == ["c", "a", "b"]
+
+
+def test_explanations_counterfactual_resume_suggestions():
+    from app.matching.counterfactual import counterfactuals
+
+    result = counterfactuals("python azure", "Required:\n- kubernetes\n- rust\n")
+    assert result["add"]
+    assert any("kubernetes" in item or "rust" in item for item in result["suggestions"])
+    assert result["lift_if_all_added"] > 0
