@@ -121,3 +121,4 @@ Landed on `main` as `[S12]` commits.
 - tests/lint/typecheck green after task 90
 - [x] 091 SLA/SLO definitions and monitoring widgets
 - [x] 092 Usage analytics: event stream and privacy controls
+- [x] 093 Consent logs export for compliance
