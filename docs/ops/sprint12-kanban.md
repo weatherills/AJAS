@@ -46,3 +46,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 033 Job source integrations: Greenhouse job boards adapter
 - [x] 034 Job source integrations: Lever job boards adapter
 - [x] 035 Company career pages: sitemap-based generic crawler
+- [x] 036 Anti-bot compliance: robots.txt + rate policy per domain
