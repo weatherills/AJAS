@@ -41,7 +41,15 @@ def test_rbac_owner_admin_member_readonly():
     assert tenants_mod.can(tenant.id, "reader", "review.read") is True
     assert tenants_mod.can(tenant.id, "reader", "apply.write") is False
 
+def test_access_control_require_permission():
+    tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
+    try:
+        tenants_mod.require(tenant.id, "ghost", "tenant.invite")
+        raise AssertionError("expected")
+    except PermissionError:
+        pass
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 3
+    assert COMPLETED == 4
