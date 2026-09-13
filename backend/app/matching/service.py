@@ -148,10 +148,12 @@ class MatchingService:
         min_score: float | None = None,
         limit: int = 50,
         cursor: str | None = None,
+        sort: str | None = None,
+        order: str = "desc",
     ) -> dict:
         if limit < 1 or limit > 100:
             raise MatchingValidationError("limit must be 1–100", path="limit")
-        cache_key = (user_id, job_id, resume_id, min_score, limit, cursor)
+        cache_key = (user_id, job_id, resume_id, min_score, limit, cursor, sort, order)
         hit = self._list_cache.get(cache_key)
         now = self.clock()
         if hit and hit[0] > now:
@@ -172,12 +174,19 @@ class MatchingService:
             if min_score is not None and payload["score"] < min_score:
                 continue
             items.append(payload)
+        if sort:
+            from app.list_query import sort_rows
+
+            items = sort_rows(items, sort=sort, order=order)
         page = items[offset : offset + limit]
         next_cursor = None
         if offset + limit < len(items):
             next_cursor = self._encode_cursor(offset + limit)
-        body = {"items": page, "nextCursor": next_cursor, "cache": "miss"}
-        self._list_cache[cache_key] = (now + 30, {"items": page, "nextCursor": next_cursor})
+        body = {"items": page, "nextCursor": next_cursor, "cache": "miss", "total": len(items)}
+        if sort:
+            body["sort"] = sort
+            body["order"] = order
+        self._list_cache[cache_key] = (now + 30, {"items": page, "nextCursor": next_cursor, "total": len(items)})
         return body
 
     def get_operation(self, user_id: str, operation_id: str) -> dict:

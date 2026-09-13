@@ -177,6 +177,8 @@ def list_match_results(req: func.HttpRequest) -> func.HttpResponse:
             min_score=_query_float(req.params.get("minScore"), "minScore"),
             limit=_query_int(req.params.get("limit"), "limit", default=50),
             cursor=req.params.get("cursor") or None,
+            sort=req.params.get("sort") or None,
+            order=req.params.get("order") or "desc",
         )
         return json_response(body)
     except Exception as exc:
