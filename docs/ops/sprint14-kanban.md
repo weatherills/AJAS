@@ -94,3 +94,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 066 E2E: ingestion→ranking→explain regressions
 - [x] 067 E2E: email parser templates coverage
 - [x] 068 Unit tests: salary/geo/negation edge cases v2
+- [x] 069 Fixtures: real-world HTML snapshots expansion

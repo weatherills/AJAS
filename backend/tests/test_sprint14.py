@@ -655,3 +655,12 @@ def test_unit_tests_salary_geo_negation_edge_cases_v2():
     assert salary_bands("$90k-$110k")["min"]
     assert skills_negation("No PHP required, need python")["chunks"]
 
+# === S14-69 ===
+
+def test_fixtures_real_world_html_snapshots_expansion():
+    from app.sprint14.platform import fixtures_expanded
+
+    snap = fixtures_expanded()
+    assert snap["count"] >= 6
+    assert "s14_monster.json" in snap["extra"]
+
