@@ -691,3 +691,12 @@ def test_api_auth_scoped_tokens_for_automation_tasks():
     key = scoped_token(user_id="ada", scopes=["ingest", "read"])
     assert key["scopes"] == ["ingest", "read"] or "token" in key or "id" in key
 
+# === S14-73 ===
+
+def test_webhooks_ingestion_apply_events_signatures():
+    from app.sprint14.ops import webhook_event
+
+    row = webhook_event(secret="s3cret", body="{}", event="ingest.completed")
+    assert row["signed"] is True
+    assert row["signature"]
+
