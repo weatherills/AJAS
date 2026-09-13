@@ -8,18 +8,6 @@
 3. For each phase: paste the "Say this to Cursor" prompt, wait for Cursor to finish, then run the verification steps
 4. Only move to the next phase when verification passes
 
-## Kanban (required, real time)
-
-CodeSpring Kanban is the source of truth for what shipped. **Do not wait until sprint end.**
-
-After **each** task’s tests pass (the item’s own tests, not only the batch gate):
-
-1. If a matching card exists: `codespring task done <id>` (from `todo`/`in_progress`).
-2. If it does not exist: `codespring task create --title "[SN] …" --priority high` then `codespring task done <id>`.
-3. Claim work with `codespring task start <id>` when you begin an item.
-
-Batch hardening commits get their own cards (`[SN] Batch N hardening`) moved to **done** after the full tests/lint/typecheck gate is green. Never leave shipped work in `todo`.
-
 ## Project Overview
 The AI Job Application System (AJAS) is designed to streamline the job application process for job seekers by leveraging AI to match resumes with job postings, manage applications, and facilitate communication with recruiters. It provides a user-friendly interface for reviewing job matches, applying to jobs, and managing resumes.
 
@@ -221,10 +209,6 @@ The Learning Loop feature failed with this error: [paste error here]. Fix it wit
 ```
 Review the entire codebase. Fix any TypeScript errors, broken imports, or missing connections between features. Make sure all features from the .codespring/PRDs/ folder are implemented.
 ```
-
-Sprint 9 continues that polish: matching evidence and calibrated buckets, Job Feed
-filters, email intent/templates, fixture-only Indeed/LinkedIn adapters, and operator
-flags. See `docs/ops/sprint9-migration.md`.
 
 **How to verify the full app works:**
 - [ ] All features are accessible and function as intended.
