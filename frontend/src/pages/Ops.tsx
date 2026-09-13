@@ -88,6 +88,7 @@ export function OpsPage() {
           ))}
         </ul>
       </section>
+      <section className="editor-section ops-slo">
         <h2>SLOs</h2>
         {slo.length === 0 || slo.every((row) => row.samples === 0) ? (
           <p className="muted">No live samples yet. Open Review or the Job Feed, then reload Ops.</p>

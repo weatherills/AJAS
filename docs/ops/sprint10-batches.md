@@ -19,3 +19,12 @@ Covered: Glassdoor/Wellfound fixture adapters, rotating UAs + jitter, circuit br
 - Lint: fixed duplicate `saveFilters` import in JobFeed; remaining warnings pre-existed
 
 Covered: embedding reindex sweeper, vector vacuum, recency boost, fairness dedupe, isotonic calibration, explanation token spans, fit-bucket colors/tooltips, filter presets, JD keyword search, windowed list + skeletons.
+
+## Batch 3 (tasks 21–30)
+
+- Backend: 508 passed
+- Frontend: 104 passed
+- Typecheck: clean
+- Lint: fixed Ops.tsx notification section markup; remaining warnings pre-existed
+
+Covered: JD version diff, bulk-dismiss undo snackbar, apply field maps, cover-letter tones, tagged resume profiles, IMAP label mapping, sender warm-up, reply template placeholders, 24/72h SLA, notification digest.
