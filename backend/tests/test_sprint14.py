@@ -877,3 +877,10 @@ def test_errors_better_remediation_hints_everywhere():
 
     assert playbook("NOT_FOUND")["remediation"]
 
+# === S14-95 ===
+
+def test_cli_reindex_embeddings_for_resume_job():
+    from app.sprint14.platform import cli_reindex
+
+    assert any("reindex" in cmd for cmd in cli_reindex())
+
