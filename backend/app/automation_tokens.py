@@ -30,3 +30,7 @@ def authorize(token: str, scope: str) -> bool:
     if not row:
         return False
     return scope in row.scopes
+
+
+def authorize_ingest(token: str) -> bool:
+    return authorize(token, "ingest")
