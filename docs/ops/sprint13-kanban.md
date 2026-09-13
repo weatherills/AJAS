@@ -31,3 +31,4 @@ Landed on `main` as `[S13]` commits.
 - tests/lint/typecheck green after task 20
 
 - [x] 021 LTR feature logging v2: unified schema + PII redaction
+- [x] 022 Fit score calibration v2: bucket thresholds A/B test

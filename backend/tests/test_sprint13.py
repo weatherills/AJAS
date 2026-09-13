@@ -252,3 +252,12 @@ def test_ltr_feature_logging_v2_unified_schema_pii_redaction():
     assert "@" not in row["userId"]
     assert row["jobId"] == "j1"
 
+# === S13-22 ===
+
+def test_fit_score_calibration_v2_bucket_thresholds_ab_test():
+    from app.sprint13.matching import fit_bucket
+
+    assert fit_bucket(85, variant="control") == "A"
+    assert fit_bucket(85, variant="treatment") == "B"
+    assert fit_bucket(91, variant="treatment") == "A"
+
