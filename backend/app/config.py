@@ -120,7 +120,9 @@ class Settings(BaseSettings):
     flag_wellfound_adapter: bool = False
     flag_workday_adapter: bool = False
     flag_ziprecruiter_adapter: bool = False
+    flag_hired_adapter: bool = False
     wellfound_api_token: str = ""
+    hired_api_token: str = ""
     flag_imap_transport: bool = False
     flag_bulk_auto_apply: bool = False
     flag_ltr_logging: bool = True

@@ -32,3 +32,32 @@ def test_ziprecruiter_cursor_pages_and_retry_after(monkeypatch):
     monkeypatch.setenv("FLAG_ZIPRECRUITER_ADAPTER", "false")
     get_settings.cache_clear()
     assert ziprecruiter_jobs(payload) == []
+
+
+def test_hired_adapter_auth_and_captcha_fallback(monkeypatch):
+    from app.job_sources.hired import auth_gate, clear_token, hired_jobs, remember_token
+
+    payload = json.loads((FIXTURES / "job_boards" / "hired.json").read_text())
+    clear_token()
+    monkeypatch.setenv("FLAG_HIRED_ADAPTER", "true")
+    monkeypatch.setenv("FLAG_SITE_POLICY_CONSENT", "true")
+    monkeypatch.delenv("HIRED_API_TOKEN", raising=False)
+    get_settings.cache_clear()
+    from app.job_sources import boards as boards_mod
+
+    monkeypatch.setattr(boards_mod, "can_fetch", lambda target, parser=None, respect=None: True)
+    blocked = auth_gate("<div class='g-recaptcha'></div>")
+    assert blocked.captcha is True
+    assert blocked.action == "needs_manual"
+    assert blocked.bypass is False
+    assert hired_jobs(payload, html="<div class='hcaptcha'></div>") == []
+    assert hired_jobs(payload) == []
+    remember_token("hired-dev-token")
+    rows = hired_jobs(payload, listing_url="https://fixtures.ajas.local/hired")
+    assert rows and rows[0]["source_posting_id"] == "hi-1"
+    clear_token()
+    monkeypatch.setenv("FLAG_HIRED_ADAPTER", "false")
+    get_settings.cache_clear()
+    remember_token("hired-dev-token")
+    assert hired_jobs(payload) == []
+    clear_token()

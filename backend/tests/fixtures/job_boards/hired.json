@@ -1,0 +1,13 @@
+{
+  "jobs": [
+    {
+      "id": "hi-1",
+      "title": "Staff Backend Engineer",
+      "company": "Hired Labs",
+      "location": "Remote",
+      "employment_type": "Full-time",
+      "description": "Python, distributed systems.",
+      "apply_url": "https://fixtures.ajas.local/hired/hi-1"
+    }
+  ]
+}

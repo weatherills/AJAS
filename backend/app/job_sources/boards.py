@@ -22,6 +22,7 @@ SOURCE_FLAGS = {
     "wellfound": "wellfound_adapter",
     "workday": "workday_adapter",
     "ziprecruiter": "ziprecruiter_adapter",
+    "hired": "hired_adapter",
 }
 
 

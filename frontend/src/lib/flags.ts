@@ -9,6 +9,7 @@ export const FLAG_DEFAULTS: Record<string, boolean> = {
   wellfound_adapter: false,
   workday_adapter: false,
   ziprecruiter_adapter: false,
+  hired_adapter: false,
   imap_transport: false,
   bulk_auto_apply: false,
   ltr_logging: true,
