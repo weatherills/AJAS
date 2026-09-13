@@ -526,3 +526,13 @@ def test_metrics_dashboards_app_charts_page():
     page = charts([{"x": 1, "y": 2}])
     assert page["page"] == "metrics"
 
+# === S14-55 ===
+
+def test_alerts_tuning_adaptive_thresholds():
+    from app.sprint14.ops import adaptive_alert
+
+    quiet = adaptive_alert(error_rate=0.01)
+    hot = adaptive_alert(error_rate=0.4)
+    assert quiet["fire"] is False
+    assert hot["fire"] is True
+

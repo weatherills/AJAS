@@ -76,3 +76,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 052 Error taxonomy v3: codes→remediation hints
 - [x] 053 Observability: trace IDs across ingest→apply
 - [x] 054 Metrics dashboards: app charts page
+- [x] 055 Alerts tuning: adaptive thresholds
