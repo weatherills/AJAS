@@ -28,3 +28,23 @@ def review_payload(payload: Any) -> dict[str, Any]:
 def has_raw_pii(text: str | None) -> bool:
     sample = text or ""
     return "@" in sample or bool(_CC.search(sample))
+
+
+STRUCTURAL_KEYS = {"email", "phone", "ssn", "address", "resume_text", "authorization", "token"}
+
+
+def scrub_v2(payload: Any) -> Any:
+    """Regex redaction plus structural key wiping."""
+    if isinstance(payload, dict):
+        out: dict[str, Any] = {}
+        for key, value in payload.items():
+            if key.lower() in STRUCTURAL_KEYS:
+                out[key] = "[redacted]"
+            else:
+                out[key] = scrub_v2(value)
+        return out
+    if isinstance(payload, list):
+        return [scrub_v2(item) for item in payload]
+    if isinstance(payload, str):
+        return redact_text(payload)
+    return payload
