@@ -293,7 +293,7 @@ def test_health_dashboard_logs_and_alert_routing():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 43
+    assert COMPLETED == 44
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -362,3 +362,8 @@ def test_structured_log_search_filters():
     ops_mod.ingest_log("error", "timeout greenhouse", source="gh")
     hits = ops_mod.search_logs(level="error", q="greenhouse")
     assert len(hits) == 1
+
+def test_oncall_escalation_notifies_full_schedule():
+    ops_mod.set_oncall([{"name": "ada"}, {"name": "linus"}, {"name": "grace"}])
+    routed = ops_mod.route_alert("critical")
+    assert [row["name"] for row in routed["notified"]] == ["ada", "linus", "grace"]
