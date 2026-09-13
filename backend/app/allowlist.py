@@ -29,3 +29,23 @@ def host_allowed(url: str) -> bool:
     if host in allowed:
         return True
     return any(host.endswith("." + item) for item in allowed)
+
+
+_AUDIT: list[dict] = []
+
+
+def reset_audit() -> None:
+    _AUDIT.clear()
+
+
+def set_policy(raw: str, *, actor: str = "admin") -> dict:
+    hosts = parse_policy(raw)
+    from app.matching.keys import utc_now
+
+    event = {"actor": actor, "hosts": hosts, "at": utc_now(), "action": "allowlist.update"}
+    _AUDIT.append(event)
+    return {"hosts": hosts, "audit": event}
+
+
+def audit_log() -> list[dict]:
+    return list(_AUDIT)

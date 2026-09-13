@@ -29,7 +29,7 @@ import {
 } from '../lib/settings'
 import { loadApplyPrefs, saveApplyPrefs, type ApplyPrefs } from '../lib/applyPrefs'
 import { emailProviderHealth } from '../lib/emailHealth'
-import { formatAllowlist, parseAllowlist } from '../lib/allowlist'
+import { formatAllowlist, parseAllowlist, recordAllowlistAudit } from '../lib/allowlist'
 import { currentLocale, setLocale, t, type Locale } from '../lib/i18n'
 import { flagRows, mergeFlags } from '../lib/flags'
 import { evaluateLimit, remainingInWindow, windowLabel, type SiteLimit } from '../lib/automationLimits'
@@ -147,6 +147,7 @@ export function SettingsPage() {
     { site: 'lever', cap: 20, consent: false, used: 0, windowMinutes: 1440 },
   ])
   const [allowlistText, setAllowlistText] = useState('boards.greenhouse.io, jobs.lever.co, graph.microsoft.com')
+  const [allowlistAudit, setAllowlistAudit] = useState(() => [recordAllowlistAudit('admin', 'boards.greenhouse.io, jobs.lever.co, graph.microsoft.com')])
   const [doc, setDoc] = useState<SettingsDoc | null>(null)
   const [percent, setPercent] = useState(70)
   const [savedPercent, setSavedPercent] = useState(70)
@@ -709,12 +710,23 @@ export function SettingsPage() {
           Allowed hosts
           <textarea
             value={allowlistText}
-            onChange={(event) => setAllowlistText(event.target.value)}
+            onChange={(event) => {
+              const next = event.target.value
+              setAllowlistText(next)
+              setAllowlistAudit((prev) => [recordAllowlistAudit(userId, next), ...prev].slice(0, 8))
+            }}
             aria-label="Outbound domain allowlist"
             rows={3}
           />
         </label>
         <p className="muted">Normalized: {formatAllowlist(parseAllowlist(allowlistText))}</p>
+        <ul className="audit-list" aria-label="Allowlist audit">
+          {allowlistAudit.slice(0, 3).map((row, index) => (
+            <li key={`${row.actor}-${index}`}>
+              {row.actor} {row.action} ({row.hosts.join(', ') || 'empty'})
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="editor-section" aria-labelledby="flags-heading">
