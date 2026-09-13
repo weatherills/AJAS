@@ -109,6 +109,7 @@ function ApplyPrefsFields() {
 }
 
 export function SettingsPage() {
+  const [userId, setUser] = useState(getUserId())
   const [allowlistText, setAllowlistText] = useState('boards.greenhouse.io, jobs.lever.co, graph.microsoft.com')
   const [doc, setDoc] = useState<SettingsDoc | null>(null)
   const [percent, setPercent] = useState(70)

@@ -28,3 +28,12 @@ Covered: embedding reindex sweeper, vector vacuum, recency boost, fairness dedup
 - Lint: fixed Ops.tsx notification section markup; remaining warnings pre-existed
 
 Covered: JD version diff, bulk-dismiss undo snackbar, apply field maps, cover-letter tones, tagged resume profiles, IMAP label mapping, sender warm-up, reply template placeholders, 24/72h SLA, notification digest.
+
+## Batch 4 (tasks 31–40)
+
+- Backend: 518 passed
+- Frontend: 108 passed
+- Typecheck: clean
+- Lint: restored Settings `userId` state dropped during allowlist UI; remaining warnings pre-existed
+
+Covered: audit CSV UI, error taxonomy v2, pipeline traces, metrics charts, adaptive alerts, GDPR export/purge, outbound allowlist policy UI, secrets hot-reload, per-tenant rate limits.
