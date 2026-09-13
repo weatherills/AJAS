@@ -107,3 +107,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 075 Performance: cache hot queries with TTL
 - [x] 076 Performance: batch DB writes (ingestion/logs)
 - [x] 077 Accessibility: WCAG audit fixes (list/detail/filter)
+- [x] 078 I18N: prepare strings + base locale (en)

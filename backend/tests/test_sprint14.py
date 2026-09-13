@@ -736,3 +736,11 @@ def test_accessibility_wcag_audit_fixes():
     assert a11y_label("list")["aria-label"] == "Job results"
     assert a11y_label("filter")["aria-label"] == "Job filters"
 
+# === S14-78 ===
+
+def test_i18n_prepare_strings_base_locale_en():
+    from app.sprint14.product import base_locale
+
+    assert base_locale()["locale"] == "en"
+    assert base_locale()["jobs"] == "Jobs"
+
