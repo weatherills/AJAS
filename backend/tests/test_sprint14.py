@@ -480,3 +480,14 @@ def test_follow_ups_auto_reminders_at_24_72h():
     assert row["send24"] is True
     assert "T" in row["h24"] and "T" in row["h72"]
 
+# === S14-50 ===
+
+def test_notification_center_in_app_toasts_digest_email():
+    from app.sprint14.product import digest_email, notify, reset
+
+    reset()
+    notify(user_id="ada", text="match")
+    digest = digest_email("ada")
+    assert digest["count"] == 1
+    assert digest["channel"] == "email"
+

@@ -67,3 +67,8 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 047 Email: sender reputation guard (daily cap + warmup)
 - [x] 048 Replies: variable placeholders + preview v2
 - [x] 049 Follow-ups: auto-reminders at 24/72h
+- [x] 050 Notification center: in-app toasts + digest email
+
+## Batch 5 gate
+- tests/lint/typecheck green after task 50
+
