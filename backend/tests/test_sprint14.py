@@ -243,3 +243,12 @@ def test_jd_cleaner_v3_section_heuristics_bullets():
     assert row["schema"] == "ajas.jd.v3"
     assert row["bullets"]
 
+# === S14-24 ===
+
+def test_salary_parsing_v3_multi_currency_bands():
+    from app.sprint14.parse import salary_bands
+
+    row = salary_bands("$120k-$150k plus equity of $50k")
+    assert row["min"]
+    assert row["schema"] == "ajas.salary.v3"
+
