@@ -206,3 +206,12 @@ def test_normalization_title_cleaning_rules_v3():
 
     assert "Software Engineer" in title_v3("Senior SWE")["normalized"]
 
+# === S14-20 ===
+
+def test_normalization_currency_normalization_tcc_note():
+    from app.sprint14.parse import currency_tcc
+
+    row = currency_tcc("$140,000-$165,000 total compensation")
+    assert row["tcc"] is True
+    assert row["usdMin"] > 0
+

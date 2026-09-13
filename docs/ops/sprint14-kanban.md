@@ -25,3 +25,8 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 017 Normalization: benefits parsing (visa, relocation, equity)
 - [x] 018 Normalization: skills canonicalization v3
 - [x] 019 Normalization: title cleaning rules v3
+- [x] 020 Normalization: currency normalization + TCC note
+
+## Batch 2 gate
+- tests/lint/typecheck green after task 20
+
