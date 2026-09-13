@@ -881,3 +881,128 @@ def test_feedback_thumbs_up_down_store():
     record(user_id="ada", match_id="m1", thumb="down")
     assert summary()["up"] == 1
     assert summary()["down"] == 1
+
+
+def test_apply_screenshots_capture_submit_steps():
+    from app.auto_apply.screenshots import capture_step, for_request, reset
+
+    reset()
+    capture_step("req-1", "open-form")
+    capture_step("req-1", "submit")
+    assert [step["name"] for step in for_request("req-1")] == ["open-form", "submit"]
+
+
+def test_gmail_oauth_hardening_refresh_and_scopes():
+    from app.mail.oauth_hardening import classify_oauth_error, required_scopes
+
+    assert "Mail.Send" in required_scopes()
+    assert classify_oauth_error(401, "invalid_grant")["code"] == "refresh_required"
+    assert classify_oauth_error(403, "insufficient scopes")["retry"] is False
+    assert classify_oauth_error(503)["retry"] is True
+
+
+def test_outlook_graph_transport_not_imap():
+    from app.mail.outlook import outlook_status
+
+    status = outlook_status()
+    assert status["provider"] == "microsoft-graph"
+    assert status["imap"] is False
+    assert status["smtp"] is False
+    assert status["graph"] is True
+
+
+def test_pii_redaction_review_payloads():
+    from app.privacy_review import has_raw_pii, review_payload
+
+    cleaned = review_payload({"email": "ada@contoso.com", "card": "4111 1111 1111 1111"})
+    assert "ada@contoso.com" not in str(cleaned)
+    assert "[redacted" in str(cleaned)
+    assert has_raw_pii("ada@contoso.com") is True
+
+
+def test_rbac_owner_admin_user_gates():
+    from app.auth import Principal
+    from app.rbac import ROLE_OWNER, permissions_payload, role_for_principal
+
+    owner = Principal(user_id="local-owner", scopes=frozenset({"owner"}))
+    admin = Principal(user_id="local-admin", scopes=frozenset({"admin"}))
+    user = Principal(user_id="ada", scopes=frozenset())
+    assert role_for_principal(owner) == ROLE_OWNER
+    assert permissions_payload(owner)["permissions"]["purge"] is True
+    assert permissions_payload(admin)["permissions"]["ops"] is True
+    assert permissions_payload(user)["permissions"]["ops"] is False
+
+
+def test_retention_executor_scheduled_purge():
+    from app.retention_exec import run_scheduled
+
+    result = run_scheduled(jobs=[], emails=[])
+    assert result["scheduled"] is True
+    assert "plan" in result
+
+
+def test_slo_ingest_match_apply_error_budgets():
+    from app.slo_pipelines import record, reset, snapshot
+
+    reset()
+    record("ingest", ok=True)
+    record("match", ok=True)
+    record("apply", ok=False)
+    rows = {item["pipeline"]: item for item in snapshot()}
+    assert rows["ingest"]["healthy"] is True
+    assert rows["apply"]["err"] == 1
+
+
+def test_settings_automation_limits_consent_and_caps():
+    from app.auto_apply.limits import allow, reset, set_consent
+
+    reset()
+    assert allow("greenhouse")["reason"] == "consent"
+    set_consent("greenhouse", True)
+    assert allow("greenhouse", cap=1)["allowed"] is True
+    assert allow("greenhouse", cap=1)["reason"] == "cap"
+
+
+def test_slack_alert_hooks_slo_payload():
+    from app.slack_alerts import should_notify, slack_payload
+
+    alert = {"route": "ingest", "p95Ms": 9000, "budgetMs": 8000, "ok": False}
+    payload = slack_payload(alert)
+    assert "SLO breach" in payload["text"]
+    assert should_notify(alert) is True
+
+
+def test_source_quotas_dashboard_counters():
+    from app.source_quotas import dashboard, record, reset
+
+    reset()
+    record("workday", fetched=2, capped=1)
+    rows = {item["source"]: item for item in dashboard()}
+    assert rows["workday"]["fetched"] == 2
+    assert rows["workday"]["capHit"] is True
+
+
+def test_db_indices_hot_paths_matches_logs():
+    from app.db_indices import index_policy
+
+    paths = {item["path"] for item in index_policy()["includedPaths"]}
+    assert "/userId" in paths
+    assert "/traceId" in paths
+
+
+def test_model_usage_budgets_cost_guardrails():
+    from app.model_budget import consume, reset
+
+    reset()
+    ok = consume("ada", 100)
+    blocked = consume("ada", 80_000)
+    assert ok["allowed"] is True
+    assert blocked["allowed"] is False
+
+
+def test_email_threading_v2_reliable_ids():
+    from app.mail.threading_v2 import thread_id
+
+    assert thread_id(conversation_id="AAMk") == "graph:AAMk"
+    assert thread_id(in_reply_to="<abc@mail>") == "rfc:abc@mail"
+    assert thread_id(message_id="<own@mail>") == "rfc:own@mail"
