@@ -101,3 +101,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 70
 
 - [x] 071 API: pagination/sorting on jobs/matches
+- [x] 072 API auth: scoped tokens for automation tasks

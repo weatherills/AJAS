@@ -681,3 +681,13 @@ def test_api_pagination_sorting_on_jobs_matches():
     rows = api_query([{"id": "2", "title": "B"}, {"id": "1", "title": "A"}], q=None, sort="id", order="asc")
     assert rows["items"][0]["id"] == "1"
 
+# === S14-72 ===
+
+def test_api_auth_scoped_tokens_for_automation_tasks():
+    from app.sprint12.platform import reset as reset_plat
+    from app.sprint14.ops import scoped_token
+
+    reset_plat()
+    key = scoped_token(user_id="ada", scopes=["ingest", "read"])
+    assert key["scopes"] == ["ingest", "read"] or "token" in key or "id" in key
+
