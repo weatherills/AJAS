@@ -366,3 +366,16 @@ def test_notification_center_toasts_and_digest():
     digest = digest_email()
     assert digest["count"] == 1
     assert "Staff Engineer" in digest["text"]
+
+
+def test_audit_trail_filter_and_csv_export():
+    from app.audit import record_action
+    from app.audit_query import export_csv, filter_actions
+
+    record_action(actor="ada", action="ingest", target="job-1")
+    record_action(actor="linus", action="apply", target="job-2")
+    rows = filter_actions(actor="ada", action="ingest")
+    assert rows and rows[-1]["actor"] == "ada"
+    csv_text = export_csv(rows)
+    assert "actor" in csv_text.splitlines()[0]
+    assert "ingest" in csv_text

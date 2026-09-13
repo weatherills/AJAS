@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AppNav } from '../components/AppNav'
+import { auditCsv, filterAudit, type AuditRow } from '../lib/audit'
 import { digestCopy, notificationInbox, pushNotification, type AppNotification } from '../lib/notifications'
 import { json, request, setUserId } from '../api/live'
 
@@ -16,6 +17,12 @@ export function OpsPage() {
   const [traceError, setTraceError] = useState<string | null>(null)
   const [notes, setNotes] = useState<AppNotification[]>(() => notificationInbox())
   const [digest, setDigest] = useState(() => digestCopy())
+  const [auditActor, setAuditActor] = useState('')
+  const [auditAction, setAuditAction] = useState('')
+  const [auditRows] = useState<AuditRow[]>([
+    { at: '2026-09-13T10:00:00Z', actor: 'ada', action: 'ingest', target: 'job-1' },
+    { at: '2026-09-13T12:00:00Z', actor: 'linus', action: 'apply', target: 'job-2' },
+  ])
 
   useEffect(() => {
     void (async () => {
@@ -84,6 +91,40 @@ export function OpsPage() {
           {notes.slice(0, 8).map((item) => (
             <li key={item.id}>
               {item.title} — {item.body}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section className="editor-section">
+        <h2>Audit trail</h2>
+        <label>
+          Actor
+          <input value={auditActor} onChange={(event) => setAuditActor(event.target.value)} aria-label="Filter audit by actor" />
+        </label>
+        <label>
+          Action
+          <input value={auditAction} onChange={(event) => setAuditAction(event.target.value)} aria-label="Filter audit by action" />
+        </label>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            const csv = auditCsv(filterAudit(auditRows, { actor: auditActor, action: auditAction }))
+            const blob = new Blob([csv], { type: 'text/csv' })
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = 'ajas-audit.csv'
+            link.click()
+            URL.revokeObjectURL(url)
+          }}
+        >
+          Export CSV
+        </button>
+        <ul>
+          {filterAudit(auditRows, { actor: auditActor, action: auditAction }).map((row) => (
+            <li key={`${row.at}-${row.actor}-${row.action}`}>
+              {row.at} · {row.actor} · {row.action} · {row.target}
             </li>
           ))}
         </ul>
