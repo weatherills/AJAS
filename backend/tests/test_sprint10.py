@@ -762,3 +762,13 @@ def test_dpia_robots_policy_doc_exists():
     text = doc.read_text()
     assert "FLAG_RESPECT_ROBOTS" in text
     assert "fixture-only" in text.lower() or "Fixture-only" in text
+
+
+def test_certification_extractor_v2_patterns():
+    from app.resumes.certs import extract_certs
+
+    found = extract_certs("AWS Certified Solutions Architect and CKA. Also CISSP.")
+    families = {item["family"] for item in found}
+    assert "aws" in families
+    assert "kubernetes" in families
+    assert "security" in families
