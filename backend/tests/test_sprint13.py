@@ -261,3 +261,13 @@ def test_fit_score_calibration_v2_bucket_thresholds_ab_test():
     assert fit_bucket(85, variant="treatment") == "B"
     assert fit_bucket(91, variant="treatment") == "A"
 
+# === S13-23 ===
+
+def test_explanations_v2_evidence_grouping_by_skill_domain():
+    from app.sprint13.matching import group_evidence
+
+    groups = group_evidence(["Python on Azure", "fintech domain", "culture fit"])
+    assert groups["skill"]
+    assert groups["domain"]
+    assert groups["other"]
+
