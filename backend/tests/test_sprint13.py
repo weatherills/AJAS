@@ -43,3 +43,16 @@ def test_load_testing_ingest_and_match_throughput_targets():
     assert hit["ingestOk"] is True
     assert hit["matchOk"] is True
 
+# === S13-03 ===
+
+def test_canary_releases_feature_flag_rollout_process():
+    from app.sprint13.platform import canary, canary_assign, reset
+
+    reset()
+    cfg = canary(flag="fit-v2", percent=10)
+    assert cfg["status"] == "rolling"
+    canary(flag="fit-v2", percent=100)
+    assert canary_assign("fit-v2", "anyone") == "treatment"
+    canary(flag="fit-v2", percent=0)
+    assert canary_assign("fit-v2", "anyone") == "control"
+
