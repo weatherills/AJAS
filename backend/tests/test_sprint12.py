@@ -278,7 +278,7 @@ def test_match_cache_and_embedding_backpressure():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 39
+    assert COMPLETED == 40
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -336,3 +336,8 @@ def test_queue_circuit_opens_on_depth():
     assert closed["allow"] is True
     opened = ingest_mod.queue_circuit("match-compute", depth=10_000)
     assert opened["allow"] is False
+
+def test_embedding_backpressure_drops_overflow():
+    queued = perf_mod.enqueue_embeddings([{"id": i} for i in range(4)], max_depth=2)
+    assert queued["backpressure"] is True
+    assert queued["dropped"] == 2

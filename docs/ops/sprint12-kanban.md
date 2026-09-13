@@ -50,3 +50,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 037 Proxy pool support for scraping with failover
 - [x] 038 Resilience: circuit breaker around vector DB and queues
 - [x] 039 Caching: result cache for hot match queries (TTL + invalidation)
+- [x] 040 Performance: async batch embedding writes with backpressure
