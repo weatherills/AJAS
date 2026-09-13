@@ -160,7 +160,7 @@ def test_ab_framework_and_explanation_styles():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 18
+    assert COMPLETED == 19
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -193,3 +193,8 @@ def test_thumbs_down_cancels_semantic_boost():
     ranking_mod.record_feedback(user_id="ada", job_id="j1", vote="down")
     weights = ranking_mod.weights_for("ada")
     assert abs(weights["semantic"] - 0.6) < 1e-6
+
+def test_explanation_style_narrative_variant():
+    ranking_mod.upsert_experiment("explain.style", ["bullet", "narrative"])
+            text = ranking_mod.format_explanation("narrative", ["Python", "Azure", "Cosmos"])
+    assert "Python" in text and "and Cosmos" in text
