@@ -391,3 +391,15 @@ def test_error_taxonomy_v2_http_and_remediation():
     aliased = error_taxonomy("BAD_INPUT")
     assert aliased["canonical"] == "INVALID_INPUT"
     assert aliased["status"] == 400
+
+
+def test_pipeline_trace_ids_span_ingest_match_apply():
+    from app.pipeline_trace import complete_stage, pipeline_trace_id, trace_stage
+
+    trace_id = pipeline_trace_id()
+    ingest = trace_stage("ingest", trace_id=trace_id, source="greenhouse")
+    match = trace_stage("match", trace_id=trace_id, job_id="job-1")
+    apply = trace_stage("apply", trace_id=trace_id, job_id="job-1")
+    done = [complete_stage(ingest), complete_stage(match), complete_stage(apply)]
+    assert {row["traceId"] for row in done} == {trace_id}
+    assert [row["name"] for row in done] == ["pipeline.ingest", "pipeline.match", "pipeline.apply"]
