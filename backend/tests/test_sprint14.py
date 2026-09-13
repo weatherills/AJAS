@@ -87,3 +87,15 @@ def test_workable_adapter_v1():
     out = workable_v1({"results": [{"id": "w1", "title": "Workable"}]})
     assert out["jobs"][0]["via"] == "json"
 
+# === S14-08 ===
+
+def test_greenhouse_company_board_crawler():
+    from app.sprint14.ingest import greenhouse_board, reset
+
+    reset()
+    html = (FIXTURES / "greenhouse_career.html").read_text()
+    out = greenhouse_board(html)
+    assert out["crawler"] == "fixture"
+    assert out["live"] is False
+    assert any("Staff" in str(job.get("title")) for job in out["jobs"])
+
