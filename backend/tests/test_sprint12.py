@@ -69,4 +69,15 @@ def test_billing_usage_counters_and_plans():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 5
+    assert COMPLETED == 6
+
+def test_plan_tiers_feature_gates():
+    tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
+    billing_mod.assign_plan(tenant.id, "free")
+    assert billing_mod.feature_allowed(tenant.id, "share_links") is False
+    billing_mod.assign_plan(tenant.id, "pro")
+    assert billing_mod.feature_allowed(tenant.id, "share_links") is True
+    assert billing_mod.feature_allowed(tenant.id, "recruiter_portal") is False
+    billing_mod.assign_plan(tenant.id, "team")
+    assert billing_mod.feature_allowed(tenant.id, "recruiter_portal") is True
+    assert billing_mod.feature_allowed(tenant.id, "sso") is True
