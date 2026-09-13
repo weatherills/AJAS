@@ -46,3 +46,12 @@ Covered: audit CSV UI, error taxonomy v2, pipeline traces, metrics charts, adapt
 - Lint: existing warnings only
 
 Covered: idempotency window/conflicts, stuck-queue requeue, DLQ redaction UI, job backfill, adapter dry-run CLI, ingestion→rank→explain E2E, email parser templates, salary/geo/negation edges, HTML adapter snapshots, junior/mid/senior/remote seeds.
+
+## Batch 6 (tasks 51–60)
+
+- Backend: 534 passed
+- Frontend: 112 passed
+- Typecheck: clean
+- Lint: existing warnings only (no new errors)
+
+Covered: jobs/matches pagination+sort helper, scoped automation tokens, webhook HMAC, health v2 dependency matrix, query TTL cache, batch DB writes, WCAG skip-link/filter expanded, English i18n + locale switch, phone layout for core views, Sprint 10 ops/troubleshooting guide.
