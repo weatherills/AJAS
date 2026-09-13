@@ -167,3 +167,19 @@ def adapter_charts() -> list[dict[str, object]]:
         if source:
             charts.append({**histogram(source), "kind": "latency"})
     return charts
+
+def rate_policy_ui() -> dict[str, object]:
+    from app.source_quotas import dashboard
+    return {"quotas": list(dashboard()), "toggles": True}
+
+def feature_flags_ui() -> dict[str, bool]:
+    from app.flags import feature_flags
+    return feature_flags()
+
+def slo_widgets() -> dict[str, dict[str, float]]:
+    return {
+        "ingest": {"slo": 0.99, "windowHours": 24},
+        "match": {"slo": 0.995, "windowHours": 24},
+        "apply": {"slo": 0.99, "windowHours": 24},
+    }
+
