@@ -847,3 +847,37 @@ def test_cross_encoder_rerank_stage():
     )
     assert ranked[0]["id"] == "b"
     assert ranked[0]["rerank"] > ranked[1]["rerank"]
+
+
+def test_ab_framework_ranking_buckets_and_metrics():
+    from app.matching.ab import assign_variant, record, reset_metrics, snapshot
+
+    reset_metrics()
+    bucket = assign_variant("ada")
+    assert bucket in {"kw30", "balanced"}
+    assert assign_variant("ada") == bucket
+    record(bucket, approved=True)
+    record(bucket, approved=False)
+    stats = snapshot()[bucket]
+    assert stats["shown"] == 2
+    assert stats["approved"] == 1
+
+
+def test_active_learning_hooks_queue_uncertain_scores():
+    from app.matching.active_learning import drain, enqueue, snapshot, uncertain
+
+    assert uncertain(60) is True
+    assert uncertain(90) is False
+    enqueue({"matchId": "m1"}, score=58)
+    assert snapshot()["queued"] == 1
+    assert drain()[0]["matchId"] == "m1"
+
+
+def test_feedback_thumbs_up_down_store():
+    from app.matching.feedback import record, reset, summary
+
+    reset()
+    record(user_id="ada", match_id="m1", thumb="up")
+    record(user_id="ada", match_id="m1", thumb="down")
+    assert summary()["up"] == 1
+    assert summary()["down"] == 1

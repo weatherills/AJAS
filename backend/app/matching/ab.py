@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import os
+from collections import defaultdict
 
 VARIANTS: dict[str, tuple[float, float]] = {
     "kw30": (0.3, 0.7),
     "balanced": (0.5, 0.5),
 }
+
+_METRICS: dict[str, dict[str, int]] = defaultdict(lambda: {"shown": 0, "approved": 0})
 
 
 def ab_enabled() -> bool:
@@ -34,3 +37,27 @@ def weights_for(user_id: str, keyword_weight: float, semantic_weight: float) -> 
     name = assign_variant(user_id)
     keyword, semantic = VARIANTS[name]
     return keyword, semantic, name
+
+
+def record(bucket: str, *, approved: bool = False) -> dict[str, int]:
+    row = _METRICS[bucket]
+    row["shown"] += 1
+    if approved:
+        row["approved"] += 1
+    return dict(row)
+
+
+def snapshot() -> dict[str, dict[str, float | int]]:
+    out: dict[str, dict[str, float | int]] = {}
+    for bucket, row in _METRICS.items():
+        shown = row["shown"]
+        out[bucket] = {
+            "shown": shown,
+            "approved": row["approved"],
+            "precision": round(row["approved"] / shown, 3) if shown else 0.0,
+        }
+    return out
+
+
+def reset_metrics() -> None:
+    _METRICS.clear()
