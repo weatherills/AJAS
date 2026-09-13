@@ -78,3 +78,12 @@ def test_weworkremotely_adapter_v1():
     assert out["flag"] is False
     assert out["live"] is False
 
+# === S14-07 ===
+
+def test_workable_adapter_v1():
+    from app.sprint14.ingest import reset, workable_v1
+
+    reset()
+    out = workable_v1({"results": [{"id": "w1", "title": "Workable"}]})
+    assert out["jobs"][0]["via"] == "json"
+
