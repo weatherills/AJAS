@@ -287,3 +287,15 @@ def test_apply_field_mapping_overrides():
     assert apply_mapping("lever", profile)["name"] == "Ada Lovelace"
     set_override("lever", {"full_name": "candidate_name"})
     assert apply_mapping("lever", profile)["candidate_name"] == "Ada Lovelace"
+
+
+def test_cover_letter_tone_presets():
+    from app.auto_apply.cover_tone import render_cover
+
+    concise = render_cover(role="Staff Engineer", company="Acme", name="Ada", tone="concise")
+    enthusiastic = render_cover(role="Staff Engineer", company="Acme", name="Ada", tone="enthusiastic")
+    formal = render_cover(role="Staff Engineer", company="Acme", name="Ada", tone="formal")
+    assert "Staff Engineer" in concise["text"]
+    assert "excited" in enthusiastic["text"].lower()
+    assert "consideration" in formal["text"].lower()
+    assert concise["label"] == "Concise"

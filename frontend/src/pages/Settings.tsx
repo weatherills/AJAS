@@ -75,6 +75,22 @@ function ApplyPrefsFields() {
         </select>
       </label>
       <label>
+        Cover letter tone
+        <select
+          value={prefs.coverTone}
+          onChange={(event) => {
+            const next = { ...prefs, coverTone: event.target.value as ApplyPrefs['coverTone'] }
+            setPrefs(next)
+            saveApplyPrefs(next)
+          }}
+          aria-label="Cover letter tone"
+        >
+          <option value="concise">Concise</option>
+          <option value="enthusiastic">Enthusiastic</option>
+          <option value="formal">Formal</option>
+        </select>
+      </label>
+      <label>
         Profile location
         <input
           value={prefs.location}
