@@ -165,6 +165,34 @@ def get_crawl_run(req: func.HttpRequest) -> func.HttpResponse:
         return _handle(exc)
 
 
+@bp.route(route="v1/jobs/{id}/revisions", methods=["GET", "POST"])
+def job_revisions(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        _auth(req)
+        from app.job_sources.revisions import listing, record
+
+        job_id = req.route_params["id"]
+        if req.method.upper() == "POST":
+            body = _json_body(req)
+            return json_response(record(job_id, str(body.get("description") or "")))
+        return json_response({"items": listing(job_id)})
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/jobs/{id}/diff", methods=["GET"])
+def job_revision_diff(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        _auth(req)
+        from app.job_sources.revisions import diff_revisions
+
+        left = int(req.params.get("from") or 1)
+        right = int(req.params.get("to") or 2)
+        return json_response(diff_revisions(req.route_params["id"], left, right))
+    except Exception as exc:
+        return _handle(exc)
+
+
 @bp.timer_trigger(schedule="0 */5 * * * *", arg_name="timer", run_on_startup=False)
 def crawl_scheduler(timer: func.TimerRequest) -> None:
     get_service().schedule_due()
