@@ -13,6 +13,21 @@
   border-bottom: 1px solid rgba(148, 163, 184, 0.35);
 }
 
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: -3rem;
+  z-index: 20;
+  padding: 0.4rem 0.75rem;
+  background: #0f172a;
+  color: #f8fafc;
+  border-radius: 0.4rem;
+}
+
+.skip-link:focus {
+  top: 0.75rem;
+}
+
 .app-nav a {
   color: inherit;
   opacity: 0.72;

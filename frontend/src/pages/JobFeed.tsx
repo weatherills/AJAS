@@ -15,7 +15,7 @@ import { jobHaystack, matchedTerms, resumeHaystack, storedMatchesForJobs } from 
 import { jobHref, useHashSearch } from '../lib/routes'
 import { bulkDismiss, dismissSnackbar } from '../lib/dismiss'
 import { unifiedDiff } from '../lib/jdDiff'
-import { preselectReady } from '../lib/status'
+import { expandedAttr } from '../lib/a11y'
 import {
   ALL_SOURCES,
   alsoFromLabel,
@@ -617,7 +617,12 @@ export function JobFeedPage() {
           <p className="tagline">Public Greenhouse and Lever postings, merged when they are the same role.</p>
         </div>
         <div className="feed-header-actions">
-          <button type="button" className="secondary feed-filters-toggle" onClick={() => setFiltersOpen(true)}>
+          <button
+            type="button"
+            className="secondary feed-filters-toggle"
+            onClick={() => setFiltersOpen(true)}
+            {...expandedAttr(filtersOpen)}
+          >
             Filters
           </button>
           <button
@@ -721,7 +726,7 @@ export function JobFeedPage() {
       </div>
 
       <div className="feed-layout">
-        <aside className={`feed-filters ${filtersOpen ? 'is-open' : ''}`} aria-label="Filters">
+        <aside id="ajas-filters" className={`feed-filters ${filtersOpen ? 'is-open' : ''}`} aria-label="Filters">
           <div className="feed-filters-head">
             <h2>Filters</h2>
             <button type="button" className="secondary feed-filters-toggle" onClick={() => setFiltersOpen(false)}>
@@ -890,6 +895,7 @@ export function JobFeedPage() {
         </aside>
 
         <div
+          id="ajas-main"
           className="feed-main"
           ref={listRef}
           onScroll={(event) => {
