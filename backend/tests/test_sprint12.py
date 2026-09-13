@@ -334,7 +334,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 60
+    assert COMPLETED == 61
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -436,3 +436,8 @@ def test_saved_search_pin_and_share_token():
     search = product_mod.save_search(user_id="ada", name="Remote Python", filters=[{"field": "title", "op": "contains", "value": "Python"}], pin=True, share=True)
     assert search["pinned"] is True
     assert search["shareToken"]
+
+def test_filter_operators_contains_starts_regex():
+    jobs = [{"title": "Staff Python"}, {"title": "Junior PM"}]
+    assert product_mod.apply_filters(jobs, [{"field": "title", "op": "starts-with", "value": "Staff"}])[0]["title"] == "Staff Python"
+    assert product_mod.apply_filters(jobs, [{"field": "title", "op": "contains", "value": "pm"}])[0]["title"] == "Junior PM"

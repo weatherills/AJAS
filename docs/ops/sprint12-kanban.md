@@ -80,3 +80,4 @@ Landed on `main` as `[S12]` commits.
 
 ## Batch 6 gate
 - tests/lint/typecheck green after task 60
+- [x] 061 Advanced filters: regex/contains/starts-with operators
