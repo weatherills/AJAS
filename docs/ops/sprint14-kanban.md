@@ -131,3 +131,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - [x] 091 Maintenance: remove dead flags + code paths
 - [x] 092 Maintenance: consolidate duplicate utils
 - [x] 093 Maintenance: queue configuration cleanup v2
+- [x] 094 Errors: better remediation hints everywhere

@@ -870,3 +870,10 @@ def test_maintenance_queue_configuration_cleanup_v2():
     row = queue_cleanup()
     assert "ingest" in row["queues"]
 
+# === S14-94 ===
+
+def test_errors_better_remediation_hints_everywhere():
+    from app.sprint14.ops import playbook
+
+    assert playbook("NOT_FOUND")["remediation"]
+
