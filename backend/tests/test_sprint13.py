@@ -116,3 +116,16 @@ def test_seed_data_v3_diverse_resumes_and_roles():
     assert len(seed["resumes"]) == 4
     assert len(seed["jobs"]) == 6
 
+# === S13-09 ===
+
+def test_devex_hot_reload_stability_for_workers():
+    from app.sprint13.devex import hot_reload_policy, mark_reload, reset
+
+    reset()
+    policy = hot_reload_policy()
+    assert policy["stable"] is True
+    assert policy["debounceMs"] == 400
+    first = mark_reload("ingest")
+    second = mark_reload("ingest")
+    assert second["restarts"] == first["restarts"] + 1 or second["restarts"] >= 2
+

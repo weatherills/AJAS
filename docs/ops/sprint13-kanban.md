@@ -10,3 +10,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 006 E2E suite v3: retries and partial failure flows
 - [x] 007 Fixtures v3: updated HTML snapshots per source
 - [x] 008 Seed data v3: diverse resumes and roles
+- [x] 009 DevEx: hot reload stability for workers
