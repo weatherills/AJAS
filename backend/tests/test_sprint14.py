@@ -552,3 +552,11 @@ def test_privacy_right_to_be_forgotten_purge_job_ui():
 
     assert forget_user("ada")["purged"] is True
 
+# === S14-58 ===
+
+def test_security_outbound_domain_allowlist_ui_policy():
+    from app.sprint14.ops import allowlist
+
+    row = allowlist("prod", "boards.greenhouse.io")
+    assert row["gated"] is True
+
