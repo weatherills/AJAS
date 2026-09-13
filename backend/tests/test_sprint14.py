@@ -638,3 +638,11 @@ def test_e2e_ingestion_ranking_explain_regressions():
     assert path["ok"] is True
     assert path["explain"] is True
 
+# === S14-67 ===
+
+def test_e2e_email_parser_templates_coverage():
+    from app.sprint14.ops import e2e_email_templates
+
+    row = e2e_email_templates()
+    assert "interview" in row["templates"]
+
