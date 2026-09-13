@@ -744,3 +744,11 @@ def test_i18n_prepare_strings_base_locale_en():
     assert base_locale()["locale"] == "en"
     assert base_locale()["jobs"] == "Jobs"
 
+# === S14-79 ===
+
+def test_mobile_ux_responsive_layout_polish():
+    from app.sprint14.product import mobile_layout
+
+    assert mobile_layout(390) == "phone"
+    assert mobile_layout(1024) == "desktop"
+
