@@ -212,10 +212,15 @@ def test_oauth_imap_smtp_mailbox():
     assert row["protocol"] == "oauth2"
     assert row["status"] == "connected"
 
+def test_email_classification_v2_labels():
+    assert mail_mod.classify_message("Interview on Zoom")["label"] == "interview"
+    assert mail_mod.classify_message("Offer and compensation package")["label"] == "offer"
+    assert mail_mod.classify_message("stay in touch talent community")["label"] == "nurture"
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 28
+    assert COMPLETED == 29
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
