@@ -420,7 +420,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 93
+    assert COMPLETED == 94
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -619,3 +619,8 @@ def test_consent_logs_export_for_compliance():
     security_mod.set_consent("ada", {"analytics": True, "marketing": False})
     rows = platform_mod.consent_export("ada") or security_mod.export_consent_log("ada")
     assert rows
+
+def test_legal_terms_privacy_versioning():
+    legal = platform_mod.legal_bundle()
+    assert legal["terms"]["version"]
+    assert legal["privacy"]["version"]
