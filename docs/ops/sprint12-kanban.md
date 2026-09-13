@@ -22,3 +22,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 015 Feedback loop: thumbs up/down on match quality per job
 - [x] 016 Feedback training: adjust weights from user feedback
 - [x] 017 Ranking v3: feature store and offline training harness
+- [x] 018 AB testing framework: config, randomization, metrics hook

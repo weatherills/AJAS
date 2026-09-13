@@ -147,10 +147,20 @@ def test_ranking_v3_feature_store_and_offline_harness():
     assert fitted["status"] == "fitted"
     assert "kw" in fitted["weights"]
 
+def test_ab_framework_and_explanation_styles():
+    ranking_mod.upsert_experiment("explain.style", ["bullet", "narrative"])
+    style = ranking_mod.explanation_style("ada")
+    assert style in {"bullet", "narrative"}
+    ranking_mod.track_metric("explain.style", style, 1.0)
+    bullets = ranking_mod.format_explanation("bullet", ["Python", "Azure"])
+    narrative = ranking_mod.format_explanation("narrative", ["Python", "Azure"])
+    assert bullets.startswith("• ")
+    assert "and Azure" in narrative
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 17
+    assert COMPLETED == 18
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
