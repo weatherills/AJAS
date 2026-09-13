@@ -458,3 +458,12 @@ def test_outbound_allowlist_policy_parser():
     hosts = parse_policy("Boards.greenhouse.io, jobs.lever.co")
     assert hosts == ["boards.greenhouse.io", "jobs.lever.co"]
     assert "greenhouse" in policy_text(hosts)
+
+
+def test_secrets_hot_reload_adapters():
+    from app.secrets_reload import current_version, reload_adapters
+
+    before = current_version()
+    result = reload_adapters()
+    assert result["version"] == before + 1
+    assert current_version() == result["version"]
