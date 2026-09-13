@@ -27,3 +27,12 @@ def get_item(key: str, *, now: float | None = None) -> Any | None:
         _CACHE.pop(key, None)
         return None
     return value
+
+
+def get_or_set(key: str, factory, *, ttl_sec: float = 30, now: float | None = None) -> Any:
+    hit = get_item(key, now=now)
+    if hit is not None:
+        return hit
+    value = factory()
+    set_item(key, value, ttl_sec=ttl_sec, now=now)
+    return value
