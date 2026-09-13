@@ -3,6 +3,7 @@ import { formatNumber, formatPercent } from './format'
 import { cycleTheme, resolveTheme } from './theme'
 import {
   labelledBy,
+  tableToCardLayout,
 } from './sprint12'
 
 
@@ -25,5 +26,7 @@ describe('theme toggle', () => {
 describe('sprint12 product helpers', () => {
   it('covers landed Sprint 12 UI helpers', () => {
     expect(labelledBy('help-h')['aria-labelledby']).toBe('help-h')
+    expect(tableToCardLayout(390)).toBe('cards')
+    expect(tableToCardLayout(900)).toBe('table')
   })
 })
