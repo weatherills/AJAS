@@ -369,7 +369,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 74
+    assert COMPLETED == 75
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
@@ -518,3 +518,10 @@ def test_scam_job_gift_card_flag():
 def test_tenant_blocklist_companies_and_keywords():
     safety_mod.set_blocklist("t1", companies=["evilcorp"], keywords=["crypto seed"])
     assert safety_mod.blocked("t1", {"company": "EvilCorp", "title": "Eng"}) is True
+
+def test_rate_policy_ui_wraps_source_quotas():
+    from app.source_quotas import record
+    record("greenhouse", fetched=3)
+    ui = ops_mod.rate_policy_ui()
+    assert ui["quotas"]
+    assert ui["toggles"] is True

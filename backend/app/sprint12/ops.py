@@ -167,3 +167,8 @@ def adapter_charts() -> list[dict[str, object]]:
         if source:
             charts.append({**histogram(source), "kind": "latency"})
     return charts
+
+def rate_policy_ui() -> dict[str, object]:
+    from app.source_quotas import dashboard
+    return {"quotas": list(dashboard()), "toggles": True}
+

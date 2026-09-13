@@ -97,3 +97,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 072 Company insights: size, funding, tech stack enrichment
 - [x] 073 Anti-spam: detect scam/spam job postings
 - [x] 074 Safety: blocklist companies/keywords per tenant
+- [x] 075 Rate policy UI: per-source quotas and toggles
