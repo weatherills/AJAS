@@ -157,3 +157,15 @@ def test_source_adapter_canary_html_snapshot_drift(tmp_path):
     batch = run_canaries(["greenhouse_career.html", "lever_career.html", "workday_career.html"])
     assert batch["ok"] is True
     assert batch["checked"] == 3
+
+
+def test_benefits_perks_schema_extraction():
+    from app.job_sources.benefits import CANONICAL, extract_benefits
+
+    parsed = extract_benefits(
+        "Medical insurance, dental, vision, 401k match, RSUs, unlimited PTO, parental leave, WFH stipend, learning budget."
+    )
+    assert parsed["schema"] == "ajas.benefits.v1"
+    assert parsed["canonical"] == list(CANONICAL)
+    for key in ("health_insurance", "dental", "vision", "401k", "equity", "pto", "parental_leave", "remote_stipend", "learning_budget"):
+        assert key in parsed["benefits"]
