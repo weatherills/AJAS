@@ -29,3 +29,5 @@ Final gate:
 - Batch 6: green after task 60
 
 - Batch 7: green after task 70
+
+- Batch 8: green after task 80
