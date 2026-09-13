@@ -398,6 +398,21 @@ def test_rate_limit_headers_cursor_pagination_empty_states():
     empty = platform_mod.empty_state("jobs")
     assert "Greenhouse" in empty["title"]
 
+def test_help_changelog_etl_funnel_analytics_legal():
+    assert platform_mod.search_docs("threshold")[0]["id"] == "threshold"
+    assert platform_mod.CHANGELOG[0]["version"] == "12.0.0"
+    export = platform_mod.warehouse_export([{"e": 1}])
+    assert export["format"] == "ndjson"
+    funnel = platform_mod.funnel(["visit", "visit", "upload", "match"])
+    assert funnel["visit"] == 2
+    allowed = platform_mod.track_event("match_viewed", user_id="ada", allow=True)
+    denied = platform_mod.track_event("match_viewed", user_id="ada", allow=False)
+    assert allowed and denied is None
+    legal = platform_mod.legal_bundle()
+    assert legal["terms"]["version"]
+    pentest = platform_mod.file_pentest(title="XSS in JD html", severity="medium")
+    assert pentest["status"] == "triage"
+
 def test_coverage_gate_documents_80_percent_target():
     assert ops_mod.ci_plan()["coverageGate"] == 0.4
     assert ops_mod.ci_plan()["backend"]["parallel"] == "pytest -n auto"
@@ -405,7 +420,7 @@ def test_coverage_gate_documents_80_percent_target():
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 86
+    assert COMPLETED == 87
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")

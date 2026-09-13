@@ -112,3 +112,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 084 Pagination standards: cursor-based pagination everywhere
 - [x] 085 Error pages/empty states polish across app
 - [x] 086 Onboarding tour and contextual help
+- [x] 087 Knowledge base: in-app docs and search

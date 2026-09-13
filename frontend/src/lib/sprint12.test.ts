@@ -10,6 +10,7 @@ import {
   applyQuery,
   emptyCopy,
   tourSteps,
+  searchHelp,
 } from './sprint12'
 
 
@@ -40,5 +41,6 @@ describe('sprint12 product helpers', () => {
     expect(applyQuery([{ title: 'Staff Python', company: 'Acme' }, { title: 'PM', company: 'Other' }], [{ field: 'title', op: 'regex', value: '^Staff' }])).toHaveLength(1)
     expect(emptyCopy('jobs')).toMatch(/Greenhouse/)
     expect(tourSteps()[0].href).toBe('#/resumes')
+    expect(searchHelp([{ id: 'threshold', title: 'Match threshold', body: 'slider' }], 'thresh')[0].id).toBe('threshold')
   })
 })
