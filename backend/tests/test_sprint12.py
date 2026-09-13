@@ -177,10 +177,16 @@ def test_pii_context_aware_redaction():
     log = security_mod.redact_pii(blob, context="log")
     assert "[email]" in log and "[phone]" in log and "[ssn]" in log
 
+def test_secret_rotation_scheduler_and_drift_alert():
+    first = security_mod.rotate_secret("webhook")
+    assert first["version"] == 1
+    assert security_mod.secret_drift("webhook", first["checksum"]) is False
+    assert security_mod.secret_drift("webhook", "deadbeef") is True
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 22
+    assert COMPLETED == 23
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")

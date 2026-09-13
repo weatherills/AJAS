@@ -30,3 +30,4 @@ Landed on `main` as `[S12]` commits.
 - tests/lint/typecheck green after task 20
 - [x] 021 Hardening: HTML sanitizer and unsafe content guardrails
 - [x] 022 PII scrubber v2: context-aware redaction in logs and payloads
+- [x] 023 Secret rotation scheduler and alerting
