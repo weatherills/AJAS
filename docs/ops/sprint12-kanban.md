@@ -32,3 +32,4 @@ Landed on `main` as `[S12]` commits.
 - [x] 022 PII scrubber v2: context-aware redaction in logs and payloads
 - [x] 023 Secret rotation scheduler and alerting
 - [x] 024 SSO: Google OAuth for teams (SAML/OIDC scaffold)
+- [x] 025 Session security: device/session management UI

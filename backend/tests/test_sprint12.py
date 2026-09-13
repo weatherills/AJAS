@@ -189,10 +189,16 @@ def test_google_sso_oidc_scaffold():
     done = security_mod.google_oauth_finish(state=start["state"], code="ok", email="ada@acme.test")
     assert done["provider"] == "google"
 
+def test_session_device_management():
+    session = security_mod.create_session(user_id="ada", device="Pixel", ip="1.1.1.1")
+    assert len(security_mod.list_sessions("ada")) == 1
+    assert security_mod.revoke_session(session["id"], user_id="ada") is True
+    assert security_mod.list_sessions("ada") == []
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 24
+    assert COMPLETED == 25
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
