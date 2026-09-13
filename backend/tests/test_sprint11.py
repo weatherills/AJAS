@@ -297,3 +297,9 @@ def test_explanations_skill_mismatch_counts():
     result = mismatch_counts("python azure", "python python rust")
     terms = [row["term"] for row in result["missing"]]
     assert "rust" in terms
+
+def test_resume_achievements_vs_responsibilities_classifier():
+    from app.resumes.achievements import classify_resume
+    result = classify_resume(["Increased conversion 12%", "Responsible for on-call"])
+    assert result["achievements"] == 1
+    assert result["responsibilities"] == 1
