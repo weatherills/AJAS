@@ -86,3 +86,4 @@ Landed on `main` as `[S13]` commits.
 ## Batch 6 gate
 - tests/lint/typecheck green after task 60
 
+- [x] 061 Docs: adapter authoring guide v2

@@ -687,3 +687,14 @@ def test_mobile_ux_v2_bottom_nav_and_gestures():
     hrefs = [item["href"] for item in bottom_nav()]
     assert hrefs == ["#/jobs", "#/review", "#/apply", "#/email", "#/settings"]
 
+# === S13-61 ===
+
+def test_docs_adapter_authoring_guide_v2():
+    from app.sprint13.platform import adapter_guide
+
+    text = adapter_guide()
+    assert "robots" in text.lower()
+    guide = Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint13-adapter-guide.md"
+    assert guide.is_file()
+    assert "Fixture-only" in guide.read_text()
+
