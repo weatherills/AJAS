@@ -33,3 +33,5 @@ Final gate:
 - Batch 8: green after task 80
 
 - Batch 9: green after task 90
+
+- Batch 10: green after task 100
