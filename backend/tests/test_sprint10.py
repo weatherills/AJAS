@@ -81,3 +81,14 @@ def test_circuit_breaker_opens_after_repeated_5xx():
     assert snapshot("glassdoor").open is True
     record_status("glassdoor", 200)
     assert allow("glassdoor") is True
+
+
+def test_company_domain_resolver_mx_then_whois():
+    from app.job_sources.domain import resolve_company_domain
+
+    hinted = resolve_company_domain("Acme Labs", hint="https://www.acme.io/jobs")
+    assert hinted == {"domain": "acme.io", "method": "hint", "company": "Acme Labs"}
+    mx = resolve_company_domain("Northwind", mx_lookup=lambda domain: domain, whois_lookup=lambda _: None)
+    assert mx["domain"] == "northwind.com" and mx["method"] == "mx"
+    whois = resolve_company_domain("Contoso", mx_lookup=lambda _: None, whois_lookup=lambda name: "contoso.net")
+    assert whois == {"domain": "contoso.net", "method": "whois", "company": "Contoso"}
