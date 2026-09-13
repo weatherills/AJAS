@@ -17,6 +17,17 @@ export type MatchView = {
   persisted: boolean
   matchId?: string
   error?: string | null
+  evidence?: string[]
+  highlights?: string[]
+  gaps?: string[]
+  bucket?: { key: string; label: string; min: number; score: number }
+  gate?: {
+    required: string[]
+    niceToHave: string[]
+    matchedRequired: string[]
+    missingRequired: string[]
+    coverage: number
+  }
 }
 
 export type MatchScoreQuery = {

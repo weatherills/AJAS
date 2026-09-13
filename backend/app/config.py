@@ -111,7 +111,17 @@ class Settings(BaseSettings):
     key_vault_uri: str = ""
     ingestion_alert_webhook: str = ""
     auth_session_cookies: bool = True
-    applicationinsights_connection_string: str = ""
+    job_retention_days: int = 120
+    outbound_allowlist: str = "boards.greenhouse.io,api.lever.co,graph.microsoft.com,login.microsoftonline.com"
+
+    flag_indeed_adapter: bool = False
+    flag_linkedin_adapter: bool = False
+    flag_imap_transport: bool = False
+    flag_bulk_auto_apply: bool = False
+    flag_ltr_logging: bool = True
+    flag_respect_robots: bool = True
+    flag_site_policy_consent: bool = False
+    flag_data_retention_purge: bool = True
 
 
 @lru_cache

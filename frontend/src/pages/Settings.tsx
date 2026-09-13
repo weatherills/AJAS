@@ -27,6 +27,7 @@ import {
   sourceIsConfigured,
   sourceUnconfiguredCopy,
 } from '../lib/settings'
+import { loadApplyPrefs, saveApplyPrefs, type ApplyPrefs } from '../lib/applyPrefs'
 import {
   addBoardToast,
   boardAddPayload,
@@ -49,6 +50,45 @@ function formatWhen(stamp: string | null) {
   const date = new Date(stamp)
   if (Number.isNaN(date.getTime())) return stamp
   return date.toLocaleString()
+}
+
+function ApplyPrefsFields() {
+  const [prefs, setPrefs] = useState<ApplyPrefs>(() => loadApplyPrefs())
+  return (
+    <div className="apply-prefs">
+      <h3>Apply preferences</h3>
+      <p className="muted">Default cover-letter mode and location used when you open Apply from the job feed.</p>
+      <label>
+        Cover letter
+        <select
+          value={prefs.defaultCoverMode}
+          onChange={(event) => {
+            const next = { ...prefs, defaultCoverMode: event.target.value as ApplyPrefs['defaultCoverMode'] }
+            setPrefs(next)
+            saveApplyPrefs(next)
+          }}
+          aria-label="Default cover letter mode"
+        >
+          <option value="none">None</option>
+          <option value="generate">Generate</option>
+          <option value="upload">Upload / paste</option>
+        </select>
+      </label>
+      <label>
+        Profile location
+        <input
+          value={prefs.location}
+          onChange={(event) => {
+            const next = { ...prefs, location: event.target.value }
+            setPrefs(next)
+            saveApplyPrefs(next)
+          }}
+          placeholder="Remote, Austin…"
+          aria-label="Profile location for matching boosts"
+        />
+      </label>
+    </div>
+  )
 }
 
 export function SettingsPage() {
@@ -574,6 +614,7 @@ export function SettingsPage() {
           {autoApplyStatus === 'saving' && 'Saving…'}
           {autoApplyStatus === 'saved' && 'Saved'}
         </p>
+        <ApplyPrefsFields />
       </section>
 
       <section className="editor-section" aria-labelledby="learning-prefs-heading">

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { autoApplyApi, resumeApi } from '../api'
 import type { CoverLetterMode, JobSource } from '../api/autoApplyTypes'
 import { defaultPostingUrl, inferJobSource } from '../lib/autoApply'
+import { loadApplyPrefs } from '../lib/applyPrefs'
 
 const FALLBACK_CONTACT = {
   full_name: 'Alex Jobseeker',
@@ -21,9 +22,10 @@ type Props = {
 
 export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onClose, onSubmitted }: Props) {
   const inferred = inferJobSource(jobId, postingUrl)
+  const prefs = loadApplyPrefs()
   const [jobSource, setJobSource] = useState<JobSource>(inferred)
   const [url, setUrl] = useState(postingUrl || defaultPostingUrl(jobId, inferred))
-  const [coverMode, setCoverMode] = useState<CoverLetterMode>('none')
+  const [coverMode, setCoverMode] = useState<CoverLetterMode>(prefs.defaultCoverMode)
   const [coverText, setCoverText] = useState('')
   const [coverFileError, setCoverFileError] = useState<string | null>(null)
   const [consent, setConsent] = useState(false)

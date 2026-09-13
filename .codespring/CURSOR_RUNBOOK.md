@@ -210,6 +210,10 @@ The Learning Loop feature failed with this error: [paste error here]. Fix it wit
 Review the entire codebase. Fix any TypeScript errors, broken imports, or missing connections between features. Make sure all features from the .codespring/PRDs/ folder are implemented.
 ```
 
+Sprint 9 continues that polish: matching evidence and calibrated buckets, Job Feed
+filters, email intent/templates, fixture-only Indeed/LinkedIn adapters, and operator
+flags. See `docs/ops/sprint9-migration.md`.
+
 **How to verify the full app works:**
 - [ ] All features are accessible and function as intended.
 - [ ] No TypeScript errors are present in the terminal.

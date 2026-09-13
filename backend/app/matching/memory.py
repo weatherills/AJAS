@@ -283,6 +283,7 @@ class InMemoryMatchingStore:
         summary: str,
         highlights: list[str] | None = None,
         gaps: list[str] | None = None,
+        evidence: list[str] | None = None,
         explanation_blob_uri: str | None = None,
         user_id: str | None = None,
     ) -> MatchExplanation:
@@ -296,6 +297,7 @@ class InMemoryMatchingStore:
             summary=summary,
             highlights=list(highlights or []),
             gaps=list(gaps or []),
+            evidence=list(evidence or []),
             explanation_blob_uri=explanation_blob_uri,
             created_at=now,
             updated_at=now,

@@ -23,6 +23,11 @@ CANONICAL_CODES: dict[str, dict[str, Any]] = {
     "UNAVAILABLE": {"status": 503, "retryable": True},
     "OAUTH_NOT_CONFIGURED": {"status": 400, "retryable": False},
     "SOURCE_NOT_CONFIGURED": {"status": 400, "retryable": False},
+    "INGESTION_FAILED": {"status": 502, "retryable": True},
+    "APPLY_FAILED": {"status": 502, "retryable": True},
+    "EMAIL_FAILED": {"status": 502, "retryable": True},
+    "ROBOTS_DISALLOWED": {"status": 403, "retryable": False},
+    "ATTACHMENT_REJECTED": {"status": 422, "retryable": False},
 }
 
 ALIASES = {

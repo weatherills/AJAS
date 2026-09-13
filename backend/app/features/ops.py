@@ -6,6 +6,7 @@ import azure.functions as func
 
 from app.auth import AuthError, get_principal
 from app.config import get_settings, microsoft_oauth_configured
+from app.flags import feature_flags
 from app.http import error_response, json_response
 from app.ingestion_alerts import maybe_alert
 from app.job_sources.global_limit import snapshot as global_limit_snapshot
@@ -76,6 +77,24 @@ def ops_seed(req: func.HttpRequest) -> func.HttpResponse:
                 "note": "In-memory demo stores populate on first read. Restarting Functions clears them.",
             }
         )
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/ops/flags", methods=["GET"])
+def ops_flags(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    return json_response({"flags": feature_flags()})
+
+
+@bp.route(route="v1/ops/audit", methods=["GET"])
+def ops_audit(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = get_principal(req)
+        require_role(principal, "admin")
+        from app.audit import recent_actions
+
+        return json_response({"items": recent_actions()})
     except Exception as exc:
         return _handle(exc)
 

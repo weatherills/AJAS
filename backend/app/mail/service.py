@@ -30,6 +30,7 @@ from app.mail.keys import (
     unfilled_template_vars,
     utc_now,
 )
+from app.mail.intent import classify_email
 from app.mail.linking import JobHint, decide_link
 from app.mail.models import (
     EmailAccount,
@@ -214,8 +215,14 @@ class EmailService:
             tone=payload.get("tone"),
             notes=payload.get("contextNotes") or payload.get("context_notes"),
         )
+        latest = next((item for item in reversed(messages) if item.is_incoming), messages[-1] if messages else None)
+        follow = None
+        if latest:
+            from app.mail.followup import recommend_followup
+
+            follow = recommend_followup(subject=latest.subject, body=latest.body_text or "")
         self.store.record_suggestion(SuggestionUse(thread_id=thread.id, user_id=user_id, created_at=now))
-        return {"items": drafts}
+        return {"items": drafts, "followUp": follow, "templates": self.templates()["items"]}
 
     def link(self, user_id: str, thread_id: str, body: dict) -> dict:
         account = self._require_mailbox(user_id)
@@ -873,6 +880,7 @@ class EmailService:
             "deliveryStatus": message.delivery_status,
             "hasAttachments": message.has_attachments,
             "attachments": attachments,
+            "intent": classify_email(subject=message.subject or "", body=message.body_text or ""),
         }
 
     def _idempotency_id(self, user_id: str, thread_id: str, key: str) -> str:

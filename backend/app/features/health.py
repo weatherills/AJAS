@@ -13,12 +13,32 @@ LIVE_FEATURES = ["health", "review", "auto-apply", "settings", "resume", "jobs",
 def _status_payload() -> dict:
     settings = get_settings()
     storage = "cosmos" if settings.cosmos_connection_string else "memory"
+    from app.flags import feature_flags
+    from app.mail.imap_health import imap_health
+
+    workers = {
+        "ingestion": True,
+        "embeddings": True,
+        "match": True,
+        "apply": True,
+        "email": True,
+    }
+    dependencies = {
+        "storage": storage,
+        "openai": bool(settings.azure_openai_endpoint and settings.azure_openai_api_key),
+        "graph": bool(settings.microsoft_client_id and settings.microsoft_client_secret),
+        "keyVault": bool(settings.key_vault_uri),
+    }
     return {
         "status": "ok",
         "service": "ajas-backend",
         "authMode": settings.auth_mode or "dev",
         "storage": storage,
         "features": LIVE_FEATURES,
+        "workers": workers,
+        "dependencies": dependencies,
+        "flags": feature_flags(),
+        "imap": imap_health(),
     }
 
 

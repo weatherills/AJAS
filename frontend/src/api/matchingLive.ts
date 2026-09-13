@@ -14,6 +14,11 @@ type ComputeBody = {
   jobId?: string
   idx?: number
   error?: string
+  evidence?: string[]
+  highlights?: string[]
+  gaps?: string[]
+  bucket?: MatchView['bucket']
+  gate?: MatchView['gate']
 }
 
 function mapResult(
@@ -52,6 +57,11 @@ function mapResult(
     computedAt: new Date().toISOString(),
     persisted: Boolean(row.persisted),
     matchId: row.matchId,
+    evidence: row.evidence || [],
+    highlights: row.highlights || extras.terms || [],
+    gaps: row.gaps || [],
+    bucket: row.bucket,
+    gate: row.gate,
   }
 }
 

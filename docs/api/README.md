@@ -17,6 +17,7 @@ The examples use `local-user`, which matches the frontend default.
 | [email.http](email.http) | Graph webhook, mailbox status, threads, reply, suggestions, link |
 | [learning.http](learning.http) | Decision log, params, admin tune, metrics |
 | [pagination.md](pagination.md) | Shared `limit`/`cursor` contract |
+| [ops flags](../ops/adapters-and-queues.md) | `GET /api/v1/ops/flags`, audit, workers on `/api/health` |
 
 Health (no auth):
 

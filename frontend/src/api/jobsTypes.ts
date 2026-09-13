@@ -22,6 +22,11 @@ export type JobCard = {
   isNew: boolean
   sources: JobSourceRef[]
   primarySource: JobSourceName
+  workplace?: string
+  seniority?: string
+  seniorityLevel?: number
+  salaryMin?: number | null
+  salaryMax?: number | null
 }
 
 export type JobDetail = JobCard & {
@@ -73,6 +78,9 @@ export type JobFilters = {
   location: string
   status: JobStatusFilter
   pagination: 'infinite' | 'pages'
+  salaryMin: string
+  seniority: string
+  keywords: string
 }
 
 export type AddTenantBody = {

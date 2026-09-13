@@ -55,6 +55,7 @@ export type EmailMessage = {
   deliveryStatus: string
   hasAttachments: boolean
   attachments: EmailAttachment[]
+  intent?: { intent: string; confidence: number }
 }
 
 export type EmailSuggestion = {

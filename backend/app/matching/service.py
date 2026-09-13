@@ -24,11 +24,14 @@ from app.matching.errors import (
     MatchingRateLimitedError,
     MatchingValidationError,
 )
+from app.matching.boosts import apply_gate, fit_bucket, rule_boosts, skill_gate
+from app.matching.evidence import evidence_sentences
 from app.matching.explain import Explainer, default_explainer
 from app.matching.keys import idempotency_key, sha256_text, utc_now
+from app.matching.ltr import feature_vector, log_features
 from app.matching.models import MatchRun, ModelRegistry
 from app.matching.queues import InMemoryJobQueue, JobQueue
-from app.matching.scoring import KEYWORD_WEIGHTS_VERSION, cosine_similarity, keyword_score, score_1dp
+from app.matching.scoring import KEYWORD_WEIGHTS_VERSION, cosine_similarity, keyword_score, score_1dp, tokenize
 from app.matching.store import MatchingStore, get_matching_store
 from app.matching.texts import NotFoundTextLoader, TextLoader
 from app.mail.pii import redact_pii
@@ -349,16 +352,53 @@ class MatchingService:
         except Exception:
             semantic_norm = 0.0
         score = score_1dp(keyword_norm, semantic_norm, keyword_w, semantic_w)
+        gate = skill_gate(resume_text, job_text)
+        boosts = rule_boosts(resume_text, job_text)
+        score = round(max(0.0, min(100.0, score + boosts.total)), 1)
+        score = round(apply_gate(score, gate), 1)
+        bucket = fit_bucket(score)
+        evidence = evidence_sentences(resume_text, job_text, limit=5)
+        first_line = (pair.get("job_text") or "").splitlines()[0] if (pair.get("job_text") or "").strip() else ""
+        resume_terms = set(tokenize(resume_text))
+        title_overlap = len([term for term in tokenize(first_line) if term in resume_terms])
+        features = feature_vector(
+            keyword=keyword_norm,
+            semantic=semantic_norm,
+            location_boost=boosts.location,
+            seniority_boost=boosts.seniority,
+            visa_boost=boosts.visa,
+            must_have_coverage=gate.coverage,
+            required_count=len(gate.required),
+            title_overlap=title_overlap,
+        )
+        log_features(user_id, pair.get("job_id"), features, score)
         explanation = None
+        highlights: list[str] = []
+        gaps: list[str] = []
         if options["explanation"]:
             try:
-                explanation = self.explainer.explain(
-                    resume_text=resume_text,
-                    job_text=job_text,
-                    keyword=round(keyword_norm * 100.0, 1),
-                    semantic=round(semantic_norm * 100.0, 1),
-                    score=score,
-                )
+                structured = getattr(self.explainer, "explain_structured", None)
+                if callable(structured):
+                    result = structured(
+                        resume_text=resume_text,
+                        job_text=job_text,
+                        keyword=round(keyword_norm * 100.0, 1),
+                        semantic=round(semantic_norm * 100.0, 1),
+                        score=score,
+                    )
+                    explanation = result.summary
+                    highlights = list(result.highlights or [])
+                    gaps = list(result.gaps or [])
+                    if result.evidence:
+                        evidence = result.evidence
+                else:
+                    explanation = self.explainer.explain(
+                        resume_text=resume_text,
+                        job_text=job_text,
+                        keyword=round(keyword_norm * 100.0, 1),
+                        semantic=round(semantic_norm * 100.0, 1),
+                        score=score,
+                    )
             except Exception:
                 explanation = None
         force_persist = bool(options.get("force_persist"))
@@ -379,6 +419,9 @@ class MatchingService:
                 resume_hash=resume_hash,
                 job_hash=job_hash,
                 force_save=force_persist,
+                highlights=highlights,
+                gaps=gaps,
+                evidence=evidence,
             )
             review_pair = dict(pair)
             if force_persist:
@@ -392,7 +435,25 @@ class MatchingService:
                 "weights": {"keyword": keyword_w, "semantic": semantic_w},
                 "variant": variant,
                 "fallback": "keyword_only" if fallback else None,
+                "boosts": {
+                    "location": boosts.location,
+                    "seniority": boosts.seniority,
+                    "visa": boosts.visa,
+                    "total": boosts.total,
+                },
             },
+            "bucket": bucket,
+            "gate": {
+                "required": gate.required[:12],
+                "niceToHave": gate.nice_to_have[:12],
+                "matchedRequired": gate.matched_required[:12],
+                "missingRequired": gate.missing_required[:12],
+                "coverage": gate.coverage,
+            },
+            "evidence": evidence,
+            "highlights": highlights,
+            "gaps": gaps,
+            "features": features,
             "persisted": persisted,
             "thresholdUsed": options["threshold_used"],
             "versions": self._versions(model),
@@ -434,6 +495,9 @@ class MatchingService:
         resume_hash: str,
         job_hash: str,
         force_save: bool = False,
+        highlights: list[str] | None = None,
+        gaps: list[str] | None = None,
+        evidence: list[str] | None = None,
     ) -> str:
         resume_ref = pair.get("resume_id") or resume_hash
         job_ref = pair.get("job_id") or job_hash
@@ -473,7 +537,14 @@ class MatchingService:
             raise
         if explanation:
             try:
-                self.store.put_explanation(run.id, summary=explanation, user_id=user_id)
+                self.store.put_explanation(
+                    run.id,
+                    summary=explanation,
+                    user_id=user_id,
+                    highlights=highlights or [],
+                    gaps=gaps or [],
+                    evidence=evidence or [],
+                )
             except MatchingConflictError:
                 pass
         return run.id
@@ -505,6 +576,14 @@ class MatchingService:
         }
         if run.explanation_summary:
             body["explanation"] = run.explanation_summary
+        try:
+            explained = self.store.get_explanation(run.id)
+            body["evidence"] = explained.evidence
+            body["highlights"] = explained.highlights
+            body["gaps"] = explained.gaps
+        except Exception:
+            body.setdefault("evidence", [])
+        body["bucket"] = fit_bucket(score)
         return body
 
     def _rank_payload(self, results: list[dict], options: dict) -> dict:

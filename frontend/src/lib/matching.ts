@@ -106,6 +106,40 @@ export function scoreLabel(score: number): string {
   return 'Poor match'
 }
 
+export function fitBucket(score: number): { key: string; label: string; min: number; score: number } {
+  const shown = displayScore(score)
+  if (shown >= 85) return { key: 'excellent', label: 'Excellent match', min: 85, score: shown }
+  if (shown >= 70) return { key: 'strong', label: 'Strong match', min: 70, score: shown }
+  if (shown >= 55) return { key: 'promising', label: 'Promising match', min: 55, score: shown }
+  if (shown >= 40) return { key: 'fair', label: 'Fair match', min: 40, score: shown }
+  return { key: 'poor', label: 'Poor match', min: 0, score: shown }
+}
+
+export function evidenceSentences(resume: string, job: string, limit = 5): string[] {
+  const resumeTerms = new Set(tokenize(resume))
+  const parts = (job || '')
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((part) => part.replace(/\s+/g, ' ').trim())
+    .filter((part) => part.length >= 24)
+  const scored = parts
+    .map((sentence, index) => {
+      const overlap = tokenize(sentence).filter((term) => resumeTerms.has(term)).length
+      return { sentence, overlap, index }
+    })
+    .filter((row) => row.overlap > 0)
+    .sort((a, b) => b.overlap - a.overlap || a.index - b.index)
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const row of scored) {
+    const key = row.sentence.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(row.sentence.slice(0, 280))
+    if (out.length >= limit) break
+  }
+  return out
+}
+
 export function meetsThreshold(score: number, threshold: number): boolean {
   return score >= threshold
 }

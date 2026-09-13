@@ -85,6 +85,23 @@ function scoreOne(
     computedAt: now(),
     persisted: score >= threshold || persist,
     matchId: score >= threshold || persist ? `match-${job.id}` : undefined,
+    evidence: job.text
+      .split(/(?<=[.!?])\s+|\n+/)
+      .map((part) => part.trim())
+      .filter((part) => part.length >= 24)
+      .slice(0, 5),
+    highlights: terms.slice(0, 6),
+    gaps,
+    bucket:
+      score >= 85
+        ? { key: 'excellent', label: 'Excellent match', min: 85, score: Math.round(score) }
+        : score >= 70
+          ? { key: 'strong', label: 'Strong match', min: 70, score: Math.round(score) }
+          : score >= 55
+            ? { key: 'promising', label: 'Promising match', min: 55, score: Math.round(score) }
+            : score >= 40
+              ? { key: 'fair', label: 'Fair match', min: 40, score: Math.round(score) }
+              : { key: 'poor', label: 'Poor match', min: 0, score: Math.round(score) },
   }
   if (row.persisted) persisted[`${resumeId}:${job.id}`] = row
   return row

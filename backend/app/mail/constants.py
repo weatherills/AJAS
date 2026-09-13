@@ -47,6 +47,21 @@ SYSTEM_TEMPLATES: Final[tuple[dict[str, str], ...]] = (
         "name": "Availability",
         "body": "Hi {firstName},\n\nI'm available to talk about the {role} role at {company} ({jobRef}). What times work on your side?\n\nBest regards",
     },
+    {
+        "id": "interested",
+        "name": "Interested",
+        "body": "Hi {firstName},\n\nThank you for reaching out about {role} at {company} ({jobRef}). I'm interested and can make time this week to talk through next steps.\n\nBest regards",
+    },
+    {
+        "id": "not_fit",
+        "name": "Not a fit",
+        "body": "Hi {firstName},\n\nThank you for considering me for {role} at {company} ({jobRef}). I'm going to pass on this one, but I appreciate the note and wish you a great search.\n\nBest regards",
+    },
+    {
+        "id": "schedule",
+        "name": "Schedule",
+        "body": "Hi {firstName},\n\nThanks — I'm available for {role} at {company} ({jobRef}). I can do a call Tuesday–Thursday after 1pm local. What times work for you?\n\nThanks",
+    },
 )
 
 

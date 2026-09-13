@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from urllib.parse import parse_qs, urlparse
 
+from app.job_sources.enrich import enrich_posting
 from app.job_sources.models import JobPostingCanonical, JobPostingRaw, SourceTenant
 from app.job_sources.store import JobSourceStore
 
@@ -79,8 +80,8 @@ def seed_demo_feed(store: JobSourceStore) -> None:
             "Data Analyst": "Model spreadsheets, SQL, and forecasting dashboards.",
         }.get(title, "")
         body = (
-            f"Title: {title}\nCompany: {company}\nSkills: {skill_line}\n"
-            f"{title} at {company} in {location}. {closer}"
+            f"Title: {title}\nCompany: {company}\nLocation: {location}\nSkills: {skill_line}\n"
+            f"{title} at {company} in {location}. {closer} Compensation $160,000-$190,000."
         )
         store.ingest_raw(
             tenant.id,
@@ -136,13 +137,19 @@ def feed_cards(store: JobSourceStore) -> list[dict]:
         newest = max(raws, key=lambda item: item.updated_at)
         company = next((item.company for item in raws if item.company), "")
         apply_url = next((item.apply_url for item in raws if item.apply_url), "")
+        extra = enrich_posting(
+            title=canonical.title,
+            company=company,
+            location=canonical.location,
+            body=newest.body or "",
+        )
         cards.append(
             {
                 "id": canonical.id,
                 "canonicalKey": canonical.canonical_key,
                 "title": canonical.title,
                 "company": company,
-                "location": canonical.location,
+                "location": extra.get("location") or canonical.location,
                 "employmentType": canonical.employment_type or "Full-time",
                 "snippet": (newest.body or "")[:160],
                 "applyUrl": apply_url,
@@ -150,7 +157,12 @@ def feed_cards(store: JobSourceStore) -> list[dict]:
                 "isNew": False,
                 "sources": refs,
                 "primarySource": primary["source"],
-                "description": newest.body or "",
+                "description": extra.get("description") or newest.body or "",
+                "workplace": extra.get("workplace"),
+                "seniority": extra.get("seniority"),
+                "seniorityLevel": extra.get("seniorityLevel"),
+                "salaryMin": extra.get("salaryMin"),
+                "salaryMax": extra.get("salaryMax"),
             }
         )
     cards.sort(key=lambda item: item["updatedAt"], reverse=True)

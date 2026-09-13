@@ -1,0 +1,13 @@
+{
+  "jobs": [
+    {
+      "id": "ind-1",
+      "title": "Staff Platform Engineer",
+      "company": "Acme",
+      "location": "Remote",
+      "employment_type": "Full-time",
+      "description": "Required: python kubernetes azure. Nice to have: golang. Compensation $180,000-$210,000.",
+      "apply_url": "https://fixtures.ajas.local/indeed/ind-1"
+    }
+  ]
+}

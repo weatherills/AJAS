@@ -92,6 +92,7 @@ class MatchExplanation(BaseModel):
     summary: str
     highlights: list[str] = Field(default_factory=list)
     gaps: list[str] = Field(default_factory=list)
+    evidence: list[str] = Field(default_factory=list)
     explanation_blob_uri: str | None = None
     created_at: str
     updated_at: str

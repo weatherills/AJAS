@@ -36,7 +36,16 @@ export function sourceDomain(url: string): string {
 }
 
 export function defaultFilters(): JobFilters {
-  return { sources: [...ALL_SOURCES], q: '', location: '', status: 'all', pagination: 'infinite' }
+  return {
+    sources: [...ALL_SOURCES],
+    q: '',
+    location: '',
+    status: 'all',
+    pagination: 'infinite',
+    salaryMin: '',
+    seniority: '',
+    keywords: '',
+  }
 }
 
 export function clearSessionFilters(filters: JobFilters): JobFilters {
@@ -57,6 +66,9 @@ export function loadFilters(): JobFilters {
       location: typeof parsed.location === 'string' ? parsed.location : '',
       status: parsed.status === 'new' ? 'new' : 'all',
       pagination: parsed.pagination === 'pages' ? 'pages' : 'infinite',
+      salaryMin: typeof parsed.salaryMin === 'string' ? parsed.salaryMin : '',
+      seniority: typeof parsed.seniority === 'string' ? parsed.seniority : '',
+      keywords: typeof parsed.keywords === 'string' ? parsed.keywords : '',
     }
   } catch {
     return defaultFilters()
@@ -291,6 +303,29 @@ export function matchesQuery(job: JobCard, query: JobListQuery): boolean {
   if (query.q && !haystack.includes(query.q.trim().toLowerCase())) return false
   if (query.location && !job.location.toLowerCase().includes(query.location.trim().toLowerCase())) return false
   if (query.status === 'new' && !job.isNew) return false
+  return true
+}
+
+export function matchesExtraFilters(
+  job: JobCard,
+  filters: Pick<JobFilters, 'salaryMin' | 'seniority' | 'keywords'>,
+): boolean {
+  if (filters.salaryMin) {
+    const min = Number.parseInt(filters.salaryMin, 10)
+    if (!Number.isNaN(min)) {
+      const ceiling = job.salaryMax ?? job.salaryMin
+      if (ceiling != null && ceiling < min) return false
+    }
+  }
+  if (filters.seniority && (job.seniority || '').toLowerCase() !== filters.seniority.toLowerCase()) return false
+  if (filters.keywords) {
+    const hay = `${job.title} ${job.company} ${job.location} ${job.snippet}`.toLowerCase()
+    const terms = filters.keywords
+      .toLowerCase()
+      .split(/[,\s]+/)
+      .filter(Boolean)
+    if (terms.some((term) => !hay.includes(term))) return false
+  }
   return true
 }
 

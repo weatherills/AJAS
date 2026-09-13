@@ -1,0 +1,13 @@
+{
+  "jobs": [
+    {
+      "id": "li-1",
+      "title": "Senior Backend Engineer",
+      "company": "Globex",
+      "location": "Austin, TX",
+      "description": "Onsite role. Must have: python apis. Preferred: kafka.",
+      "apply_url": "https://fixtures.ajas.local/linkedin/li-1",
+      "url": "https://fixtures.ajas.local/linkedin/li-1"
+    }
+  ]
+}

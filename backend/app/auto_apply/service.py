@@ -22,6 +22,8 @@ from app.auto_apply.queues import InMemoryJobQueue, JobQueue
 from app.auto_apply.store import AutoApplyStore, get_auto_apply_store
 from app.auto_apply.submitters import HttpPoster, map_vendor_fields, submit_to_vendor
 from app.auto_apply.validation import retry_backoff_seconds, validate_apply_fields
+from app.audit import record_action
+from app.auto_apply.attachments import POLICY as ATTACHMENT_POLICY
 from app.config import get_settings
 
 logger = logging.getLogger("ajas")
@@ -156,7 +158,11 @@ class AutoApplyService:
         )
         cover = None
         if cover_mode == "generate":
-            letter = generate_cover_letter(attempt, profile)
+            letter = generate_cover_letter(
+                attempt,
+                profile,
+                explanation=str(body.get("match_explanation") or "") or None,
+            )
             cover_path = f"cover_letters/{user_id}/{attempt.id}.txt"
             self.blobs.put(cover_path, letter.encode("utf-8"))
             cover = self.store.create_cover_letter(
@@ -202,6 +208,7 @@ class AutoApplyService:
         if isinstance(self.queue, InMemoryJobQueue):
             self.process_request({"eventType": "AutoApplyQueued", "userId": user_id, "requestId": queued.id})
         loaded = self.store.get_attempt(queued.id, user_id=user_id)
+        record_action(actor=user_id, action="auto_apply.create", target=loaded.id, detail={"vendor": vendor, "state": _api_state(loaded)})
         return 201, {"request_id": loaded.id, "state": _api_state(loaded), "created_at": loaded.created_at}
 
     def get_request(self, user_id: str, request_id: str) -> dict[str, Any]:
@@ -558,6 +565,7 @@ class AutoApplyService:
             "captcha": captcha,
             "manual_fallback": manual,
             "retry_count": retry_count,
+            "attachment_policy": ATTACHMENT_POLICY,
             "manual_next_steps": (
                 "Download the package, copy the cover letter, then finish the posting in your browser. "
                 "Captcha and SSO steps cannot be completed automatically."

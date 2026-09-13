@@ -19,12 +19,47 @@ class HeuristicResumeParser:
 
     def parse(self, *, resume_id: str, text: str) -> StructuredResume:
         skills: list[str] = []
+        experience: list[dict[str, Any]] = []
+        education: list[dict[str, Any]] = []
+        certs: list[str] = []
+        current = ""
         for line in text.splitlines():
             stripped = line.strip()
-            if stripped.lower().startswith("skills:"):
+            lower = stripped.lower()
+            if lower.startswith("skills:"):
                 skills.extend(part.strip() for part in stripped.split(":", 1)[1].split(",") if part.strip())
-        payload: dict[str, Any] = {"skills": skills[:20]}
-        if not skills and text.strip():
+                current = "skills"
+                continue
+            if lower.startswith("experience:"):
+                current = "experience"
+                rest = stripped.split(":", 1)[1].strip()
+                if rest:
+                    experience.append({"title": rest, "description": rest})
+                continue
+            if lower.startswith("education:"):
+                current = "education"
+                rest = stripped.split(":", 1)[1].strip()
+                if rest:
+                    education.append({"institution": rest, "degree": rest})
+                continue
+            if lower.startswith("certifications:") or lower.startswith("certs:"):
+                current = "certs"
+                certs.extend(part.strip() for part in stripped.split(":", 1)[1].split(",") if part.strip())
+                continue
+            if current == "experience" and stripped:
+                experience.append({"title": stripped, "description": stripped})
+            elif current == "education" and stripped:
+                education.append({"institution": stripped, "degree": stripped})
+            elif current == "certs" and stripped:
+                certs.extend(part.strip() for part in stripped.split(",") if part.strip())
+            elif current == "skills" and stripped and ":" not in stripped:
+                skills.extend(part.strip() for part in stripped.split(",") if part.strip())
+        payload: dict[str, Any] = {"skills": (skills + certs)[:20]}
+        if experience:
+            payload["experience"] = experience[:8]
+        if education:
+            payload["education"] = education[:6]
+        if not skills and not experience and not education and text.strip():
             payload["skills"] = [text.strip().split()[0][:100]]
         return snapshot_from_parser(resume_id, payload)
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { jobsApi, matchingApi, resumeApi, settingsApi, USE_MOCK } from '../api'
 import type { JobCard, JobDetail, JobFilters, JobSourceName, SourceStatus } from '../api/jobsTypes'
 import type { MatchView } from '../api/matchingTypes'
+import { ApplyModal } from '../components/ApplyModal'
 import { AppNav } from '../components/AppNav'
 import { JobCrossLinks } from '../components/JobCrossLinks'
 import { JobEmailsTab } from '../components/JobEmailsTab'
@@ -22,6 +23,7 @@ import {
   formatCountdown,
   formatWhen,
   loadFilters,
+  matchesExtraFilters,
   nextFeedSources,
   PAGE_SIZE,
   persistFeedSourceChip,
@@ -70,6 +72,8 @@ export function JobFeedPage() {
   const [matches, setMatches] = useState<Record<string, MatchView>>({})
   const [onlyThreshold, setOnlyThreshold] = useState(false)
   const [whyMatch, setWhyMatch] = useState<MatchView | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [applyJob, setApplyJob] = useState<JobCard | null>(null)
   const [saveOverride, setSaveOverride] = useState<Record<string, boolean>>({})
   const [listMinHeight, setListMinHeight] = useState(0)
   const [drawerTab, setDrawerTab] = useState<'details' | 'emails'>('details')
@@ -530,6 +534,10 @@ export function JobFeedPage() {
   const boardErrorLines = feedErrorLines(statuses)
   const sourceUnconfigured = statuses.filter((item) => !sourceIsConfiguredStatus(item))
   const sourcesOff = filters.sources.length === 0 && statuses.some((item) => sourceIsConfiguredStatus(item))
+  const visibleItems = useMemo(
+    () => items.filter((job) => matchesExtraFilters(job, filters)),
+    [items, filters],
+  )
 
   function sourceBlocked(row: SourceStatus | undefined) {
     return (
@@ -702,6 +710,40 @@ export function JobFeedPage() {
             />
           </label>
           <label>
+            Keywords
+            <input
+              value={filters.keywords}
+              onChange={(event) => setFilters((prev) => ({ ...prev, keywords: event.target.value }))}
+              placeholder="python, azure…"
+              aria-label="Filter by keywords"
+            />
+          </label>
+          <label>
+            Min salary
+            <input
+              value={filters.salaryMin}
+              onChange={(event) => setFilters((prev) => ({ ...prev, salaryMin: event.target.value }))}
+              placeholder="120000"
+              inputMode="numeric"
+              aria-label="Minimum salary"
+            />
+          </label>
+          <label>
+            Seniority
+            <select
+              value={filters.seniority}
+              onChange={(event) => setFilters((prev) => ({ ...prev, seniority: event.target.value }))}
+              aria-label="Filter by seniority"
+            >
+              <option value="">Any seniority</option>
+              <option value="junior">Junior</option>
+              <option value="mid">Mid</option>
+              <option value="senior">Senior</option>
+              <option value="staff">Staff</option>
+              <option value="principal">Principal</option>
+            </select>
+          </label>
+          <label>
             Status
             <select
               value={filters.status}
@@ -829,8 +871,32 @@ export function JobFeedPage() {
             </div>
           )}
           {items.length > 0 && (
+            <>
+              <div className="review-bulk" role="toolbar" aria-label="Bulk apply">
+                <label className="chip-toggle">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.length > 0 && selectedIds.length === visibleItems.length}
+                    onChange={(event) => {
+                      setSelectedIds(event.target.checked ? visibleItems.map((job) => job.id) : [])
+                    }}
+                  />
+                  Select all
+                </label>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={!selectedIds.length || !resumeId}
+                  onClick={() => {
+                    const next = visibleItems.find((job) => selectedIds.includes(job.id))
+                    if (next) setApplyJob(next)
+                  }}
+                >
+                  Apply selected ({selectedIds.length})
+                </button>
+              </div>
             <ul className="job-list" role="list" aria-label="Job postings" style={listMinHeight ? { minHeight: listMinHeight } : undefined}>
-              {items.map((job) => {
+              {visibleItems.map((job) => {
                 const also = alsoFromLabel(job.sources, job.primarySource)
                 const match = matches[job.id]
                 const hidden = Boolean(
@@ -839,6 +905,19 @@ export function JobFeedPage() {
                 return (
                   <li key={job.id} className={hidden ? 'job-slot is-filtered' : 'job-slot'}>
                     <div className="job-card">
+                      <label className="chip-toggle job-select">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(job.id)}
+                          onChange={(event) => {
+                            const checked = event.target.checked
+                            setSelectedIds((prev) =>
+                              checked ? [...prev, job.id] : prev.filter((id) => id !== job.id),
+                            )
+                          }}
+                          aria-label={`Select ${job.title}`}
+                        />
+                      </label>
                       <button type="button" className="job-card-hit" onClick={() => selectJob(job)}>
                         <div className="job-card-top">
                           <h2>{job.title}</h2>
@@ -874,6 +953,7 @@ export function JobFeedPage() {
                 )
               })}
             </ul>
+            </>
           )}
           {filters.pagination === 'infinite' && <div ref={sentinel} className="feed-sentinel" />}
           {loadingMore && <p className="muted">Loading more jobs…</p>}
@@ -998,6 +1078,14 @@ export function JobFeedPage() {
                     Apply on posting
                   </a>
                 </p>
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={!resumeId}
+                  onClick={() => setApplyJob(selected)}
+                >
+                  Apply from AJAS
+                </button>
               </>
             )}
           </aside>
@@ -1011,6 +1099,22 @@ export function JobFeedPage() {
       </div>
       <ToastStack toasts={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))} />
       {whyMatch && <WhyThisScore match={whyMatch} onClose={() => setWhyMatch(null)} />}
+      {applyJob && (
+        <ApplyModal
+          jobTitle={applyJob.title}
+          company={applyJob.company}
+          jobId={applyJob.id}
+          resumeId={resumeId}
+          postingUrl={applyJob.applyUrl}
+          onClose={() => setApplyJob(null)}
+          onSubmitted={(requestId, state) => {
+            toast(`Apply ${state} (${requestId.slice(0, 8)})`)
+            setSelectedIds((prev) => prev.filter((id) => id !== applyJob.id))
+            const remaining = visibleItems.find((job) => selectedIds.includes(job.id) && job.id !== applyJob.id)
+            setApplyJob(remaining || null)
+          }}
+        />
+      )}
     </div>
   )
 }

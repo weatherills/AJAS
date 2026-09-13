@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { recordMockDecision, resetMockLearning } from '../api/learningMock'
 import { mockMatchingApi } from '../api/matchingMock'
 import {
+  fitBucket,
+  evidenceSentences,
   chipOverflow,
   combineScore,
   displayScore,
@@ -25,6 +27,17 @@ describe('matching display helpers', () => {
     expect(displayScore(81.6)).toBe(82)
     expect(scoreBand(69.6)).toBe('green')
     expect(scoreLabel(69.6)).toBe('Good match')
+  })
+
+  it('calibrates fit buckets and picks evidence sentences', () => {
+    expect(fitBucket(91).key).toBe('excellent')
+    expect(fitBucket(72).label).toBe('Strong match')
+    const evidence = evidenceSentences(
+      'python azure kubernetes',
+      'Build python services on azure. Snack benefits are unlimited. Kubernetes platforms ship matching.',
+    )
+    expect(evidence.length).toBeGreaterThan(0)
+    expect(evidence.some((line) => /python|azure|kubernetes/i.test(line))).toBe(true)
   })
 
   it('combines keyword and semantic with 0.4 / 0.6 weights', () => {

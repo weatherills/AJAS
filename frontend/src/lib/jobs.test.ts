@@ -13,6 +13,7 @@ import {
   feedSourcesQueryParam,
   formatCountdown,
   mergeJobs,
+  matchesExtraFilters,
   matchesQuery,
   nextFeedSources,
   paginate,
@@ -81,6 +82,13 @@ describe('job feed helpers', () => {
     expect(matchesQuery(job, { sources: [], q: '', location: '', status: 'all', cursor: null, limit: 25 })).toBe(false)
   })
 
+  it('filters by salary, seniority, and keywords', () => {
+    const job = { ...sample('gh', 'greenhouse'), salaryMin: 160000, salaryMax: 190000, seniority: 'staff', snippet: 'python azure' }
+    expect(matchesExtraFilters(job, { salaryMin: '150000', seniority: 'staff', keywords: 'python' })).toBe(true)
+    expect(matchesExtraFilters(job, { salaryMin: '200000', seniority: '', keywords: '' })).toBe(false)
+    expect(matchesExtraFilters(job, { salaryMin: '', seniority: 'junior', keywords: '' })).toBe(false)
+  })
+
   it('paginates 25 items and stops at the end', () => {
     const items = Array.from({ length: 40 }, (_, index) => index)
     const first = paginate(items, null, PAGE_SIZE)
@@ -120,12 +128,18 @@ describe('job feed helpers', () => {
       location: 'Austin',
       status: 'new',
       pagination: 'pages',
+      salaryMin: '100000',
+      seniority: 'staff',
+      keywords: 'python',
     })
     expect(cleared.sources).toEqual([])
     expect(cleared.q).toBe('')
     expect(cleared.location).toBe('')
     expect(cleared.status).toBe('all')
     expect(cleared.pagination).toBe('infinite')
+    expect(cleared.salaryMin).toBe('')
+    expect(cleared.seniority).toBe('')
+    expect(cleared.keywords).toBe('')
     expect(feedSourcesQueryParam([])).toBe('none')
     expect(feedSourcesQueryParam(['greenhouse'])).toBe('greenhouse')
     expect(feedSourcesQueryParam(['greenhouse', 'lever'])).toBe('greenhouse,lever')
