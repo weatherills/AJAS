@@ -16,3 +16,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 ## Batch 1 gate
 - tests/lint/typecheck green after task 10
 
+- [x] 011 Source adapter: bot challenge auto-detect + fallback

@@ -120,3 +120,14 @@ def test_ashby_company_board_crawler():
     assert out["crawler"] == "fixture"
     assert out["flag"] is False
 
+# === S14-11 ===
+
+def test_source_adapter_bot_challenge_auto_detect_fallback():
+    from app.sprint14.ingest import bot_challenge, reset
+
+    reset()
+    hit = bot_challenge("hcaptcha challenge")
+    assert hit["captcha"] is True and hit["bypass"] is False and hit["fallback"] == "fixture"
+    ok = bot_challenge("normal job html")
+    assert ok["ok"] is True and ok["bypass"] is False
+
