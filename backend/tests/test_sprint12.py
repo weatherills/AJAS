@@ -290,10 +290,16 @@ def test_health_dashboard_logs_and_alert_routing():
     routed = ops_mod.route_alert("critical")
     assert len(routed["notified"]) == 2
 
+def test_backup_restore_and_dr_checklist():
+    ops_mod.nightly_backup(stores=["cosmos", "blob"])
+    play = ops_mod.restore_playbook()
+    assert "GET /api/health" in " ".join(play)
+    assert ops_mod.dr_checklist()["rpo"] == "1h"
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 44
+    assert COMPLETED == 45
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
