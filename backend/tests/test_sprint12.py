@@ -140,10 +140,17 @@ def test_feedback_loop_and_weight_training():
     assert weights["semantic"] > 0.6
     assert abs(weights["keyword"] + weights["semantic"] - 1.0) < 1e-6
 
+def test_ranking_v3_feature_store_and_offline_harness():
+    for i in range(4):
+        ranking_mod.log_feature_row(user_id="ada", job_id=f"j{i}", features={"kw": float(i), "sem": 1.0 - i * 0.1}, label=1 if i > 1 else 0)
+    fitted = ranking_mod.train_offline()
+    assert fitted["status"] == "fitted"
+    assert "kw" in fitted["weights"]
+
 def test_sprint12_kanban_progress():
     from app.sprint12 import COMPLETED, VERSION
     assert VERSION == "sprint12"
-    assert COMPLETED == 16
+    assert COMPLETED == 17
 
 def test_plan_tiers_feature_gates():
     tenant = tenants_mod.create_tenant(name="Acme", owner_id="ada")
