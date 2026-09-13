@@ -48,3 +48,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 032 Resume parser v3: achievements metric detection (%, $, #)
 - [x] 033 JD cleaner v3: boilerplate classifier using heuristics+ML
 - [x] 034 Location geocoding v2: suburb/metro rollups and radius
+- [x] 035 Currency support: FX normalization and display rules

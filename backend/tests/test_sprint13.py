@@ -392,3 +392,14 @@ def test_location_geocoding_v2_suburb_metro_rollups_and_radius():
     other = metro_rollup("Berlin", "", "DE")
     assert other["radiusKm"] == 15
 
+# === S13-35 ===
+
+def test_currency_support_fx_normalization_and_display_rules():
+    from app.sprint13.parse import display_money, to_usd
+
+    usd = to_usd(100, "EUR")
+    assert usd > 100
+    shown = display_money(usd, "EUR")
+    assert shown["currency"] == "EUR"
+    assert shown["local"] == 100
+
