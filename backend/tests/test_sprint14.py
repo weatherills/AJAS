@@ -225,3 +225,12 @@ def test_geocoding_city_state_country_lat_lon_cache():
     assert sea["cached"] is True
     assert sea["lat"]
 
+# === S14-22 ===
+
+def test_company_domain_resolver_via_dns_mx_whois_fallback():
+    from app.sprint14.parse import company_domain
+
+    row = company_domain("Contoso")
+    assert str(row["domain"]).endswith(".com")
+    assert row["via"] in {"mx", "whois", "guess", "hint"}
+

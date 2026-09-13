@@ -31,3 +31,4 @@ Landed on `main` as `[S14]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 20
 
 - [x] 021 Geocoding: city/state/country → lat/lon cache
+- [x] 022 Company domain resolver via DNS/MX/WHOIS fallback
