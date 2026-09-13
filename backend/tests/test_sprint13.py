@@ -432,3 +432,14 @@ def test_normalization_v3_job_type_taxonomy():
     assert job_type("Summer internship") == "intern"
     assert job_type("Contract role") == "contract"
 
+# === S13-39 ===
+
+def test_crawl_frontier_adaptive_scheduling_using_success_error_rates():
+    from app.sprint13.ingest import frontier_score, reset
+
+    reset()
+    healthy = frontier_score("greenhouse", success=9, errors=1)
+    sick = frontier_score("linkedin", success=1, errors=4)
+    assert healthy["delaySec"] < sick["delaySec"]
+    assert healthy["successRate"] > sick["successRate"]
+

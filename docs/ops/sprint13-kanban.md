@@ -52,3 +52,4 @@ Landed on `main` as `[S13]` commits.
 - [x] 036 Salary parsing v3: equity + bonus components
 - [x] 037 Normalization v3: onsite/hybrid/remote detection improvements
 - [x] 038 Normalization v3: job type taxonomy (FT/PT/Contract/Intern)
+- [x] 039 Crawl frontier: adaptive scheduling using success/error rates
