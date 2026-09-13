@@ -622,3 +622,13 @@ def test_follow_up_heuristics_v2_weekday_hour_windows():
     slot = next_followup_slot(datetime(2026, 9, 12, 8, 0, tzinfo=timezone.utc))
     assert followup_window(weekday=slot.weekday(), hour=slot.hour)["send"] is True
 
+# === S13-55 ===
+
+def test_email_reply_planner_suggested_replies_with_tone_controls():
+    from app.sprint13.product import reply_plan
+
+    plan = reply_plan(intent="interview", tone="warm")
+    assert "slot" in plan["body"]
+    assert "warm" in plan["controls"]
+    assert plan["tone"] == "warm"
+
