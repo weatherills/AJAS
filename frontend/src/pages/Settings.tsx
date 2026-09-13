@@ -28,7 +28,7 @@ import {
   sourceUnconfiguredCopy,
 } from '../lib/settings'
 import { loadApplyPrefs, saveApplyPrefs, type ApplyPrefs } from '../lib/applyPrefs'
-import { buildExportBundle } from '../lib/privacy'
+import { buildExportBundle, purgeSummary } from '../lib/privacy'
 import {
   addBoardToast,
   boardAddPayload,
@@ -652,6 +652,16 @@ export function SettingsPage() {
           }}
         >
           Download my data
+        </button>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            const plan = purgeSummary(buildExportBundle(userId))
+            window.alert(`Right-to-be-forgotten planned for ${plan.userId} (${plan.deleted} stored rows in this bundle).`)
+          }}
+        >
+          Forget my account
         </button>
       </section>
 

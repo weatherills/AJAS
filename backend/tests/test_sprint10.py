@@ -436,3 +436,17 @@ def test_gdpr_on_demand_export_bundle():
     assert bundle["userId"] == "ada"
     assert bundle["format"] == "ajas.gdpr.v1"
     assert bundle["jobs"][0]["id"] == "j1"
+
+
+def test_right_to_be_forgotten_purge_job():
+    from app.privacy import apply_purge, purge_plan
+
+    plan = purge_plan(
+        user_id="ada",
+        jobs=[{"id": "j1", "user_id": "ada"}],
+        emails=[{"id": "e1", "user_id": "ada"}],
+        matches=[{"id": "m1", "user_id": "ada"}],
+    )
+    result = apply_purge(plan)
+    assert result["status"] == "purged"
+    assert result["deleted"] == 3
