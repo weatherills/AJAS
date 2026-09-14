@@ -549,3 +549,11 @@ def test_idempotency_replay_detector_ui():
     assert row["second"]["status"] == "conflict"
     assert row["replay"] is True
 
+# === S15-70 ===
+
+def test_queue_poison_message_quarantine():
+    from app.sprint15.ops import poison, reset
+    reset()
+    row = poison({"body": "bad"})
+    assert row["quarantine"] is True
+

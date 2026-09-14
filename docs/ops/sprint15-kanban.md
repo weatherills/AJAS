@@ -95,3 +95,8 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 067 Secrets: dual-key overlap window
 - [x] 068 Rate limit: retry-budget v2
 - [x] 069 Idempotency: replay detector UI
+- [x] 070 Queue: poison-message quarantine
+
+## Batch 7 gate
+- tests/lint/typecheck green after task 70
+
