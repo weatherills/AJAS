@@ -601,3 +601,11 @@ def test_seed_data_v4_mixed_timezone_users():
     assert row["timezones"] is True
     assert any(item.get("tz") for item in row["resumes"])
 
+# === S15-77 ===
+
+def test_api_cursor_pagination_v2():
+    from app.sprint15.ops import cursor_page
+    row = cursor_page(["a", "b", "c"], cursor=0, limit=2)
+    assert row["items"] == ["a", "b"]
+    assert row["next"] == 2
+

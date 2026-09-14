@@ -106,3 +106,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 074 Unit tests: remote/seniority edge cases
 - [x] 075 Fixtures: s15 HTML/JSON snapshots
 - [x] 076 Seed data v4: mixed timezone users
+- [x] 077 API: cursor pagination v2
