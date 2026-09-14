@@ -27,6 +27,15 @@ import {
   validateComment,
   WHY_MAX,
 } from '../lib/review'
+import {
+  a11yShortcuts,
+  bulkDismissWithUndo,
+  handleReviewKeydown,
+  loadSelection,
+  persistSelection,
+  restoreDismiss,
+  shareFilterHref,
+} from '../lib/sprint15Kanban'
 import { scoreBand } from '../lib/matching'
 
 type Toast = {
@@ -68,7 +77,7 @@ export function ReviewPage() {
   const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 1023px)').matches)
   const [applyOpen, setApplyOpen] = useState(false)
   const [pane, setPane] = useState<'details' | 'emails'>('details')
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => loadSelection())
   const [helpOpen, setHelpOpen] = useState(false)
   const [presets, setPresets] = useState(() => loadReviewPresets())
   const [slow, setSlow] = useState(false)
@@ -80,6 +89,10 @@ export function ReviewPage() {
   const drawerRef = useRef<HTMLElement | null>(null)
   const locating = useRef(false)
   const loadGen = useRef(0)
+
+  useEffect(() => {
+    persistSelection(selectedIds)
+  }, [selectedIds])
 
   const toast = (text: string, tone: Toast['tone'] = 'info', extra?: Pick<Toast, 'actionLabel' | 'onAction'>) => {
     const id = toastId.current++
@@ -405,6 +418,11 @@ export function ReviewPage() {
         }
         return
       }
+      if (event.key === 'Tab' && helpOpen) {
+        const help = document.getElementById('review-help-title')?.closest('.modal')
+        if (help instanceof HTMLElement) handleReviewKeydown(help, event)
+        return
+      }
       if (event.key === 'Tab' && narrow && selectedId && drawerRef.current) {
         trapFocus(drawerRef.current, event)
         return
@@ -639,7 +657,8 @@ export function ReviewPage() {
               type="button"
               className="secondary"
               onClick={() => {
-                void navigator.clipboard?.writeText(window.location.href)
+                const href = shareFilterHref(filters, window.location.origin + window.location.pathname)
+                void navigator.clipboard?.writeText(href)
                 toast('Copied shareable filter link')
               }}
             >
@@ -718,6 +737,26 @@ export function ReviewPage() {
                   </button>
                   <button type="button" className="secondary" disabled={saving} onClick={() => void bulkTriage('assign')}>
                     Assign to me
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={saving}
+                    onClick={() => {
+                      const snap = bulkDismissWithUndo(shown.map((item) => item.matchId), selectedIds)
+                      const previous = items
+                      setItems((current) => current.filter((item) => !snap.dismissed.some((row) => row.id === item.matchId)))
+                      setSelectedIds([])
+                      toast(snap.snackbar, 'info', {
+                        actionLabel: 'Undo',
+                        onAction: () => {
+                          setItems(previous)
+                          setSelectedIds(restoreDismiss(snap, []))
+                        },
+                      })
+                    }}
+                  >
+                    Dismiss selected
                   </button>
                 </div>
               )}
@@ -1091,11 +1130,13 @@ export function ReviewPage() {
           <div className="modal" onClick={(event) => event.stopPropagation()}>
             <h2 id="review-help-title">Review keyboard shortcuts</h2>
             <ul>
-              <li><kbd>J</kbd> / <kbd>K</kbd> — next / previous match</li>
+              {Object.entries(a11yShortcuts()).map(([key, action]) => (
+                <li key={key}>
+                  <kbd>{key}</kbd> — {action}
+                </li>
+              ))}
               <li><kbd>A</kbd> approve · <kbd>R</kbd> reject</li>
               <li><kbd>/</kbd> focus search</li>
-              <li><kbd>Esc</kbd> close help, filters, or the drawer</li>
-              <li><kbd>?</kbd> this help</li>
               <li><kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> save with comment</li>
             </ul>
             <button type="button" className="primary" onClick={() => setHelpOpen(false)}>

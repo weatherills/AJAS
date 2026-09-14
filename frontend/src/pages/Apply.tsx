@@ -6,6 +6,7 @@ import { JobCrossLinks } from '../components/JobCrossLinks'
 import { JobEmailsTab } from '../components/JobEmailsTab'
 import { ToastStack } from '../components/Toast'
 import { canCancel, canMarkManualSubmitted, stateLabel } from '../lib/autoApply'
+import { manualPackageSteps } from '../lib/sprint15Kanban'
 import { applyHref, reviewHref, useHashSearch } from '../lib/routes'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
@@ -150,6 +151,11 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
                     <section className="apply-manual">
                       <h3>{detail.captcha ? 'Captcha / SSO — finish in the browser' : 'Manual package'}</h3>
                       <p>{detail.manual_next_steps}</p>
+                      <ol>
+                        {manualPackageSteps(Boolean(detail.captcha)).map((step) => (
+                          <li key={step}>{step}</li>
+                        ))}
+                      </ol>
                       {detail.artifacts.deep_link_url && (
                         <p>
                           <button

@@ -28,6 +28,16 @@ import {
   sourceUnconfiguredCopy,
 } from '../lib/settings'
 import { loadApplyPrefs, saveApplyPrefs, type ApplyPrefs } from '../lib/applyPrefs'
+import { buildExportBundle } from '../lib/privacy'
+import {
+  exportAuditCsv,
+  forgetPreview,
+  loadSiteOverrides,
+  loadSuppressed,
+  saveSiteOverride,
+  syncSuppressed,
+  validateOverride,
+} from '../lib/sprint15Kanban'
 import { emailProviderHealth } from '../lib/emailHealth'
 import { formatAllowlist, parseAllowlist, recordAllowlistAudit } from '../lib/allowlist'
 import { currentLocale, setLocale, t, type Locale } from '../lib/i18n'
@@ -58,9 +68,48 @@ function formatWhen(stamp: string | null) {
   return date.toLocaleString()
 }
 
+function SuppressionList() {
+  const [blocked, setBlocked] = useState(() => loadSuppressed())
+  const [draft, setDraft] = useState('')
+  return (
+    <div>
+      <label>
+        Address
+        <input value={draft} onChange={(event) => setDraft(event.target.value)} aria-label="Suppressed email address" />
+      </label>
+      <button
+        type="button"
+        className="secondary"
+        onClick={() => {
+          if (!draft.trim()) return
+          setBlocked(syncSuppressed([draft.trim()], []))
+          setDraft('')
+        }}
+      >
+        Suppress
+      </button>
+      <ul>
+        {blocked.map((addr) => (
+          <li key={addr}>
+            {addr}{' '}
+            <button type="button" className="link-btn" onClick={() => setBlocked(syncSuppressed([], [addr]))}>
+              Restore
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function ApplyPrefsFields() {
   const [prefs, setPrefs] = useState<ApplyPrefs>(() => loadApplyPrefs())
   const [resumes, setResumes] = useState<{ id: string; fileName: string }[]>([])
+  const [overrides, setOverrides] = useState(() => loadSiteOverrides())
+  const [site, setSite] = useState('greenhouse')
+  const [nameField, setNameField] = useState('')
+  const [emailField, setEmailField] = useState('')
+  const [resumeField, setResumeField] = useState('')
   useEffect(() => {
     void resumeApi
       .list()
@@ -135,6 +184,48 @@ function ApplyPrefsFields() {
           ))}
         </select>
       </label>
+      <h3>Per-site form overrides</h3>
+      <p className="muted">Map name, email, and resume fields for Greenhouse or Lever Auto-Apply. Changes are audited in this browser.</p>
+      <label>
+        Site
+        <select value={site} onChange={(event) => setSite(event.target.value)} aria-label="Override site">
+          <option value="greenhouse">Greenhouse</option>
+          <option value="lever">Lever</option>
+        </select>
+      </label>
+      <label>
+        Name field
+        <input value={nameField} onChange={(event) => setNameField(event.target.value)} aria-label="Name field override" />
+      </label>
+      <label>
+        Email field
+        <input value={emailField} onChange={(event) => setEmailField(event.target.value)} aria-label="Email field override" />
+      </label>
+      <label>
+        Resume field
+        <input value={resumeField} onChange={(event) => setResumeField(event.target.value)} aria-label="Resume field override" />
+      </label>
+      <button
+        type="button"
+        className="secondary"
+        onClick={() => {
+          const fields = { name: nameField, email: emailField, resume: resumeField }
+          const check = validateOverride(fields)
+          if (!check.valid) return
+          setOverrides(saveSiteOverride(site, fields))
+        }}
+      >
+        Save override
+      </button>
+      {overrides.length > 0 && (
+        <ul>
+          {overrides.map((item) => (
+            <li key={item.site}>
+              {item.site}: {Object.keys(item.fields).join(', ')}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
@@ -697,8 +788,8 @@ export function SettingsPage() {
           type="button"
           className="secondary"
           onClick={() => {
-            const plan = purgeSummary(buildExportBundle(userId))
-            window.alert(`Right-to-be-forgotten planned for ${plan.userId} (${plan.deleted} stored rows in this bundle).`)
+            const plan = forgetPreview(userId)
+            window.alert(`Dry-run right-to-be-forgotten for ${plan.userId} (${plan.deleted} stored rows). Nothing was deleted.`)
           }}
         >
           Forget my account
@@ -722,6 +813,9 @@ export function SettingsPage() {
             </label>
           ))}
         </fieldset>
+        <h3>Email suppression list</h3>
+        <p className="muted">Addresses on this list skip outbound mail until restored.</p>
+        <SuppressionList />
       </section>
 
       <section className="editor-section" aria-labelledby="allowlist-heading">
@@ -1221,6 +1315,31 @@ export function SettingsPage() {
       <section className="editor-section" aria-labelledby="audit-heading">
         <h2 id="audit-heading">Settings audit trail</h2>
         <p className="muted">Who changed threshold, sources, Auto-Apply, or email connection — and when.</p>
+        {auditItems.length > 0 && (
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              const csv = exportAuditCsv(
+                auditItems.map((item) => ({
+                  at: item.createdAt,
+                  actor: item.actorId,
+                  action: item.entityType,
+                  target: item.fieldMask.join('|'),
+                })),
+              )
+              const blob = new Blob([csv], { type: 'text/csv' })
+              const url = URL.createObjectURL(blob)
+              const link = document.createElement('a')
+              link.href = url
+              link.download = 'ajas-settings-audit.csv'
+              link.click()
+              URL.revokeObjectURL(url)
+            }}
+          >
+            Export CSV
+          </button>
+        )}
         {auditItems.length === 0 ? (
           <p className="muted">No audited changes yet.</p>
         ) : (

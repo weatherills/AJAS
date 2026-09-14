@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { MatchView } from '../api/matchingTypes'
 import { copyText, explanationClipboardPayload } from '../lib/clipboard'
 import { EXPLAIN_MAX, EXPLAIN_PREVIEW, truncateExplanation } from '../lib/matching'
-import { explanationChips } from '../lib/sprint13'
+import { fitSubScoreTooltips, groupEvidence, truncateChip } from '../lib/sprint15Kanban'
 import { Modal } from './Modal'
 
 export function WhyThisScore({ match, onClose }: { match: MatchView; onClose: () => void }) {
@@ -22,19 +22,28 @@ export function WhyThisScore({ match, onClose }: { match: MatchView; onClose: ()
         <p className="muted">
           Keywords {match.breakdown.keyword.toFixed(1)} · Semantic {match.breakdown.semantic.toFixed(1)} · Weights{' '}
           {Math.round(match.breakdown.weights.keyword * 100)}% / {Math.round(match.breakdown.weights.semantic * 100)}%
+          {' · '}
+          {fitSubScoreTooltips(match.breakdown.keyword, match.breakdown.semantic, 0).tips.keyword}
         </p>
       )}
       {match.bucket && <p className="muted">Fit bucket: {match.bucket.label}</p>}
       {match.highlights && match.highlights.length > 0 && (
         <ul className="match-chips" aria-label="Match reasons">
-          {explanationChips(match.highlights.slice(0, 8)).map((chip) => (
-            <li key={chip.label} title={chip.detail}>
-              {chip.label}
-            </li>
-          ))}
+          {groupEvidence(match.highlights.slice(0, 8), match.gaps || []).skills.map((chip) => {
+            const shown = truncateChip(chip.label)
+            return (
+              <li key={chip.label} title={chip.detail}>
+                {shown.label}
+              </li>
+            )
+          })}
         </ul>
       )}
-      {match.gaps && match.gaps.length > 0 && <p className="muted">Gaps: {match.gaps.slice(0, 6).join(', ')}</p>}
+      {match.gaps && match.gaps.length > 0 && (
+        <p className="muted" role="status">
+          Missing must-haves: {match.gaps.slice(0, 6).join(', ')}
+        </p>
+      )}
       {match.evidence && match.evidence.length > 0 && (
         <ul className="evidence-list">
           {match.evidence.slice(0, 5).map((line) => (
@@ -83,12 +92,17 @@ export function WhyThisScoreInline({ match }: { match: MatchView | undefined }) 
           )}
           {match.highlights && match.highlights.length > 0 && (
             <ul className="match-chips" aria-label="Match reasons">
-              {explanationChips(match.highlights.slice(0, 8)).map((chip) => (
+              {groupEvidence(match.highlights.slice(0, 8), match.gaps || []).skills.map((chip) => (
                 <li key={chip.label} title={chip.detail}>
-                  {chip.label}
+                  {truncateChip(chip.label).label}
                 </li>
               ))}
             </ul>
+          )}
+          {match.gaps && match.gaps.length > 0 && (
+            <p className="muted" role="status">
+              Missing must-haves: {match.gaps.slice(0, 6).join(', ')}
+            </p>
           )}
           {match.evidence && match.evidence.length > 0 && (
             <ul className="evidence-list">

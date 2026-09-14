@@ -5,6 +5,7 @@ import { adapterHealthRows, toggleMute, type AdapterHealth } from '../lib/adapte
 import { digestCopy, notificationInbox, pushNotification, type AppNotification } from '../lib/notifications'
 import { json, request, setUserId } from '../api/live'
 import { auditCsv, filterAudit, type AuditRow } from '../lib/audit'
+import { slaWidgets } from '../lib/sprint15Kanban'
 import { dashboardPreview } from '../lib/sourceQuotas'
 
 type Slo = { route: string; budgetMs: number; p95Ms: number | null; samples: number; ok: boolean }
@@ -185,6 +186,16 @@ export function OpsPage() {
       </section>
       <section className="editor-section ops-slo">
         <h2>SLOs</h2>
+        {(() => {
+          const match = slo.find((row) => row.route.includes('match'))
+          const widgets = slaWidgets(match?.p95Ms || 0, 12, 0.95)
+          return (
+            <p className="muted">
+              Match p95 {widgets.matchP95}ms · p99 {widgets.matchP99}ms · ingest {widgets.ingestRps}/s · apply{' '}
+              {Math.round(widgets.applySuccess * 100)}% {widgets.ok ? 'ok' : 'alert'}
+            </p>
+          )
+        })()}
         {slo.length === 0 || slo.every((row) => row.samples === 0) ? (
           <p className="muted">No live samples yet. Open Review or the Job Feed, then reload Ops.</p>
         ) : null}
