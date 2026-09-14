@@ -23,3 +23,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 015 Source adapter: RSS and Atom feed boards
 - [x] 016 Source adapter: stale listing TTL
 - [x] 017 Source adapter: per-host concurrency caps
+- [x] 018 Source adapter: consent cookie fail-closed v2

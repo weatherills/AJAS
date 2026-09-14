@@ -150,3 +150,12 @@ def test_source_adapter_per_host_concurrency_caps():
     assert host_caps(host="a.test", inflight=2)["allow"] is False
     assert host_caps(host="a.test", inflight=0)["allow"] is True
 
+# === S15-18 ===
+
+def test_source_adapter_consent_cookie_fail_closed_v2():
+    from app.sprint15.ingest import consent_v2, reset
+    reset()
+    blocked = consent_v2("https://jobs.example.test/x", consent=False)
+    assert blocked["allow"] is False
+    assert blocked["failClosed"] is True
+
