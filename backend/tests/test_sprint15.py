@@ -359,3 +359,11 @@ def test_job_detail_company_insights_panel():
     row = company_insights("Acme")
     assert row["live"] is False and row["panel"] is True
 
+# === S15-45 ===
+
+def test_bulk_actions_bulk_save_undo():
+    from app.sprint15.product import bulk_save
+    row = bulk_save(["a", "b", "c"], ["b", "z"])
+    assert row["saved"] == ["b"]
+    assert row["undo"] == ["b"]
+

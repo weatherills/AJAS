@@ -62,3 +62,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 042 Search: boolean query parser
 - [x] 043 Job list: virtualized grid mode
 - [x] 044 Job detail: company insights panel
+- [x] 045 Bulk actions: bulk-save + undo
