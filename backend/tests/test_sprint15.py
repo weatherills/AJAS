@@ -367,3 +367,11 @@ def test_bulk_actions_bulk_save_undo():
     assert row["saved"] == ["b"]
     assert row["undo"] == ["b"]
 
+# === S15-46 ===
+
+def test_apply_required_field_checklist():
+    from app.sprint15.product import required_fields
+    row = required_fields("greenhouse", {"name": "Ada", "email": "a@b.c", "resume": "r1"})
+    assert row["ready"] is True
+    assert required_fields("lever", {"name": "Ada"})["missing"]
+
