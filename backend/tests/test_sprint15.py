@@ -190,3 +190,11 @@ def test_normalization_remote_hybrid_onsite_v2():
     assert remote_v2("Hybrid 3 days") == "hybrid"
     assert remote_v2("On-site Seattle") == "onsite"
 
+# === S15-23 ===
+
+def test_normalization_education_requirements():
+    from app.sprint15.parse import education
+    row = education("Bachelor's degree required")
+    assert row["degree"] == "bachelors"
+    assert row["required"] is True
+
