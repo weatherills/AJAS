@@ -72,7 +72,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 ## Batch 5 gate
 - tests/lint/typecheck green after task 50
 
-- [ ] 051 Email: In-Reply-To thread merge
+- [x] 051 Email: In-Reply-To thread merge
 - [ ] 052 Email: auto-reply detector
 - [ ] 053 Replies: timezone-safe calendar placeholder
 - [ ] 054 Follow-ups: skip if meeting booked
