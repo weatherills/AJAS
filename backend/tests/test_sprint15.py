@@ -593,3 +593,11 @@ def test_fixtures_s15_html_json_snapshots():
     assert "s15_indeed.json" in row["extra"]
     assert row["schema"] == "ajas.fixtures.v4"
 
+# === S15-76 ===
+
+def test_seed_data_v4_mixed_timezone_users():
+    from app.sprint15.platform import seed_v4
+    row = seed_v4()
+    assert row["timezones"] is True
+    assert any(item.get("tz") for item in row["resumes"])
+
