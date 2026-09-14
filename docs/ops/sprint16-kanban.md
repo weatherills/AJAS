@@ -86,7 +86,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 ## Batch 6 gate
 - tests/lint/typecheck green after task 60
 
-- [ ] 061 Audit: break-glass access trail
+- [x] 061 Audit: break-glass access trail
 - [ ] 062 Error taxonomy v5: user vs operator vs vendor
 - [ ] 063 Observability: USE metrics pack
 - [ ] 064 Metrics: error-budget remaining
