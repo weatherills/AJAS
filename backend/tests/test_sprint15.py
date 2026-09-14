@@ -315,3 +315,11 @@ def test_explanations_why_not_this_role():
     row = why_not(["Python"], ["Python", "SQL"])
     assert row["missing"] == ["SQL"]
 
+# === S15-39 ===
+
+def test_fit_score_confidence_interval():
+    from app.sprint15.matching import confidence
+    row = confidence(keyword=1, semantic=1, recency=1)
+    assert row["total"] == 1
+    assert row["interval"] == 1
+
