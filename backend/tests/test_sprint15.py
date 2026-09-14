@@ -694,3 +694,11 @@ def test_docs_rollback_steps_v3():
     assert rollback()
     assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint15-rollback.md").is_file()
 
+# === S15-89 ===
+
+def test_data_index_migration_v3():
+    from app.sprint15.ops import migrate_v3
+    row = migrate_v3()
+    assert row["schema"] == "ajas.migrate.v3"
+    assert row["indices"]
+

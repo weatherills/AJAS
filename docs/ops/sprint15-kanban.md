@@ -122,3 +122,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 086 Docs: observability how-to v3
 - [x] 087 Docs: data model v2
 - [x] 088 Docs: rollback steps v3
+- [x] 089 Data: index migration v3
