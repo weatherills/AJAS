@@ -86,3 +86,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 ## Batch 6 gate
 - tests/lint/typecheck green after task 60
 
+- [x] 061 Audit: impersonation trail

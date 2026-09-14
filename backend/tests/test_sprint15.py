@@ -479,3 +479,12 @@ def test_unsubscribe_suppression_sync_v2():
     assert feature_enabled("imap_transport") is False
     assert row["imap"] is False
 
+# === S15-61 ===
+
+def test_audit_impersonation_trail():
+    from app.sprint15.ops import impersonation, reset
+    reset()
+    row = impersonation(actor="admin", as_user="ada")
+    assert row["audit"] is True
+    assert row["asUser"] == "ada"
+
