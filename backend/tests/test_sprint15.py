@@ -352,3 +352,10 @@ def test_job_list_virtualized_grid_mode():
     row = grid_mode(n=40, start=0)
     assert row["mode"] == "grid"
 
+# === S15-44 ===
+
+def test_job_detail_company_insights_panel():
+    from app.sprint15.product import company_insights
+    row = company_insights("Acme")
+    assert row["live"] is False and row["panel"] is True
+
