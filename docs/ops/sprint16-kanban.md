@@ -116,7 +116,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 
 - [x] 081 Accessibility: skip-link pack
 - [x] 082 I18N: currency/date formats v2
-- [ ] 083 Mobile: swipe actions
+- [x] 083 Mobile: swipe actions
 - [ ] 084 Docs: Sprint 16 operations guide
 - [ ] 085 Docs: API examples v4
 - [ ] 086 Docs: observability how-to v4
