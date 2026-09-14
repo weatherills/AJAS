@@ -131,7 +131,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 091 Data: vector store compaction v5
 - [x] 092 Data: retention sweep v5
 - [x] 093 Maintenance: dependency audit v3
-- [ ] 094 Maintenance: lint and type alignment v3
+- [x] 094 Maintenance: lint and type alignment v3
 - [ ] 095 Maintenance: unused adapter flags stay off
 - [ ] 096 CLI: reindex by tenant v2
 - [ ] 097 Webhooks: adapter outcome retries v2
