@@ -67,3 +67,11 @@ def test_yc_work_at_a_startup_adapter_v1():
     out = yc_v1({"jobs": [{"id": "y1", "title": "YC Eng"}]})
     assert out["live"] is False
 
+# === S15-08 ===
+
+def test_flexjobs_adapter_v1():
+    from app.sprint15.ingest import flexjobs_v1, reset
+    reset()
+    out = flexjobs_v1({"jobs": [{"id": "f1", "title": "Flex"}]})
+    assert out["flag"] is False
+
