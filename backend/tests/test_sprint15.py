@@ -525,3 +525,10 @@ def test_security_csp_report_only_headers():
     headers = csp_headers(report_only=True)
     assert "Content-Security-Policy-Report-Only" in headers
 
+# === S15-67 ===
+
+def test_secrets_dual_key_overlap_window():
+    from app.sprint15.ops import dual_key
+    row = dual_key(current="k1", next_key="k2", use_next=False)
+    assert row["overlap"] is True and row["active"] == "k1"
+
