@@ -121,7 +121,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 085 Docs: API examples v4
 - [x] 086 Docs: observability how-to v4
 - [x] 087 Docs: data model v3
-- [ ] 088 Docs: rollback steps v4
+- [x] 088 Docs: rollback steps v4
 - [ ] 089 Data: index migration v4
 - [ ] 090 Data: salary FX backfill v4
 
