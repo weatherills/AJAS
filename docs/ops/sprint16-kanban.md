@@ -88,7 +88,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 
 - [x] 061 Audit: break-glass access trail
 - [x] 062 Error taxonomy v5: user vs operator vs vendor
-- [ ] 063 Observability: USE metrics pack
+- [x] 063 Observability: USE metrics pack
 - [ ] 064 Metrics: error-budget remaining
 - [ ] 065 Privacy: DSAR export encryption
 - [ ] 066 Security: HSTS + CSP enforce toggle
