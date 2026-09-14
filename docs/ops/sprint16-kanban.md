@@ -47,7 +47,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 031 Embeddings: content-hash skip v2
 - [x] 032 Vector store: replica health probe
 - [x] 033 Matching: commute-time proxy
-- [ ] 034 Matching: title-family clustering v2
+- [x] 034 Matching: title-family clustering v2
 - [ ] 035 Matching: equity-band overlap
 - [ ] 036 Ranking: listwise LTR features v3
 - [ ] 037 Ranking: thompson sampling explore
