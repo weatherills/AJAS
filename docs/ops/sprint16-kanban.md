@@ -64,7 +64,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 044 Job detail: hiring-team panel
 - [x] 045 Bulk actions: bulk-archive + undo
 - [x] 046 Apply: optional-field warnings
-- [ ] 047 Cover letters: reading-level target
+- [x] 047 Cover letters: reading-level target
 - [ ] 048 Attachment manager: file-hash dedupe
 - [ ] 049 Compare: three-way match table
 - [ ] 050 Saved searches: webhook notify
