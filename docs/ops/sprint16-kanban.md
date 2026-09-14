@@ -6,7 +6,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 002 Handshake adapter v1
 - [x] 003 USAJobs adapter v1
 - [x] 004 The Muse adapter v1
-- [ ] 005 SmartRecruiters adapter v1
+- [x] 005 SmartRecruiters adapter v1
 - [ ] 006 Jobvite adapter v1
 - [ ] 007 Recruitee adapter v1
 - [ ] 008 TeamTailor adapter v1
