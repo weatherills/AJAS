@@ -1,6 +1,7 @@
 # Sprint 15 API cookbook
 
 ```bash
+curl -s localhost:7071/api/v1/s15/kanban
 curl -s localhost:7071/api/v1/s15/status
 curl -s localhost:7071/api/v1/s15/health
 curl -s 'localhost:7071/api/v1/s15/search?q=python+AND+azure' -H 'Authorization: Bearer ada'

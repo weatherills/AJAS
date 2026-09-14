@@ -141,4 +141,8 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 
 ## CodeSpring
 
-- 100 `[S15]` cards marked done after each commit
+- Original 100 `[S15]` cards landed with the Sprint 15 commits on `main`.
+- On 2026-09-14 the live Kanban was reset to 75 `Sprint 15 — …` cards (adapters,
+  crawlers, matching/mail/ops polish). Those cards are implemented in
+  `backend/app/sprint15/kanban.py` (fixture-only extra boards, flags off) and
+  marked done after tests.

@@ -8,4 +8,4 @@ Batch gates: [sprint15-batches.md](./sprint15-batches.md).
 Kanban: [sprint15-kanban.md](./sprint15-kanban.md).
 
 Health `version` is `sprint15`. HTTP: `GET /api/v1/s15/status`, `GET /api/v1/s15/health`,
-`GET /api/v1/s15/search`, `GET /api/v1/s15/traces`.
+`GET /api/v1/s15/search`, `GET /api/v1/s15/traces`, `GET /api/v1/s15/kanban`.
