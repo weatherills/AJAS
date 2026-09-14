@@ -109,3 +109,8 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 077 API: cursor pagination v2
 - [x] 078 API: webhook subscription CRUD
 - [x] 079 Health: build SHA + dependency matrix v4
+- [x] 080 Performance: request coalescing
+
+## Batch 8 gate
+- tests/lint/typecheck green after task 80
+

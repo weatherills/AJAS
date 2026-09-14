@@ -625,3 +625,11 @@ def test_health_build_sha_dependency_matrix_v4():
     assert row["schema"] == "ajas.health.v4"
     assert row["version"] == "sprint15"
 
+# === S15-80 ===
+
+def test_performance_request_coalescing():
+    from app.sprint15.ops import coalesce, reset
+    reset()
+    assert coalesce("k", 1) == 1
+    assert coalesce("k", 9) == 1
+
