@@ -39,7 +39,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 027 Salary parsing v5: hourly overtime + equity
 - [x] 028 Skill extractor v5: cert vs tool split
 - [x] 029 Resume parser v5: date overlap repair
-- [ ] 030 Company brand graph (DBA / trade names)
+- [x] 030 Company brand graph (DBA / trade names)
 
 ## Batch 3 gate
 - tests/lint/typecheck green after task 30
