@@ -633,3 +633,9 @@ def test_performance_request_coalescing():
     assert coalesce("k", 1) == 1
     assert coalesce("k", 9) == 1
 
+# === S15-81 ===
+
+def test_accessibility_keyboard_shortcuts():
+    from app.sprint15.product import shortcuts
+    assert shortcuts()["j"] == "next"
+
