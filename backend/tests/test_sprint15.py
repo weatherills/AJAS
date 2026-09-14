@@ -17,3 +17,11 @@ def test_indeed_adapter_v1_pagination_backoff():
     assert len(out["jobs"]) >= 2
     assert out["pages"] is True
 
+# === S15-02 ===
+
+def test_dice_adapter_v1():
+    from app.sprint15.ingest import dice_v1, reset
+    reset()
+    out = dice_v1({"jobs": [{"id": "d1", "title": "Dice Role"}]})
+    assert out["source"] == "dice" and out["live"] is False
+

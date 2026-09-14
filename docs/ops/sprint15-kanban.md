@@ -3,3 +3,4 @@
 Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 
 - [x] 001 Indeed adapter v1 (pagination/backoff)
+- [x] 002 Dice adapter v1
