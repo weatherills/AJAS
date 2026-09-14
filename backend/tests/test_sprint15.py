@@ -159,3 +159,11 @@ def test_source_adapter_consent_cookie_fail_closed_v2():
     assert blocked["allow"] is False
     assert blocked["failClosed"] is True
 
+# === S15-19 ===
+
+def test_source_adapter_html_vs_json_path_selector():
+    from app.sprint15.ingest import path_selector, reset
+    reset()
+    assert path_selector(json_ok=True, html=None) == "json"
+    assert path_selector(json_ok=False, html="<div>job posting</div>") == "html"
+
