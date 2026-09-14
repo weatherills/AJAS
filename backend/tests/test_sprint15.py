@@ -662,3 +662,11 @@ def test_docs_sprint_15_operations_guide():
     assert "sprint15" in text.lower() or "Sprint 15" in text
     assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint15.md").is_file()
 
+# === S15-85 ===
+
+def test_docs_api_examples_v3():
+    from pathlib import Path
+    from app.sprint15.platform import api_examples
+    assert api_examples()[0]["example"].startswith("curl")
+    assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint15-api-cookbook.md").is_file()
+
