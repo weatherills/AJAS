@@ -53,7 +53,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 037 Ranking: thompson sampling explore
 - [x] 038 Explanations: why-this-and-not-that
 - [x] 039 Fit score: prediction interval
-- [ ] 040 Diversity: de-bias company tokens
+- [x] 040 Diversity: de-bias company tokens
 
 ## Batch 4 gate
 - tests/lint/typecheck green after task 40
