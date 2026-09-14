@@ -557,3 +557,10 @@ def test_queue_poison_message_quarantine():
     row = poison({"body": "bad"})
     assert row["quarantine"] is True
 
+# === S15-71 ===
+
+def test_backfill_company_alias_merge():
+    from app.sprint15.ops import alias_merge
+    row = alias_merge([{"alias": "NW", "parent": "Contoso"}])
+    assert row["map"]["NW"] == "Contoso"
+
