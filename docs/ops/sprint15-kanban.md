@@ -115,3 +115,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 80
 
 - [x] 081 Accessibility: keyboard shortcuts
+- [x] 082 I18N: date/number formats

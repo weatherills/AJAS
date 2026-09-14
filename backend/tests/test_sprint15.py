@@ -639,3 +639,10 @@ def test_accessibility_keyboard_shortcuts():
     from app.sprint15.product import shortcuts
     assert shortcuts()["j"] == "next"
 
+# === S15-82 ===
+
+def test_i18n_date_number_formats():
+    from app.sprint15.product import formats
+    row = formats(locale="en-US")
+    assert "yyyy" in row["date"]
+
