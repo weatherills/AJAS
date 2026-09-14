@@ -25,7 +25,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 017 Source adapter: crawl budget remaining gauge
 - [x] 018 Source adapter: consent banner fail-closed v3
 - [x] 019 Source adapter: AMP vs canonical URL picker
-- [ ] 020 Source adapter: Last-Modified If-Modified-Since
+- [x] 020 Source adapter: Last-Modified If-Modified-Since
 
 ## Batch 2 gate
 - tests/lint/typecheck green after task 20
