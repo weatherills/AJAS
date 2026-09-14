@@ -90,7 +90,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 062 Error taxonomy v5: user vs operator vs vendor
 - [x] 063 Observability: USE metrics pack
 - [x] 064 Metrics: error-budget remaining
-- [ ] 065 Privacy: DSAR export encryption
+- [x] 065 Privacy: DSAR export encryption
 - [ ] 066 Security: HSTS + CSP enforce toggle
 - [ ] 067 Secrets: three-key rotation window
 - [ ] 068 Rate limit: token bucket v3
