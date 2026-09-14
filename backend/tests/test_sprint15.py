@@ -770,3 +770,11 @@ def test_health_synthetic_probe_pack():
     assert row["ok"] is True
     assert row["match"] is True
 
+# === S15-99 ===
+
+def test_idempotency_conflict_export_csv():
+    from app.sprint15.ops import conflict_csv
+    csv = conflict_csv([{"key": "k", "status": "conflict"}])
+    assert csv.splitlines()[0] == "key,status"
+    assert "conflict" in csv
+
