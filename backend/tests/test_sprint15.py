@@ -469,3 +469,13 @@ def test_signatures_per_profile_footer():
     text = signature(name="Ada", title="Engineer")
     assert "Ada" in text and "AJAS" in text
 
+# === S15-60 ===
+
+def test_unsubscribe_suppression_sync_v2():
+    from app.flags import feature_enabled
+    from app.sprint15.mail import suppression_sync
+    row = suppression_sync(["a@b.c", "c@d.e"], {"c@d.e"})
+    assert row["dropped"] == ["c@d.e"]
+    assert feature_enabled("imap_transport") is False
+    assert row["imap"] is False
+

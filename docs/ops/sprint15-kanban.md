@@ -81,3 +81,8 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 057 Inbox: recruiter vs ATS split
 - [x] 058 Templates: A/B subject lines
 - [x] 059 Signatures: per-profile footer
+- [x] 060 Unsubscribe/suppression sync v2
+
+## Batch 6 gate
+- tests/lint/typecheck green after task 60
+
