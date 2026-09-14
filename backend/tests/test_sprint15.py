@@ -434,3 +434,10 @@ def test_follow_ups_skip_if_replied():
     assert skip_if_replied(replied=True)["skip"] is True
     assert skip_if_replied(replied=False)["send24"] is True
 
+# === S15-55 ===
+
+def test_notification_quiet_hours():
+    from app.sprint15.mail import quiet_hours
+    assert quiet_hours(hour=22) is True
+    assert quiet_hours(hour=12) is False
+

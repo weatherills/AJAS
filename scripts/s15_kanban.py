@@ -10,18 +10,22 @@ import sys
 ROOT = "/workspace"
 
 
-def _cs(args: list[str], *, check: bool = True) -> subprocess.CompletedProcess:
+def _cs(args: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["codespring", *args],
         cwd=ROOT,
-        check=check,
+        check=False,
         capture_output=True,
         text=True,
     )
 
 
 def _load() -> list[dict]:
-    raw = _cs(["tasks", "--json"]).stdout
+    proc = _cs(["tasks", "--json"])
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr or proc.stdout or "codespring tasks failed\n")
+        raise SystemExit(proc.returncode or 1)
+    raw = proc.stdout
     tasks = json.loads(raw[raw.find("[") :])
     return tasks if isinstance(tasks, list) else tasks.get("data") or []
 
@@ -39,21 +43,25 @@ def main() -> int:
     tasks = _load()
     match = next((t for t in tasks if t.get("title") in wanted), None)
     if match is None:
-        created = _cs(["task", "create", "--title", title, "--priority", "medium", "--json"]).stdout
-        match = json.loads(created[created.find("{") :])
+        created = _cs(["task", "create", "--title", title, "--priority", "medium", "--json"])
+        if created.returncode != 0:
+            sys.stderr.write(created.stderr or created.stdout or "create failed\n")
+            return created.returncode or 1
+        match = json.loads(created.stdout[created.stdout.find("{") :])
         if isinstance(match, list):
             match = match[0]
     tid = match["id"]
     if match.get("title") != title:
-        _cs(["task", "update", tid, "--title", title], check=False)
+        _cs(["task", "update", tid, "--title", title])
     if match.get("status") == "todo":
-        _cs(["task", "start", tid], check=False)
+        _cs(["task", "start", tid])
     if match.get("status") != "done":
-        done = _cs(["task", "done", tid], check=False)
+        done = _cs(["task", "done", tid])
         if done.returncode != 0:
-            raise SystemExit(done.stderr or done.stdout or "task done failed")
+            sys.stderr.write(done.stderr or done.stdout or "task done failed\n")
+            return done.returncode or 1
     desc = f"Landed on main as `{sha}`.\n\n{title}" if sha else title
-    _cs(["task", "update", tid, "--description", desc], check=False)
+    _cs(["task", "update", tid, "--description", desc])
     print(tid, "done")
     return 0
 
