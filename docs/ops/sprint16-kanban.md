@@ -8,7 +8,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 004 The Muse adapter v1
 - [x] 005 SmartRecruiters adapter v1
 - [x] 006 Jobvite adapter v1
-- [ ] 007 Recruitee adapter v1
+- [x] 007 Recruitee adapter v1
 - [ ] 008 TeamTailor adapter v1
 - [ ] 009 JazzHR adapter v1
 - [ ] 010 Workday company board crawler v2
