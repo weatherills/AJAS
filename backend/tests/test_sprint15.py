@@ -100,3 +100,11 @@ def test_source_adapter_tls_fingerprint_pin_rotate():
     assert row["pinned"] is True and row["rotated"] is True
     assert row["ja3"]
 
+# === S15-12 ===
+
+def test_source_adapter_cookie_jar_session_pool():
+    from app.sprint15.ingest import cookie_jar, reset
+    reset()
+    row = cookie_jar("example.test")
+    assert row["live"] is False and row["pool"] is True
+
