@@ -138,3 +138,7 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 098 Health: synthetic probe pack
 - [x] 099 Idempotency: conflict export CSV
 - [x] 100 Feature flags: percentage rollout + audit
+
+## CodeSpring
+
+- 100 `[S15]` cards marked done after each commit
