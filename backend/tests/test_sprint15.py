@@ -404,3 +404,11 @@ def test_saved_searches_digest_schedule():
     assert row["channel"] == "email"
     assert row["hour"] == 8
 
+# === S15-51 ===
+
+def test_email_thread_merge_by_message_id():
+    from app.sprint15.mail import merge_threads, reset
+    reset()
+    row = merge_threads([{"id": "1", "messageId": "m1"}, {"id": "2", "messageId": "m1"}])
+    assert row["count"] == 1
+
