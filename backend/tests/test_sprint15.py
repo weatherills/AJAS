@@ -51,3 +51,11 @@ def test_google_for_jobs_adapter_v1():
     out = google_jobs_v1({"jobs": [{"id": "g1", "title": "SWE"}]})
     assert out["flag"] is False
 
+# === S15-06 ===
+
+def test_otta_adapter_v1():
+    from app.sprint15.ingest import otta_v1, reset
+    reset()
+    out = otta_v1({"jobs": [{"id": "o1", "title": "Otta Role"}]})
+    assert out["source"] == "otta"
+
