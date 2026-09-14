@@ -286,3 +286,11 @@ def test_matching_title_family_clustering():
     assert title_family("Engineering Manager") == "mgmt"
     assert title_family("Data Analyst") == "data"
 
+# === S15-35 ===
+
+def test_matching_compensation_band_overlap():
+    from app.sprint15.matching import comp_overlap
+    row = comp_overlap(120, 160, 140, 180)
+    assert row["hit"] is True
+    assert row["overlap"] > 0
+
