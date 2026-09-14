@@ -59,3 +59,11 @@ def test_otta_adapter_v1():
     out = otta_v1({"jobs": [{"id": "o1", "title": "Otta Role"}]})
     assert out["source"] == "otta"
 
+# === S15-07 ===
+
+def test_yc_work_at_a_startup_adapter_v1():
+    from app.sprint15.ingest import reset, yc_v1
+    reset()
+    out = yc_v1({"jobs": [{"id": "y1", "title": "YC Eng"}]})
+    assert out["live"] is False
+
