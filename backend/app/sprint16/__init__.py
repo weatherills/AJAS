@@ -3,6 +3,6 @@
 from __future__ import annotations
 
 VERSION = "sprint16"
-COMPLETED = 96
+COMPLETED = 97
 
 __all__ = ["VERSION", "COMPLETED"]
