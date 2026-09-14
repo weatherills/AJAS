@@ -45,3 +45,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 30
 
 - [x] 031 Embeddings: delta checksum skip unchanged
+- [x] 032 Vector store: replica lag detector

@@ -263,3 +263,11 @@ def test_embeddings_delta_checksum_skip_unchanged():
     assert first["skip"] is False
     assert second["skip"] is True
 
+# === S15-32 ===
+
+def test_vector_store_replica_lag_detector():
+    from app.sprint15.matching import replica_lag, reset
+    reset()
+    row = replica_lag(replica_ms=10, primary_ms=12)
+    assert row["healthy"] is True
+
