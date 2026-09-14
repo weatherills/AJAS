@@ -91,3 +91,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 063 Observability: RED metrics pack
 - [x] 064 Metrics: SLO burn-rate alerts
 - [x] 065 Privacy: DSAR ticket workflow
+- [x] 066 Security: CSP report-only headers

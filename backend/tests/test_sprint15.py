@@ -518,3 +518,10 @@ def test_privacy_dsar_ticket_workflow():
     row = dsar_ticket("ada")
     assert row["status"] == "open"
 
+# === S15-66 ===
+
+def test_security_csp_report_only_headers():
+    from app.sprint15.ops import csp_headers
+    headers = csp_headers(report_only=True)
+    assert "Content-Security-Policy-Report-Only" in headers
+
