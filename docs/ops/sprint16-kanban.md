@@ -67,7 +67,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 047 Cover letters: reading-level target
 - [x] 048 Attachment manager: file-hash dedupe
 - [x] 049 Compare: three-way match table
-- [ ] 050 Saved searches: webhook notify
+- [x] 050 Saved searches: webhook notify
 
 ## Batch 5 gate
 - tests/lint/typecheck green after task 50
