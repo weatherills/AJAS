@@ -564,3 +564,10 @@ def test_backfill_company_alias_merge():
     row = alias_merge([{"alias": "NW", "parent": "Contoso"}])
     assert row["map"]["NW"] == "Contoso"
 
+# === S15-72 ===
+
+def test_cli_smoke_one_board_fixture():
+    from app.sprint15.platform import cli_smoke
+    cmds = cli_smoke()
+    assert any("indeed" in cmd or "adapters" in cmd for cmd in cmds)
+

@@ -101,3 +101,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 70
 
 - [x] 071 Backfill: company alias merge
+- [x] 072 CLI: smoke one board fixture
