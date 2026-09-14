@@ -61,6 +61,14 @@ def s15_search(req: func.HttpRequest) -> func.HttpResponse:
         return _handle(exc)
 
 
+@bp.route(route="v1/s15/kanban", methods=["GET"])
+def s15_kanban(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    from app.sprint15.kanban import status as kanban_status
+
+    return _ok(kanban_status())
+
+
 @bp.route(route="v1/s15/traces", methods=["GET"])
 def s15_traces(req: func.HttpRequest) -> func.HttpResponse:
     bind_request(req)
