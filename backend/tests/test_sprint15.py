@@ -496,3 +496,10 @@ def test_error_taxonomy_v4_user_vs_operator():
     assert row["schema"] == "ajas.errors.v4"
     assert row["remediation"]
 
+# === S15-63 ===
+
+def test_observability_red_metrics_pack():
+    from app.sprint15.ops import red_metrics
+    row = red_metrics(rate=10, errors=0.01, duration_ms=12)
+    assert row["pack"] == "red"
+
