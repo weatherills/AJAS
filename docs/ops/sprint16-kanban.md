@@ -137,4 +137,9 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 097 Webhooks: adapter outcome retries v2
 - [x] 098 Health: synthetic probe pack v2
 - [x] 099 Idempotency: conflict export JSON
-- [ ] 100 Feature flags: percentage rollout + audit v2
+- [x] 100 Feature flags: percentage rollout + audit v2
+
+## CodeSpring
+
+- 100 `[S16]` cards marked done after each commit (CLI 401 is billing; local log still updated)
+
