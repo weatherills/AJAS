@@ -80,3 +80,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 056 Notification: per-channel prefs
 - [x] 057 Inbox: recruiter vs ATS split
 - [x] 058 Templates: A/B subject lines
+- [x] 059 Signatures: per-profile footer

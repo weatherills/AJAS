@@ -462,3 +462,10 @@ def test_templates_ab_subject_lines():
     row = ab_subject("Hi", "Hello", pick="variant")
     assert row["chosen"] == "Hello"
 
+# === S15-59 ===
+
+def test_signatures_per_profile_footer():
+    from app.sprint15.mail import signature
+    text = signature(name="Ada", title="Engineer")
+    assert "Ada" in text and "AJAS" in text
+
