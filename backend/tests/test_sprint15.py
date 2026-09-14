@@ -206,3 +206,9 @@ def test_normalization_years_of_experience_bands():
     assert row["years"] == 5
     assert row["band"] == "5-7"
 
+# === S15-25 ===
+
+def test_normalization_industry_taxonomy_v2():
+    from app.sprint15.parse import industry_v2
+    assert industry_v2("Fintech SaaS payments") in {"finance", "software"}
+
