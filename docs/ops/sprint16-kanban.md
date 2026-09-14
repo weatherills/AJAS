@@ -34,7 +34,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 022 Normalization: work authorization v2
 - [x] 023 Normalization: degree aliases
 - [x] 024 Normalization: clearance levels
-- [ ] 025 Normalization: industry NAICS map
+- [x] 025 Normalization: industry NAICS map
 - [ ] 026 JD cleaner v5: responsibilities vs qualifications
 - [ ] 027 Salary parsing v5: hourly overtime + equity
 - [ ] 028 Skill extractor v5: cert vs tool split
