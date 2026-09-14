@@ -92,7 +92,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 064 Metrics: error-budget remaining
 - [x] 065 Privacy: DSAR export encryption
 - [x] 066 Security: HSTS + CSP enforce toggle
-- [ ] 067 Secrets: three-key rotation window
+- [x] 067 Secrets: three-key rotation window
 - [ ] 068 Rate limit: token bucket v3
 - [ ] 069 Idempotency: replay storm detector
 - [ ] 070 Queue: poison-message replay cap
