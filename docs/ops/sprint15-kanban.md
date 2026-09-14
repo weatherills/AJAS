@@ -120,3 +120,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 084 Docs: Sprint 15 operations guide
 - [x] 085 Docs: API examples v3
 - [x] 086 Docs: observability how-to v3
+- [x] 087 Docs: data model v2

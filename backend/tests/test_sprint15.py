@@ -678,3 +678,11 @@ def test_docs_observability_how_to_v3():
     assert "RED" in metrics_howto() or "trace" in metrics_howto().lower()
     assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint15-observability.md").is_file()
 
+# === S15-87 ===
+
+def test_docs_data_model_v2():
+    from pathlib import Path
+    from app.sprint15.platform import data_model
+    assert "jobs" in data_model()
+    assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint15-data-model.md").is_file()
+
