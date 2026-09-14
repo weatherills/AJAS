@@ -62,7 +62,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 042 Search: phrase + NOT operator
 - [x] 043 Job list: density compact mode
 - [x] 044 Job detail: hiring-team panel
-- [ ] 045 Bulk actions: bulk-archive + undo
+- [x] 045 Bulk actions: bulk-archive + undo
 - [ ] 046 Apply: optional-field warnings
 - [ ] 047 Cover letters: reading-level target
 - [ ] 048 Attachment manager: file-hash dedupe
