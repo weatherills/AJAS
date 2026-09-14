@@ -21,7 +21,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 013 Source adapter: 304 Not Modified short-circuit
 - [x] 014 Source adapter: JSON-LD JobPosting parser
 - [x] 015 Source adapter: htmx/infinite-scroll fixture pager
-- [ ] 016 Source adapter: per-tenant robots cache
+- [x] 016 Source adapter: per-tenant robots cache
 - [ ] 017 Source adapter: crawl budget remaining gauge
 - [ ] 018 Source adapter: consent banner fail-closed v3
 - [ ] 019 Source adapter: AMP vs canonical URL picker
