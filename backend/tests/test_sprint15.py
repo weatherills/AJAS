@@ -686,3 +686,11 @@ def test_docs_data_model_v2():
     assert "jobs" in data_model()
     assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint15-data-model.md").is_file()
 
+# === S15-88 ===
+
+def test_docs_rollback_steps_v3():
+    from pathlib import Path
+    from app.sprint15.platform import rollback
+    assert rollback()
+    assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint15-rollback.md").is_file()
+
