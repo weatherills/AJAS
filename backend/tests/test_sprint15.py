@@ -271,3 +271,11 @@ def test_vector_store_replica_lag_detector():
     row = replica_lag(replica_ms=10, primary_ms=12)
     assert row["healthy"] is True
 
+# === S15-33 ===
+
+def test_matching_location_radius_boost():
+    from app.sprint15.matching import location_boost
+    assert location_boost(km=0) == 1.0
+    assert location_boost(km=50) == 0.0
+    assert location_boost(km=10) > location_boost(km=40)
+

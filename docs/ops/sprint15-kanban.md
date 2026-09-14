@@ -46,3 +46,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 
 - [x] 031 Embeddings: delta checksum skip unchanged
 - [x] 032 Vector store: replica lag detector
+- [x] 033 Matching: location radius boost
