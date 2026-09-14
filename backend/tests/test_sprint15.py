@@ -375,3 +375,10 @@ def test_apply_required_field_checklist():
     assert row["ready"] is True
     assert required_fields("lever", {"name": "Ada"})["missing"]
 
+# === S15-47 ===
+
+def test_cover_letters_length_targets():
+    from app.sprint15.product import cover_length
+    row = cover_length("short note", target=120)
+    assert row["ok"] is True
+
