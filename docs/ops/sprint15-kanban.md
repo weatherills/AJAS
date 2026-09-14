@@ -35,3 +35,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 023 Normalization: education requirements
 - [x] 024 Normalization: years-of-experience bands
 - [x] 025 Normalization: industry taxonomy v2
+- [x] 026 JD cleaner v4: requirements vs nice-to-have

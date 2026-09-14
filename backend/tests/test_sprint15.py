@@ -212,3 +212,11 @@ def test_normalization_industry_taxonomy_v2():
     from app.sprint15.parse import industry_v2
     assert industry_v2("Fintech SaaS payments") in {"finance", "software"}
 
+# === S15-26 ===
+
+def test_jd_cleaner_v4_requirements_vs_nice_to_have():
+    from app.sprint15.parse import jd_v4
+    row = jd_v4("Must have Python\nNice to have Go")
+    assert row["schema"] == "ajas.jd.v4"
+    assert row["required"] and row["nice"]
+
