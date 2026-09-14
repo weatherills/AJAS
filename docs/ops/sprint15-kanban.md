@@ -53,3 +53,8 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 037 Ranking: exploration/exploitation epsilon
 - [x] 038 Explanations: why-not-this-role
 - [x] 039 Fit score: confidence interval
+- [x] 040 Diversity: de-bias title tokens
+
+## Batch 4 gate
+- tests/lint/typecheck green after task 40
+

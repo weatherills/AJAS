@@ -323,3 +323,9 @@ def test_fit_score_confidence_interval():
     assert row["total"] == 1
     assert row["interval"] == 1
 
+# === S15-40 ===
+
+def test_diversity_de_bias_title_tokens():
+    from app.sprint15.matching import debias_title
+    assert "ninja" not in debias_title("Code ninja").lower()
+
