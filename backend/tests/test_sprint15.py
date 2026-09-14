@@ -709,3 +709,12 @@ def test_data_salary_fx_backfill_v3():
     row = salary_fx([{"body": "$120k-$150k"}])
     assert row["count"] == 1
 
+# === S15-91 ===
+
+def test_data_vector_store_compaction_v4():
+    from app.sprint15.matching import reset
+    from app.sprint15.ops import compact_v4
+    reset()
+    row = compact_v4()
+    assert row["schema"] == "ajas.vector.vacuum.v4"
+
