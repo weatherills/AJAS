@@ -52,7 +52,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 036 Ranking: listwise LTR features v3
 - [x] 037 Ranking: thompson sampling explore
 - [x] 038 Explanations: why-this-and-not-that
-- [ ] 039 Fit score: prediction interval
+- [x] 039 Fit score: prediction interval
 - [ ] 040 Diversity: de-bias company tokens
 
 ## Batch 4 gate
