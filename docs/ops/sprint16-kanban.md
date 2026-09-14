@@ -58,7 +58,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 ## Batch 4 gate
 - tests/lint/typecheck green after task 40
 
-- [ ] 041 Filters: org-shared presets v2
+- [x] 041 Filters: org-shared presets v2
 - [ ] 042 Search: phrase + NOT operator
 - [ ] 043 Job list: density compact mode
 - [ ] 044 Job detail: hiring-team panel
