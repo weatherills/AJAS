@@ -15,7 +15,7 @@ def test_chaos_kill_switches_and_failure_injection():
 
     reset()
     assert VERSION == "sprint13"
-    assert _status_payload()["version"] == "sprint14"
+    assert _status_payload()["version"] == "sprint15"
     assert kill_switch("ingest")["allow"] is True
     inject_failure("ingest")
     assert kill_switch("ingest")["killed"] is True

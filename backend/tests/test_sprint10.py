@@ -658,7 +658,7 @@ def test_health_endpoints_v2_dependency_matrix_and_version():
     from app.features.health import _status_payload
 
     body = _status_payload()
-    assert body["version"] == "sprint14"
+    assert body["version"] == "sprint15"
     assert body["dependencyMatrix"]["workers"]["match"] is True
     assert "cosmos" in body["dependencyMatrix"]
 
