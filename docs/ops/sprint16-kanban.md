@@ -100,7 +100,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 ## Batch 7 gate
 - tests/lint/typecheck green after task 70
 
-- [ ] 071 Backfill: brand alias merge
+- [x] 071 Backfill: brand alias merge
 - [ ] 072 CLI: smoke one board fixture v2
 - [ ] 073 E2E: apply dry-run regressions v2
 - [ ] 074 Unit tests: clearance/degree edge cases
