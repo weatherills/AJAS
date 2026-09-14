@@ -58,3 +58,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 ## Batch 4 gate
 - tests/lint/typecheck green after task 40
 
+- [x] 041 Filters: shared team presets

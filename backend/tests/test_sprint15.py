@@ -329,3 +329,12 @@ def test_diversity_de_bias_title_tokens():
     from app.sprint15.matching import debias_title
     assert "ninja" not in debias_title("Code ninja").lower()
 
+# === S15-41 ===
+
+def test_filters_shared_team_presets():
+    from app.sprint15.product import list_team_presets, reset, team_preset
+    reset()
+    team_preset(team_id="t1", name="python", filters={"q": "python"})
+    assert list_team_presets("t1")[0]["name"] == "python"
+    assert list_team_presets("t2") == []
+
