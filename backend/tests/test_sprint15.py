@@ -236,3 +236,11 @@ def test_skill_extractor_v4_tool_vs_language_split():
     assert row["schema"] == "ajas.skills.v4"
     assert row["chunks"]
 
+# === S15-29 ===
+
+def test_resume_parser_v4_section_order_repair():
+    from app.sprint15.parse import resume_v4
+    row = resume_v4(["Summary", "Experience at Acme", "Skills python", "Education BS"])
+    assert row["schema"] == "ajas.resume.v4"
+    assert row["repaired"] is True
+
