@@ -448,3 +448,10 @@ def test_notification_per_channel_prefs():
     row = channel_prefs(user_id="ada", email=False, toast=True)
     assert row["email"] is False and row["toast"] is True
 
+# === S15-57 ===
+
+def test_inbox_recruiter_vs_ats_split():
+    from app.sprint15.mail import inbox_split
+    assert inbox_split("noreply@greenhouse.io") == "ats"
+    assert inbox_split("pat@agency.test") == "recruiter"
+
