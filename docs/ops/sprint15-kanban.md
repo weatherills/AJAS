@@ -25,3 +25,8 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 017 Source adapter: per-host concurrency caps
 - [x] 018 Source adapter: consent cookie fail-closed v2
 - [x] 019 Source adapter: HTML vs JSON path selector
+- [x] 020 Source adapter: ETag If-None-Match cache
+
+## Batch 2 gate
+- tests/lint/typecheck green after task 20
+

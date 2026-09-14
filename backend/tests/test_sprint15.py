@@ -167,3 +167,11 @@ def test_source_adapter_html_vs_json_path_selector():
     assert path_selector(json_ok=True, html=None) == "json"
     assert path_selector(json_ok=False, html="<div>job posting</div>") == "html"
 
+# === S15-20 ===
+
+def test_source_adapter_etag_if_none_match_cache():
+    from app.sprint15.ingest import etag_cache, reset
+    reset()
+    assert etag_cache(etag="abc", incoming="abc")["notModified"] is True
+    assert etag_cache(etag="abc", incoming="zzz")["hit"] is False
+
