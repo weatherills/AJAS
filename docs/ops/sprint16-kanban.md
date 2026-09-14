@@ -108,7 +108,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 076 Seed data v5: mixed locale users
 - [x] 077 API: cursor pagination v3
 - [x] 078 API: webhook subscription filters
-- [ ] 079 Health: build SHA + dependency matrix v5
+- [x] 079 Health: build SHA + dependency matrix v5
 - [ ] 080 Performance: request coalescing v2
 
 ## Batch 8 gate
