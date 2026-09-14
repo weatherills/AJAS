@@ -718,3 +718,10 @@ def test_data_vector_store_compaction_v4():
     row = compact_v4()
     assert row["schema"] == "ajas.vector.vacuum.v4"
 
+# === S15-92 ===
+
+def test_data_retention_sweep_v4():
+    from app.sprint15.ops import retain_v4
+    row = retain_v4("t1", 30)
+    assert row["schema"] == "ajas.retain.v4"
+

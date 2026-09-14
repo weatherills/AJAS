@@ -129,3 +129,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 90
 
 - [x] 091 Data: vector store compaction v4
+- [x] 092 Data: retention sweep v4
