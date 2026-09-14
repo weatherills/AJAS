@@ -34,3 +34,12 @@ def test_wellfound_adapter_v1():
     assert out["jobs"][0]["title"] == "Founding Eng"
     assert out["flag"] is False
 
+# === S15-04 ===
+
+def test_linkedin_jobs_adapter_v1_fixture_only():
+    from app.sprint15.ingest import linkedin_v1, reset
+    reset()
+    out = linkedin_v1({"jobs": [{"id": "l1", "title": "Staff"}]})
+    assert out["live"] is False
+    assert out["flag"] is False
+
