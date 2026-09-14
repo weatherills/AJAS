@@ -11,3 +11,8 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 007 YC Work at a Startup adapter v1
 - [x] 008 FlexJobs adapter v1
 - [x] 009 SimplyHired adapter v1
+- [x] 010 CareerBuilder adapter v1
+
+## Batch 1 gate
+- tests/lint/typecheck green after task 10
+

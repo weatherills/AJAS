@@ -83,3 +83,11 @@ def test_simplyhired_adapter_v1():
     out = simplyhired_v1({"jobs": [{"id": "s1", "title": "Simply"}]})
     assert out["jobs"]
 
+# === S15-10 ===
+
+def test_careerbuilder_adapter_v1():
+    from app.sprint15.ingest import careerbuilder_v1, reset
+    reset()
+    out = careerbuilder_v1({"jobs": [{"id": "c1", "title": "CB"}]})
+    assert out["live"] is False and out["flag"] is False
+
