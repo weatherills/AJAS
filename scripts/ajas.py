@@ -34,6 +34,10 @@ def main() -> int:
     }
     script = mapping[args.command]
     extra = args.rest
+    if args.command in {"ingest", "adapters"} and "--dry-run" in extra:
+        source = next((item for item in extra if not item.startswith("-")), "greenhouse")
+        print(json.dumps({"command": args.command, "source": source, "dryRun": True, "live": False, "exit": 0}))
+        return 0
     if args.command in {"ingest", "adapters"} and not extra:
         extra = ["greenhouse"]
     if args.command == "help":

@@ -24,7 +24,16 @@ export default function () {
     { headers },
   )
   check(rank, { 'rank 2xx': (r) => r.status === 200 || r.status === 202 })
-  const list = http.get(`${BASE}/api/v1/match-results?limit=25`, { headers })
+  const compute = http.post(
+    `${BASE}/api/v1/matches/compute`,
+    JSON.stringify({
+      resumeText: 'python azure kubernetes',
+      jobText: 'title: Engineer\nskills: python azure',
+    }),
+    { headers },
+  )
+  check(compute, { 'compute 2xx': (r) => r.status === 200 || r.status === 202 })
+  const list = http.get(`${BASE}/api/v1/match-results?limit=25&sort=score`, { headers })
   check(list, { 'list 2xx': (r) => r.status === 200 })
   sleep(0.3)
 }

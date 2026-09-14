@@ -14,8 +14,14 @@ export function createClient({ baseUrl = '/api', token } = {}) {
     return json
   }
   return {
-    jobs: { list: (cursor) => request(`/v1/jobs${cursor ? `?cursor=${cursor}` : ''}`) },
-    matches: { list: (cursor) => request(`/v1/matches${cursor ? `?cursor=${cursor}` : ''}`) },
+    jobs: {
+      list: (cursor, { sort = 'id', limit = 25 } = {}) =>
+        request(`/v1/jobs?limit=${limit}&sort=${sort}${cursor ? `&cursor=${cursor}` : ''}`),
+    },
+    matches: {
+      list: (cursor, { sort = 'score', limit = 25 } = {}) =>
+        request(`/v1/matches?limit=${limit}&sort=${sort}${cursor ? `&cursor=${cursor}` : ''}`),
+    },
     tenants: { create: (name) => request('/v1/tenants', { method: 'POST', body: { name } }) },
   }
 }
