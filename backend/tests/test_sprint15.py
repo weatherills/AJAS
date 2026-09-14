@@ -419,3 +419,11 @@ def test_email_bounce_complaint_classifier_v2():
     assert bounce_v2("Mailbox undeliverable bounce") == "bounce"
     assert bounce_v2("spam complaint") == "complaint"
 
+# === S15-53 ===
+
+def test_replies_calendar_link_placeholder():
+    from app.sprint15.mail import calendar_placeholder
+    row = calendar_placeholder(intent="interview", role="Staff")
+    assert "calendar" in row["placeholders"]
+    assert row["calendar"].startswith("https://")
+
