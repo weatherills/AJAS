@@ -125,3 +125,12 @@ def test_source_adapter_sitemap_xml_board_discovery():
     assert row["live"] is False
     assert any("jobs.example.test" in url for url in row["urls"])
 
+# === S15-15 ===
+
+def test_source_adapter_rss_atom_feed_boards():
+    from app.sprint15.ingest import reset, rss_boards
+    reset()
+    row = rss_boards("<rss><item><title>Staff Python</title></item></rss>")
+    assert "Staff Python" in row["titles"]
+    assert row["live"] is False
+
