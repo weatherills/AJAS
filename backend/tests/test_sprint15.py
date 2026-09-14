@@ -338,3 +338,10 @@ def test_filters_shared_team_presets():
     assert list_team_presets("t1")[0]["name"] == "python"
     assert list_team_presets("t2") == []
 
+# === S15-42 ===
+
+def test_search_boolean_query_parser():
+    from app.sprint15.product import boolean_search
+    hits = boolean_search([{"title": "Staff Python", "company": "Acme"}], "python AND acme")
+    assert len(hits) == 1
+

@@ -59,3 +59,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 40
 
 - [x] 041 Filters: shared team presets
+- [x] 042 Search: boolean query parser
