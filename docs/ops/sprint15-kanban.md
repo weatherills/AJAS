@@ -94,3 +94,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 066 Security: CSP report-only headers
 - [x] 067 Secrets: dual-key overlap window
 - [x] 068 Rate limit: retry-budget v2
+- [x] 069 Idempotency: replay detector UI

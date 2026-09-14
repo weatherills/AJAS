@@ -539,3 +539,13 @@ def test_rate_limit_retry_budget_v2():
     assert retry_budget(used=5)["allow"] is False
     assert retry_budget(used=1)["allow"] is True
 
+# === S15-69 ===
+
+def test_idempotency_replay_detector_ui():
+    from app.idempotency_v2 import reset as reset_idem
+    from app.sprint15.ops import replay_detector, reset
+    reset(); reset_idem()
+    row = replay_detector("k", "a", {"v": 1})
+    assert row["second"]["status"] == "conflict"
+    assert row["replay"] is True
+
