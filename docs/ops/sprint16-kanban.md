@@ -102,7 +102,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 
 - [x] 071 Backfill: brand alias merge
 - [x] 072 CLI: smoke one board fixture v2
-- [ ] 073 E2E: apply dry-run regressions v2
+- [x] 073 E2E: apply dry-run regressions v2
 - [ ] 074 Unit tests: clearance/degree edge cases
 - [ ] 075 Fixtures: s16 HTML/JSON snapshots
 - [ ] 076 Seed data v5: mixed locale users
