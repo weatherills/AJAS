@@ -17,3 +17,10 @@ After every 10 Sprint 15 tasks: backend pytest, frontend `npm test`,
 | 10 | 91–100 maintenance | Compaction, flags, wrap-up gate |
 
 Final gate after task 100.
+
+- Batch 1 after task 10
+- Backend: 889 passed in 2.03s
+- Frontend:       Tests  137 passed (137)
+- Typecheck: clean
+- Lint: existing warnings only
+
