@@ -109,7 +109,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 077 API: cursor pagination v3
 - [x] 078 API: webhook subscription filters
 - [x] 079 Health: build SHA + dependency matrix v5
-- [ ] 080 Performance: request coalescing v2
+- [x] 080 Performance: request coalescing v2
 
 ## Batch 8 gate
 - tests/lint/typecheck green after task 80
