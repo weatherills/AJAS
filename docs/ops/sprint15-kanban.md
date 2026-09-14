@@ -66,3 +66,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 046 Apply: required-field checklist
 - [x] 047 Cover letters: length targets
 - [x] 048 Attachment manager: PDF and DOCX detect
+- [x] 049 Compare: side-by-side match table

@@ -389,3 +389,10 @@ def test_attachment_manager_pdf_docx_detect():
     assert detect_attachment("cv.pdf") == "pdf"
     assert detect_attachment("cv.docx") == "docx"
 
+# === S15-49 ===
+
+def test_compare_side_by_side_match_table():
+    from app.sprint15.product import compare_table
+    row = compare_table({"score": 1, "title": "A"}, {"score": 2, "title": "A"})
+    assert row["diffs"] == 1
+
