@@ -510,3 +510,11 @@ def test_metrics_slo_burn_rate_alerts():
     assert slo_burn(error_rate=0.02, budget=0.01)["fire"] is True
     assert slo_burn(error_rate=0.001, budget=0.01)["fire"] is False
 
+# === S15-65 ===
+
+def test_privacy_dsar_ticket_workflow():
+    from app.sprint15.ops import dsar_ticket, reset
+    reset()
+    row = dsar_ticket("ada")
+    assert row["status"] == "open"
+
