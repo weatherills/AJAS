@@ -382,3 +382,10 @@ def test_cover_letters_length_targets():
     row = cover_length("short note", target=120)
     assert row["ok"] is True
 
+# === S15-48 ===
+
+def test_attachment_manager_pdf_docx_detect():
+    from app.sprint15.product import detect_attachment
+    assert detect_attachment("cv.pdf") == "pdf"
+    assert detect_attachment("cv.docx") == "docx"
+
