@@ -754,3 +754,11 @@ def test_cli_reindex_by_tenant():
     assert row["live"] is False
     assert any("reindex" in cmd for cmd in cli_reindex())
 
+# === S15-97 ===
+
+def test_webhooks_adapter_outcome_retries():
+    from app.sprint15.ops import webhook_retry
+    row = webhook_retry(secret="s3cret", body="{}", event="adapter.ok", attempts=1)
+    assert row["signature"]
+    assert row["retry"] is True
+
