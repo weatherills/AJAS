@@ -117,3 +117,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 081 Accessibility: keyboard shortcuts
 - [x] 082 I18N: date/number formats
 - [x] 083 Mobile: bottom-nav compact mode
+- [x] 084 Docs: Sprint 15 operations guide

@@ -653,3 +653,12 @@ def test_mobile_bottom_nav_compact_mode():
     assert bottom_nav(width=390) == "compact"
     assert bottom_nav(width=1024) == "full"
 
+# === S15-84 ===
+
+def test_docs_sprint_15_operations_guide():
+    from pathlib import Path
+    from app.sprint15.platform import ops_guide
+    text = ops_guide()
+    assert "sprint15" in text.lower() or "Sprint 15" in text
+    assert (Path(__file__).resolve().parents[2] / "docs" / "ops" / "sprint15.md").is_file()
+
