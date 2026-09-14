@@ -345,3 +345,10 @@ def test_search_boolean_query_parser():
     hits = boolean_search([{"title": "Staff Python", "company": "Acme"}], "python AND acme")
     assert len(hits) == 1
 
+# === S15-43 ===
+
+def test_job_list_virtualized_grid_mode():
+    from app.sprint15.product import grid_mode
+    row = grid_mode(n=40, start=0)
+    assert row["mode"] == "grid"
+

@@ -60,3 +60,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 
 - [x] 041 Filters: shared team presets
 - [x] 042 Search: boolean query parser
+- [x] 043 Job list: virtualized grid mode
