@@ -646,3 +646,10 @@ def test_i18n_date_number_formats():
     row = formats(locale="en-US")
     assert "yyyy" in row["date"]
 
+# === S15-83 ===
+
+def test_mobile_bottom_nav_compact_mode():
+    from app.sprint15.product import bottom_nav
+    assert bottom_nav(width=390) == "compact"
+    assert bottom_nav(width=1024) == "full"
+
