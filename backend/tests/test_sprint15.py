@@ -532,3 +532,10 @@ def test_secrets_dual_key_overlap_window():
     row = dual_key(current="k1", next_key="k2", use_next=False)
     assert row["overlap"] is True and row["active"] == "k1"
 
+# === S15-68 ===
+
+def test_rate_limit_retry_budget_v2():
+    from app.sprint15.ops import retry_budget
+    assert retry_budget(used=5)["allow"] is False
+    assert retry_budget(used=1)["allow"] is True
+
