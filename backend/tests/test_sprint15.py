@@ -75,3 +75,11 @@ def test_flexjobs_adapter_v1():
     out = flexjobs_v1({"jobs": [{"id": "f1", "title": "Flex"}]})
     assert out["flag"] is False
 
+# === S15-09 ===
+
+def test_simplyhired_adapter_v1():
+    from app.sprint15.ingest import reset, simplyhired_v1
+    reset()
+    out = simplyhired_v1({"jobs": [{"id": "s1", "title": "Simply"}]})
+    assert out["jobs"]
+

@@ -10,3 +10,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 006 Otta adapter v1
 - [x] 007 YC Work at a Startup adapter v1
 - [x] 008 FlexJobs adapter v1
+- [x] 009 SimplyHired adapter v1
