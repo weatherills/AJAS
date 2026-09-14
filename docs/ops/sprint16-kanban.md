@@ -115,7 +115,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - tests/lint/typecheck green after task 80
 
 - [x] 081 Accessibility: skip-link pack
-- [ ] 082 I18N: currency/date formats v2
+- [x] 082 I18N: currency/date formats v2
 - [ ] 083 Mobile: swipe actions
 - [ ] 084 Docs: Sprint 16 operations guide
 - [ ] 085 Docs: API examples v4
