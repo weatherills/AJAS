@@ -51,7 +51,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 035 Matching: equity-band overlap
 - [x] 036 Ranking: listwise LTR features v3
 - [x] 037 Ranking: thompson sampling explore
-- [ ] 038 Explanations: why-this-and-not-that
+- [x] 038 Explanations: why-this-and-not-that
 - [ ] 039 Fit score: prediction interval
 - [ ] 040 Diversity: de-bias company tokens
 
