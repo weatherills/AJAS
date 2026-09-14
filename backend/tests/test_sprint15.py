@@ -308,3 +308,10 @@ def test_ranking_exploration_exploitation_epsilon():
     assert epsilon_explore(score=0.9, epsilon=0.1, draw=0.2) == "exploit"
     assert epsilon_explore(score=0.9, epsilon=0.1, draw=0.01) == "explore"
 
+# === S15-38 ===
+
+def test_explanations_why_not_this_role():
+    from app.sprint15.matching import why_not
+    row = why_not(["Python"], ["Python", "SQL"])
+    assert row["missing"] == ["SQL"]
+
