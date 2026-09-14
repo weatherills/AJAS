@@ -81,7 +81,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 057 Inbox: ATS vs human split v2
 - [x] 058 Templates: A/B body variants
 - [x] 059 Signatures: legal disclaimer block
-- [ ] 060 Unsubscribe/List-Unsubscribe honor
+- [x] 060 Unsubscribe/List-Unsubscribe honor
 
 ## Batch 6 gate
 - tests/lint/typecheck green after task 60
