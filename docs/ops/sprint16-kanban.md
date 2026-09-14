@@ -105,7 +105,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 073 E2E: apply dry-run regressions v2
 - [x] 074 Unit tests: clearance/degree edge cases
 - [x] 075 Fixtures: s16 HTML/JSON snapshots
-- [ ] 076 Seed data v5: mixed locale users
+- [x] 076 Seed data v5: mixed locale users
 - [ ] 077 API: cursor pagination v3
 - [ ] 078 API: webhook subscription filters
 - [ ] 079 Health: build SHA + dependency matrix v5
