@@ -17,7 +17,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - tests/lint/typecheck green after task 10
 
 - [x] 011 Source adapter: HTTP/2 vs HTTP/1.1 fallback
-- [ ] 012 Source adapter: certificate pinning store
+- [x] 012 Source adapter: certificate pinning store
 - [ ] 013 Source adapter: 304 Not Modified short-circuit
 - [ ] 014 Source adapter: JSON-LD JobPosting parser
 - [ ] 015 Source adapter: htmx/infinite-scroll fixture pager
