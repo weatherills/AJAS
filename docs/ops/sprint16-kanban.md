@@ -11,7 +11,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 007 Recruitee adapter v1
 - [x] 008 TeamTailor adapter v1
 - [x] 009 JazzHR adapter v1
-- [ ] 010 Workday company board crawler v2
+- [x] 010 Workday company board crawler v2
 
 ## Batch 1 gate
 - tests/lint/typecheck green after task 10
