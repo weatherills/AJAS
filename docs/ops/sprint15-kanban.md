@@ -50,3 +50,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 034 Matching: title-family clustering
 - [x] 035 Matching: compensation band overlap
 - [x] 036 Ranking: listwise LTR features v2
+- [x] 037 Ranking: exploration/exploitation epsilon

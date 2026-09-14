@@ -301,3 +301,10 @@ def test_ranking_listwise_ltr_features_v2():
     rows = listwise_v2([{"id": "a", "score": 1}, {"id": "b", "score": 9}])
     assert rows[0]["id"] == "b" and rows[0]["rank"] == 1
 
+# === S15-37 ===
+
+def test_ranking_exploration_exploitation_epsilon():
+    from app.sprint15.matching import epsilon_explore
+    assert epsilon_explore(score=0.9, epsilon=0.1, draw=0.2) == "exploit"
+    assert epsilon_explore(score=0.9, epsilon=0.1, draw=0.01) == "explore"
+
