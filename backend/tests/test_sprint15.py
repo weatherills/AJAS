@@ -228,3 +228,11 @@ def test_salary_parsing_v4_hourly_daily_annual():
     assert row["period"] == "hourly"
     assert row["schema"] == "ajas.salary.v4"
 
+# === S15-28 ===
+
+def test_skill_extractor_v4_tool_vs_language_split():
+    from app.sprint15.parse import skills_v4
+    row = skills_v4("Need python and azure. Not java.")
+    assert row["schema"] == "ajas.skills.v4"
+    assert row["chunks"]
+

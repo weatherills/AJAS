@@ -37,3 +37,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 025 Normalization: industry taxonomy v2
 - [x] 026 JD cleaner v4: requirements vs nice-to-have
 - [x] 027 Salary parsing v4: hourly/daily/annual
+- [x] 028 Skill extractor v4: tool vs language split
