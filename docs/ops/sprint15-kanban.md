@@ -137,3 +137,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 097 Webhooks: adapter outcome retries
 - [x] 098 Health: synthetic probe pack
 - [x] 099 Idempotency: conflict export CSV
+- [x] 100 Feature flags: percentage rollout + audit

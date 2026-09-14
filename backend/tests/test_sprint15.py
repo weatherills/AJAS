@@ -778,3 +778,15 @@ def test_idempotency_conflict_export_csv():
     assert csv.splitlines()[0] == "key,status"
     assert "conflict" in csv
 
+# === S15-100 ===
+
+def test_feature_flags_percentage_rollout_audit():
+    from app.sprint15 import COMPLETED, VERSION
+    from app.sprint15.ops import percent_rollout, reset
+    reset()
+    row = percent_rollout(name="indeed_adapter", percent=0, actor="ada")
+    assert row["live"] is False
+    assert row["percent"] == 0
+    assert VERSION == "sprint15"
+    assert COMPLETED == 100
+
