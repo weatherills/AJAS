@@ -108,3 +108,11 @@ def test_source_adapter_cookie_jar_session_pool():
     row = cookie_jar("example.test")
     assert row["live"] is False and row["pool"] is True
 
+# === S15-13 ===
+
+def test_source_adapter_retry_after_header_honor():
+    from app.sprint15.ingest import reset, retry_after
+    reset()
+    row = retry_after({"Retry-After": "3"}, 1)
+    assert row["waitSec"] == 3 and row["honored"] is True
+
