@@ -1,0 +1,111 @@
+# Sprint 17 Kanban log
+
+103 PRD cards on `main`. CodeSpring updated after each feature group.
+
+- [x] 001 Application status table and FSM
+- [x] 002 Cover letter generator service
+- [x] 003 Field mapping engine
+- [x] 004 Greenhouse submit integration
+- [x] 005 Lever submit integration
+- [x] 006 Manual apply API
+- [x] 007 Manual package generator
+- [x] 008 Status updates worker
+- [x] 009 API: Cover letter generate
+- [x] 010 Audit: Submission events
+- [x] 011 DB: application_submissions table
+- [x] 012 Job: Submission status poller
+- [x] 013 Mapper: Resume -> Greenhouse fields
+- [x] 014 Mapper: Resume -> Lever fields
+- [x] 015 Submit: Greenhouse
+- [x] 016 Submit: Lever
+- [x] 017 API: Send reply via Graph
+- [x] 018 Attachment ingestion
+- [x] 019 Backfill: Historical emails
+- [x] 020 DB: emails + threads tables
+- [x] 021 Delta sync worker
+- [x] 022 Idempotency: Webhook dedup
+- [x] 023 OAuth: Store Graph tokens
+- [x] 024 Security: Email send permissions
+- [x] 025 Thread linking service
+- [x] 026 Webhook: Graph subscription handler
+- [x] 027 Attachment storage
+- [x] 028 Graph delta sync fallback
+- [x] 029 Graph mail subscriptions
+- [x] 030 Message schema and migration
+- [x] 031 Microsoft Graph OAuth and tokens
+- [x] 032 Reply templates storage
+- [x] 033 Send email reply API
+- [x] 034 Thread linking logic
+- [x] 035 Admin endpoints for source toggles
+- [x] 036 CrawlRun table and stats
+- [x] 037 Deduplication service
+- [x] 038 Endpoint to start ingest run
+- [x] 039 External payload validation
+- [x] 040 Greenhouse postings fetcher
+- [x] 041 Hash based duplicate detection
+- [x] 042 Ingestion scheduler worker
+- [x] 043 JobPosting schema and migration
+- [x] 044 Lever postings fetcher
+- [x] 045 Map Greenhouse to canonical schema
+- [x] 046 Map Lever to canonical schema
+- [x] 047 Per source rate limiter
+- [x] 048 Retry with exponential backoff
+- [x] 049 Source adapters config
+- [x] 050 API: Toggle sources
+- [x] 051 Adapter Core: HTTP client with retries
+- [x] 052 Admin: Reindex endpoint
+- [x] 053 DB: job_postings indexes
+- [x] 054 DB: job_source_settings table
+- [x] 055 Dedup: Canonical hash function
+- [x] 056 Greenhouse: List postings endpoint wrapper
+- [x] 057 Greenhouse: Posting details fetcher
+- [x] 058 Ingest Worker: Greenhouse incremental
+- [x] 059 Ingest Worker: Lever incremental
+- [x] 060 Lever: List postings endpoint wrapper
+- [x] 061 Lever: Posting details fetcher
+- [x] 062 Observability: Ingestion counters
+- [x] 063 Scheduler: Per-source cron
+- [x] 064 API: Record decision
+- [x] 065 DB: decisions table
+- [x] 066 Job: Periodic recompute
+- [x] 067 Metrics: Learning aggregates
+- [x] 068 Safeguards: Rollback weights
+- [x] 069 Service: Online weight updates
+- [x] 070 Daily metrics job
+- [x] 071 Event logging middleware
+- [x] 072 Metrics overview API
+- [x] 073 Nightly weight update job
+- [x] 074 Persist decision events for learning
+- [x] 075 Combined score function
+- [x] 076 Compute match API
+- [x] 077 Embedding service with batching
+- [x] 078 Explanation summary generator
+- [x] 079 Keyword extraction service
+- [x] 080 Persist matches above threshold
+- [x] 081 Persist user match threshold
+- [x] 082 Settings threshold read and write API
+- [x] 083 Store scoring model metadata
+- [x] 084 API: List matches
+- [x] 085 DB: embedding_cache table
+- [x] 086 DB: matches table + FKs
+- [x] 087 Embeddings: Compute + cache
+- [x] 088 Explainability generator
+- [x] 089 Match trigger on new posting
+- [x] 090 Match trigger on resume change
+- [x] 091 Metrics: Matching proxies
+- [x] 092 Scoring: Composite function
+- [x] 093 Service: Build job text blocks
+- [x] 094 Service: Keyword extraction
+- [x] 095 Threshold config API
+- [x] 096 Decision submit API
+- [x] 097 Decision validation rules
+- [x] 098 Decisions history API
+- [x] 099 List matches queue API
+- [x] 100 Match details API
+- [x] 101 API: Approve/Reject action
+- [x] 102 API: Review details
+- [x] 103 API: Review queue
+
+## CodeSpring
+
+- Project `d1f6074a-a5fc-497f-9a6b-95705c447a1d`. Cards marked done after tests.
