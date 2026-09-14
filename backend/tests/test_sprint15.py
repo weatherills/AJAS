@@ -617,3 +617,11 @@ def test_api_webhook_subscription_crud():
     webhook_sub(url="https://hooks.example.test", event="ingest")
     assert webhook_list()[0]["event"] == "ingest"
 
+# === S15-79 ===
+
+def test_health_build_sha_dependency_matrix_v4():
+    from app.sprint15.ops import health_v4
+    row = health_v4()
+    assert row["schema"] == "ajas.health.v4"
+    assert row["version"] == "sprint15"
+

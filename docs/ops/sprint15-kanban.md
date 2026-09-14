@@ -108,3 +108,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 076 Seed data v4: mixed timezone users
 - [x] 077 API: cursor pagination v2
 - [x] 078 API: webhook subscription CRUD
+- [x] 079 Health: build SHA + dependency matrix v4
