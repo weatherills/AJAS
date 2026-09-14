@@ -279,3 +279,10 @@ def test_matching_location_radius_boost():
     assert location_boost(km=50) == 0.0
     assert location_boost(km=10) > location_boost(km=40)
 
+# === S15-34 ===
+
+def test_matching_title_family_clustering():
+    from app.sprint15.matching import title_family
+    assert title_family("Engineering Manager") == "mgmt"
+    assert title_family("Data Analyst") == "data"
+
