@@ -31,7 +31,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - tests/lint/typecheck green after task 20
 
 - [x] 021 Normalization: employment type v3
-- [ ] 022 Normalization: work authorization v2
+- [x] 022 Normalization: work authorization v2
 - [ ] 023 Normalization: degree aliases
 - [ ] 024 Normalization: clearance levels
 - [ ] 025 Normalization: industry NAICS map
