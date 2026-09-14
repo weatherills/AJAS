@@ -24,7 +24,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 016 Source adapter: per-tenant robots cache
 - [x] 017 Source adapter: crawl budget remaining gauge
 - [x] 018 Source adapter: consent banner fail-closed v3
-- [ ] 019 Source adapter: AMP vs canonical URL picker
+- [x] 019 Source adapter: AMP vs canonical URL picker
 - [ ] 020 Source adapter: Last-Modified If-Modified-Since
 
 ## Batch 2 gate
