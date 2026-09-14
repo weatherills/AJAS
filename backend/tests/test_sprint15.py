@@ -175,3 +175,10 @@ def test_source_adapter_etag_if_none_match_cache():
     assert etag_cache(etag="abc", incoming="abc")["notModified"] is True
     assert etag_cache(etag="abc", incoming="zzz")["hit"] is False
 
+# === S15-21 ===
+
+def test_normalization_seniority_ladder_v2():
+    from app.sprint15.parse import seniority_v2
+    assert seniority_v2("Senior Software Engineer") == "senior"
+    assert seniority_v2("internship") == "intern"
+

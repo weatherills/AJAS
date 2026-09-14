@@ -30,3 +30,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 ## Batch 2 gate
 - tests/lint/typecheck green after task 20
 
+- [x] 021 Normalization: seniority ladder v2
