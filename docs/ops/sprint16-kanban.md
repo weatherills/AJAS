@@ -1,0 +1,140 @@
+# Sprint 16 Kanban log
+
+Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is reachable.
+
+- [x] 001 BuiltIn adapter v1 (pagination/backoff)
+- [ ] 002 Handshake adapter v1
+- [ ] 003 USAJobs adapter v1
+- [ ] 004 The Muse adapter v1
+- [ ] 005 SmartRecruiters adapter v1
+- [ ] 006 Jobvite adapter v1
+- [ ] 007 Recruitee adapter v1
+- [ ] 008 TeamTailor adapter v1
+- [ ] 009 JazzHR adapter v1
+- [ ] 010 Workday company board crawler v2
+
+## Batch 1 gate
+- tests/lint/typecheck green after task 10
+
+- [ ] 011 Source adapter: HTTP/2 vs HTTP/1.1 fallback
+- [ ] 012 Source adapter: certificate pinning store
+- [ ] 013 Source adapter: 304 Not Modified short-circuit
+- [ ] 014 Source adapter: JSON-LD JobPosting parser
+- [ ] 015 Source adapter: htmx/infinite-scroll fixture pager
+- [ ] 016 Source adapter: per-tenant robots cache
+- [ ] 017 Source adapter: crawl budget remaining gauge
+- [ ] 018 Source adapter: consent banner fail-closed v3
+- [ ] 019 Source adapter: AMP vs canonical URL picker
+- [ ] 020 Source adapter: Last-Modified If-Modified-Since
+
+## Batch 2 gate
+- tests/lint/typecheck green after task 20
+
+- [ ] 021 Normalization: employment type v3
+- [ ] 022 Normalization: work authorization v2
+- [ ] 023 Normalization: degree aliases
+- [ ] 024 Normalization: clearance levels
+- [ ] 025 Normalization: industry NAICS map
+- [ ] 026 JD cleaner v5: responsibilities vs qualifications
+- [ ] 027 Salary parsing v5: hourly overtime + equity
+- [ ] 028 Skill extractor v5: cert vs tool split
+- [ ] 029 Resume parser v5: date overlap repair
+- [ ] 030 Company brand graph (DBA / trade names)
+
+## Batch 3 gate
+- tests/lint/typecheck green after task 30
+
+- [ ] 031 Embeddings: content-hash skip v2
+- [ ] 032 Vector store: replica health probe
+- [ ] 033 Matching: commute-time proxy
+- [ ] 034 Matching: title-family clustering v2
+- [ ] 035 Matching: equity-band overlap
+- [ ] 036 Ranking: listwise LTR features v3
+- [ ] 037 Ranking: thompson sampling explore
+- [ ] 038 Explanations: why-this-and-not-that
+- [ ] 039 Fit score: prediction interval
+- [ ] 040 Diversity: de-bias company tokens
+
+## Batch 4 gate
+- tests/lint/typecheck green after task 40
+
+- [ ] 041 Filters: org-shared presets v2
+- [ ] 042 Search: phrase + NOT operator
+- [ ] 043 Job list: density compact mode
+- [ ] 044 Job detail: hiring-team panel
+- [ ] 045 Bulk actions: bulk-archive + undo
+- [ ] 046 Apply: optional-field warnings
+- [ ] 047 Cover letters: reading-level target
+- [ ] 048 Attachment manager: file-hash dedupe
+- [ ] 049 Compare: three-way match table
+- [ ] 050 Saved searches: webhook notify
+
+## Batch 5 gate
+- tests/lint/typecheck green after task 50
+
+- [ ] 051 Email: In-Reply-To thread merge
+- [ ] 052 Email: auto-reply detector
+- [ ] 053 Replies: timezone-safe calendar placeholder
+- [ ] 054 Follow-ups: skip if meeting booked
+- [ ] 055 Notification: weekend quiet hours
+- [ ] 056 Notification: digest vs instant
+- [ ] 057 Inbox: ATS vs human split v2
+- [ ] 058 Templates: A/B body variants
+- [ ] 059 Signatures: legal disclaimer block
+- [ ] 060 Unsubscribe/List-Unsubscribe honor
+
+## Batch 6 gate
+- tests/lint/typecheck green after task 60
+
+- [ ] 061 Audit: break-glass access trail
+- [ ] 062 Error taxonomy v5: user vs operator vs vendor
+- [ ] 063 Observability: USE metrics pack
+- [ ] 064 Metrics: error-budget remaining
+- [ ] 065 Privacy: DSAR export encryption
+- [ ] 066 Security: HSTS + CSP enforce toggle
+- [ ] 067 Secrets: three-key rotation window
+- [ ] 068 Rate limit: token bucket v3
+- [ ] 069 Idempotency: replay storm detector
+- [ ] 070 Queue: poison-message replay cap
+
+## Batch 7 gate
+- tests/lint/typecheck green after task 70
+
+- [ ] 071 Backfill: brand alias merge
+- [ ] 072 CLI: smoke one board fixture v2
+- [ ] 073 E2E: apply dry-run regressions v2
+- [ ] 074 Unit tests: clearance/degree edge cases
+- [ ] 075 Fixtures: s16 HTML/JSON snapshots
+- [ ] 076 Seed data v5: mixed locale users
+- [ ] 077 API: cursor pagination v3
+- [ ] 078 API: webhook subscription filters
+- [ ] 079 Health: build SHA + dependency matrix v5
+- [ ] 080 Performance: request coalescing v2
+
+## Batch 8 gate
+- tests/lint/typecheck green after task 80
+
+- [ ] 081 Accessibility: skip-link pack
+- [ ] 082 I18N: currency/date formats v2
+- [ ] 083 Mobile: swipe actions
+- [ ] 084 Docs: Sprint 16 operations guide
+- [ ] 085 Docs: API examples v4
+- [ ] 086 Docs: observability how-to v4
+- [ ] 087 Docs: data model v3
+- [ ] 088 Docs: rollback steps v4
+- [ ] 089 Data: index migration v4
+- [ ] 090 Data: salary FX backfill v4
+
+## Batch 9 gate
+- tests/lint/typecheck green after task 90
+
+- [ ] 091 Data: vector store compaction v5
+- [ ] 092 Data: retention sweep v5
+- [ ] 093 Maintenance: dependency audit v3
+- [ ] 094 Maintenance: lint and type alignment v3
+- [ ] 095 Maintenance: unused adapter flags stay off
+- [ ] 096 CLI: reindex by tenant v2
+- [ ] 097 Webhooks: adapter outcome retries v2
+- [ ] 098 Health: synthetic probe pack v2
+- [ ] 099 Idempotency: conflict export JSON
+- [ ] 100 Feature flags: percentage rollout + audit v2
