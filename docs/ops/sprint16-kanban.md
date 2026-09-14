@@ -37,7 +37,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 025 Normalization: industry NAICS map
 - [x] 026 JD cleaner v5: responsibilities vs qualifications
 - [x] 027 Salary parsing v5: hourly overtime + equity
-- [ ] 028 Skill extractor v5: cert vs tool split
+- [x] 028 Skill extractor v5: cert vs tool split
 - [ ] 029 Resume parser v5: date overlap repair
 - [ ] 030 Company brand graph (DBA / trade names)
 
