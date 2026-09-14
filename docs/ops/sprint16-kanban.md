@@ -95,7 +95,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 067 Secrets: three-key rotation window
 - [x] 068 Rate limit: token bucket v3
 - [x] 069 Idempotency: replay storm detector
-- [ ] 070 Queue: poison-message replay cap
+- [x] 070 Queue: poison-message replay cap
 
 ## Batch 7 gate
 - tests/lint/typecheck green after task 70
