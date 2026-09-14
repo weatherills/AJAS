@@ -75,7 +75,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 051 Email: In-Reply-To thread merge
 - [x] 052 Email: auto-reply detector
 - [x] 053 Replies: timezone-safe calendar placeholder
-- [ ] 054 Follow-ups: skip if meeting booked
+- [x] 054 Follow-ups: skip if meeting booked
 - [ ] 055 Notification: weekend quiet hours
 - [ ] 056 Notification: digest vs instant
 - [ ] 057 Inbox: ATS vs human split v2
