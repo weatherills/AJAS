@@ -142,3 +142,11 @@ def test_source_adapter_stale_listing_ttl():
     assert stale_ttl(age_hours=72)["stale"] is True
     assert stale_ttl(age_hours=1)["stale"] is False
 
+# === S15-17 ===
+
+def test_source_adapter_per_host_concurrency_caps():
+    from app.sprint15.ingest import host_caps, reset
+    reset()
+    assert host_caps(host="a.test", inflight=2)["allow"] is False
+    assert host_caps(host="a.test", inflight=0)["allow"] is True
+
