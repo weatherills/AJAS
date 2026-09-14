@@ -136,5 +136,5 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 096 CLI: reindex by tenant v2
 - [x] 097 Webhooks: adapter outcome retries v2
 - [x] 098 Health: synthetic probe pack v2
-- [ ] 099 Idempotency: conflict export JSON
+- [x] 099 Idempotency: conflict export JSON
 - [ ] 100 Feature flags: percentage rollout + audit v2
