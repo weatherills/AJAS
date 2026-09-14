@@ -441,3 +441,10 @@ def test_notification_quiet_hours():
     assert quiet_hours(hour=22) is True
     assert quiet_hours(hour=12) is False
 
+# === S15-56 ===
+
+def test_notification_per_channel_prefs():
+    from app.sprint15.mail import channel_prefs
+    row = channel_prefs(user_id="ada", email=False, toast=True)
+    assert row["email"] is False and row["toast"] is True
+

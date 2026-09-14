@@ -77,3 +77,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 053 Replies: calendar-link placeholder
 - [x] 054 Follow-ups: skip if replied
 - [x] 055 Notification: quiet hours
+- [x] 056 Notification: per-channel prefs
