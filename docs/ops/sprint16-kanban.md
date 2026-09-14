@@ -128,7 +128,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 ## Batch 9 gate
 - tests/lint/typecheck green after task 90
 
-- [ ] 091 Data: vector store compaction v5
+- [x] 091 Data: vector store compaction v5
 - [ ] 092 Data: retention sweep v5
 - [ ] 093 Maintenance: dependency audit v3
 - [ ] 094 Maintenance: lint and type alignment v3
