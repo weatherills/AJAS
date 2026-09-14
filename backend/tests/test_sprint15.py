@@ -737,3 +737,11 @@ def test_maintenance_lint_type_alignment_v2():
     from app.sprint15.ops import lint_note
     assert "oxlint" in lint_note()
 
+# === S15-95 ===
+
+def test_maintenance_unused_adapter_flags_stay_off():
+    from app.flags import feature_enabled
+    from app.sprint15.ops import unused_flags
+    for name in unused_flags():
+        assert feature_enabled(name) is False
+
