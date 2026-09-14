@@ -141,5 +141,6 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 
 ## CodeSpring
 
-- 100 `[S16]` cards marked done after each commit (CLI 401 is billing; local log still updated)
+- Local Kanban log updated after every `[S16]` commit.
+- Live CodeSpring CLI returned **401 Unauthorized** (`Valid authentication required`) for workspaces/projects/tasks — typically billing/out-of-tokens, not a missing key. Cards could not be flipped on the hosted board until credits are restored.
 
