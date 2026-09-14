@@ -503,3 +503,10 @@ def test_observability_red_metrics_pack():
     row = red_metrics(rate=10, errors=0.01, duration_ms=12)
     assert row["pack"] == "red"
 
+# === S15-64 ===
+
+def test_metrics_slo_burn_rate_alerts():
+    from app.sprint15.ops import slo_burn
+    assert slo_burn(error_rate=0.02, budget=0.01)["fire"] is True
+    assert slo_burn(error_rate=0.001, budget=0.01)["fire"] is False
+

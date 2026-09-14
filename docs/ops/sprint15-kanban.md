@@ -89,3 +89,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 061 Audit: impersonation trail
 - [x] 062 Error taxonomy v4: user vs operator
 - [x] 063 Observability: RED metrics pack
+- [x] 064 Metrics: SLO burn-rate alerts
