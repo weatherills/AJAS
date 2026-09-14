@@ -123,3 +123,8 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 087 Docs: data model v2
 - [x] 088 Docs: rollback steps v3
 - [x] 089 Data: index migration v3
+- [x] 090 Data: salary FX backfill v3
+
+## Batch 9 gate
+- tests/lint/typecheck green after task 90
+

@@ -702,3 +702,10 @@ def test_data_index_migration_v3():
     assert row["schema"] == "ajas.migrate.v3"
     assert row["indices"]
 
+# === S15-90 ===
+
+def test_data_salary_fx_backfill_v3():
+    from app.sprint15.ops import salary_fx
+    row = salary_fx([{"body": "$120k-$150k"}])
+    assert row["count"] == 1
+
