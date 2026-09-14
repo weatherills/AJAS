@@ -91,3 +91,12 @@ def test_careerbuilder_adapter_v1():
     out = careerbuilder_v1({"jobs": [{"id": "c1", "title": "CB"}]})
     assert out["live"] is False and out["flag"] is False
 
+# === S15-11 ===
+
+def test_source_adapter_tls_fingerprint_pin_rotate():
+    from app.sprint15.ingest import reset, tls_fingerprint
+    reset()
+    row = tls_fingerprint("seed-a")
+    assert row["pinned"] is True and row["rotated"] is True
+    assert row["ja3"]
+

@@ -16,3 +16,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 ## Batch 1 gate
 - tests/lint/typecheck green after task 10
 
+- [x] 011 Source adapter: TLS fingerprint pin + rotate
