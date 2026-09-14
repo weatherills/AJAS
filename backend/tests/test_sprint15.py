@@ -725,3 +725,9 @@ def test_data_retention_sweep_v4():
     row = retain_v4("t1", 30)
     assert row["schema"] == "ajas.retain.v4"
 
+# === S15-93 ===
+
+def test_maintenance_dependency_audit_v2():
+    from app.sprint15.ops import dep_audit
+    assert dep_audit()["ok"] is True
+

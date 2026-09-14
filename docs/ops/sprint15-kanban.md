@@ -130,3 +130,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 
 - [x] 091 Data: vector store compaction v4
 - [x] 092 Data: retention sweep v4
+- [x] 093 Maintenance: dependency audit v2
