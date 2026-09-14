@@ -116,3 +116,12 @@ def test_source_adapter_retry_after_header_honor():
     row = retry_after({"Retry-After": "3"}, 1)
     assert row["waitSec"] == 3 and row["honored"] is True
 
+# === S15-14 ===
+
+def test_source_adapter_sitemap_xml_board_discovery():
+    from app.sprint15.ingest import reset, sitemap_boards
+    reset()
+    row = sitemap_boards("<urlset><url><loc>https://jobs.example.test/a</loc></url></urlset>")
+    assert row["live"] is False
+    assert any("jobs.example.test" in url for url in row["urls"])
+
