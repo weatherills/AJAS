@@ -220,3 +220,11 @@ def test_jd_cleaner_v4_requirements_vs_nice_to_have():
     assert row["schema"] == "ajas.jd.v4"
     assert row["required"] and row["nice"]
 
+# === S15-27 ===
+
+def test_salary_parsing_v4_hourly_daily_annual():
+    from app.sprint15.parse import salary_v4
+    row = salary_v4("$80/hour contract")
+    assert row["period"] == "hourly"
+    assert row["schema"] == "ajas.salary.v4"
+
