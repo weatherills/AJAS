@@ -33,3 +33,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 021 Normalization: seniority ladder v2
 - [x] 022 Normalization: remote hybrid onsite v2
 - [x] 023 Normalization: education requirements
+- [x] 024 Normalization: years-of-experience bands

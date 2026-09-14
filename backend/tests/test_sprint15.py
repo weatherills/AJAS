@@ -198,3 +198,11 @@ def test_normalization_education_requirements():
     assert row["degree"] == "bachelors"
     assert row["required"] is True
 
+# === S15-24 ===
+
+def test_normalization_years_of_experience_bands():
+    from app.sprint15.parse import yoe_band
+    row = yoe_band("5+ years of Python")
+    assert row["years"] == 5
+    assert row["band"] == "5-7"
+
