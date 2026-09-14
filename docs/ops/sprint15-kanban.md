@@ -73,3 +73,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 50
 
 - [x] 051 Email: thread merge by Message-ID
+- [x] 052 Email: bounce/complaint classifier v2

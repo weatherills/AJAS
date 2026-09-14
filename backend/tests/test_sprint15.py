@@ -412,3 +412,10 @@ def test_email_thread_merge_by_message_id():
     row = merge_threads([{"id": "1", "messageId": "m1"}, {"id": "2", "messageId": "m1"}])
     assert row["count"] == 1
 
+# === S15-52 ===
+
+def test_email_bounce_complaint_classifier_v2():
+    from app.sprint15.mail import bounce_v2
+    assert bounce_v2("Mailbox undeliverable bounce") == "bounce"
+    assert bounce_v2("spam complaint") == "complaint"
+
