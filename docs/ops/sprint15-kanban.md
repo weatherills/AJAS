@@ -49,3 +49,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 033 Matching: location radius boost
 - [x] 034 Matching: title-family clustering
 - [x] 035 Matching: compensation band overlap
+- [x] 036 Ranking: listwise LTR features v2

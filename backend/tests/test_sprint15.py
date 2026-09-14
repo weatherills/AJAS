@@ -294,3 +294,10 @@ def test_matching_compensation_band_overlap():
     assert row["hit"] is True
     assert row["overlap"] > 0
 
+# === S15-36 ===
+
+def test_ranking_listwise_ltr_features_v2():
+    from app.sprint15.matching import listwise_v2
+    rows = listwise_v2([{"id": "a", "score": 1}, {"id": "b", "score": 9}])
+    assert rows[0]["id"] == "b" and rows[0]["rank"] == 1
+
