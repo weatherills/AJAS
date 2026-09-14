@@ -578,3 +578,10 @@ def test_e2e_apply_dry_run_regressions():
     row = e2e_apply_dry_run()
     assert row["live"] is False and row["dryRun"] is True
 
+# === S15-74 ===
+
+def test_unit_tests_remote_seniority_edge_cases():
+    from app.sprint15.parse import remote_v2, seniority_v2
+    assert remote_v2("hybrid") == "hybrid"
+    assert seniority_v2("principal engineer") == "principal"
+
