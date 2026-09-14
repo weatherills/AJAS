@@ -252,3 +252,14 @@ def test_company_alias_graph_parent_subsidiaries():
     assert row["parent"] == "Contoso"
     assert len(row["edges"]) == 2
 
+# === S15-31 ===
+
+def test_embeddings_delta_checksum_skip_unchanged():
+    from app.sprint15.matching import delta_checksum, reset
+    reset()
+    seen = {}
+    first = delta_checksum("d1", "python azure", seen)
+    second = delta_checksum("d1", "python azure", seen)
+    assert first["skip"] is False
+    assert second["skip"] is True
+

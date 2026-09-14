@@ -44,3 +44,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 ## Batch 3 gate
 - tests/lint/typecheck green after task 30
 
+- [x] 031 Embeddings: delta checksum skip unchanged
