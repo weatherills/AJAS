@@ -762,3 +762,11 @@ def test_webhooks_adapter_outcome_retries():
     assert row["signature"]
     assert row["retry"] is True
 
+# === S15-98 ===
+
+def test_health_synthetic_probe_pack():
+    from app.sprint15.ops import synthetic_probes
+    row = synthetic_probes()
+    assert row["ok"] is True
+    assert row["match"] is True
+

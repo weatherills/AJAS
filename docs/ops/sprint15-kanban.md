@@ -135,3 +135,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 095 Maintenance: unused adapter flags stay off
 - [x] 096 CLI: reindex by tenant
 - [x] 097 Webhooks: adapter outcome retries
+- [x] 098 Health: synthetic probe pack
