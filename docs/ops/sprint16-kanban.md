@@ -118,7 +118,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 082 I18N: currency/date formats v2
 - [x] 083 Mobile: swipe actions
 - [x] 084 Docs: Sprint 16 operations guide
-- [ ] 085 Docs: API examples v4
+- [x] 085 Docs: API examples v4
 - [ ] 086 Docs: observability how-to v4
 - [ ] 087 Docs: data model v3
 - [ ] 088 Docs: rollback steps v4
