@@ -79,3 +79,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 055 Notification: quiet hours
 - [x] 056 Notification: per-channel prefs
 - [x] 057 Inbox: recruiter vs ATS split
+- [x] 058 Templates: A/B subject lines

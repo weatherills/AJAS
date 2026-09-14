@@ -455,3 +455,10 @@ def test_inbox_recruiter_vs_ats_split():
     assert inbox_split("noreply@greenhouse.io") == "ats"
     assert inbox_split("pat@agency.test") == "recruiter"
 
+# === S15-58 ===
+
+def test_templates_ab_subject_lines():
+    from app.sprint15.mail import ab_subject
+    row = ab_subject("Hi", "Hello", pick="variant")
+    assert row["chosen"] == "Hello"
+
