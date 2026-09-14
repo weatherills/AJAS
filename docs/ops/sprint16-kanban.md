@@ -20,7 +20,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 012 Source adapter: certificate pinning store
 - [x] 013 Source adapter: 304 Not Modified short-circuit
 - [x] 014 Source adapter: JSON-LD JobPosting parser
-- [ ] 015 Source adapter: htmx/infinite-scroll fixture pager
+- [x] 015 Source adapter: htmx/infinite-scroll fixture pager
 - [ ] 016 Source adapter: per-tenant robots cache
 - [ ] 017 Source adapter: crawl budget remaining gauge
 - [ ] 018 Source adapter: consent banner fail-closed v3
