@@ -731,3 +731,9 @@ def test_maintenance_dependency_audit_v2():
     from app.sprint15.ops import dep_audit
     assert dep_audit()["ok"] is True
 
+# === S15-94 ===
+
+def test_maintenance_lint_type_alignment_v2():
+    from app.sprint15.ops import lint_note
+    assert "oxlint" in lint_note()
+
