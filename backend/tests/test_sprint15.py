@@ -609,3 +609,11 @@ def test_api_cursor_pagination_v2():
     assert row["items"] == ["a", "b"]
     assert row["next"] == 2
 
+# === S15-78 ===
+
+def test_api_webhook_subscription_crud():
+    from app.sprint15.ops import reset, webhook_list, webhook_sub
+    reset()
+    webhook_sub(url="https://hooks.example.test", event="ingest")
+    assert webhook_list()[0]["event"] == "ingest"
+
