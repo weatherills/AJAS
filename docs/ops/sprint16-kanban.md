@@ -49,7 +49,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 033 Matching: commute-time proxy
 - [x] 034 Matching: title-family clustering v2
 - [x] 035 Matching: equity-band overlap
-- [ ] 036 Ranking: listwise LTR features v3
+- [x] 036 Ranking: listwise LTR features v3
 - [ ] 037 Ranking: thompson sampling explore
 - [ ] 038 Explanations: why-this-and-not-that
 - [ ] 039 Fit score: prediction interval
