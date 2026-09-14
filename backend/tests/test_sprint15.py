@@ -488,3 +488,11 @@ def test_audit_impersonation_trail():
     assert row["audit"] is True
     assert row["asUser"] == "ada"
 
+# === S15-62 ===
+
+def test_error_taxonomy_v4_user_vs_operator():
+    from app.sprint15.ops import taxonomy_v4
+    row = taxonomy_v4("INVALID_INPUT")
+    assert row["schema"] == "ajas.errors.v4"
+    assert row["remediation"]
+

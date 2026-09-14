@@ -87,3 +87,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 60
 
 - [x] 061 Audit: impersonation trail
+- [x] 062 Error taxonomy v4: user vs operator
