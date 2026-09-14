@@ -396,3 +396,11 @@ def test_compare_side_by_side_match_table():
     row = compare_table({"score": 1, "title": "A"}, {"score": 2, "title": "A"})
     assert row["diffs"] == 1
 
+# === S15-50 ===
+
+def test_saved_searches_digest_schedule():
+    from app.sprint15.product import digest_schedule
+    row = digest_schedule(hour=8, weekday="tue")
+    assert row["channel"] == "email"
+    assert row["hour"] == 8
+
