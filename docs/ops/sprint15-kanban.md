@@ -133,3 +133,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 093 Maintenance: dependency audit v2
 - [x] 094 Maintenance: lint and type alignment v2
 - [x] 095 Maintenance: unused adapter flags stay off
+- [x] 096 CLI: reindex by tenant

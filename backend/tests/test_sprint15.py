@@ -745,3 +745,12 @@ def test_maintenance_unused_adapter_flags_stay_off():
     for name in unused_flags():
         assert feature_enabled(name) is False
 
+# === S15-96 ===
+
+def test_cli_reindex_by_tenant():
+    from app.sprint15.ops import reindex_tenant
+    from app.sprint15.platform import cli_reindex
+    row = reindex_tenant("demo")
+    assert row["live"] is False
+    assert any("reindex" in cmd for cmd in cli_reindex())
+
