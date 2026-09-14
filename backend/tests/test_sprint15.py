@@ -427,3 +427,10 @@ def test_replies_calendar_link_placeholder():
     assert "calendar" in row["placeholders"]
     assert row["calendar"].startswith("https://")
 
+# === S15-54 ===
+
+def test_follow_ups_skip_if_replied():
+    from app.sprint15.mail import skip_if_replied
+    assert skip_if_replied(replied=True)["skip"] is True
+    assert skip_if_replied(replied=False)["send24"] is True
+
