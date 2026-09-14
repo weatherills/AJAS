@@ -102,3 +102,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 
 - [x] 071 Backfill: company alias merge
 - [x] 072 CLI: smoke one board fixture
+- [x] 073 E2E: apply dry-run regressions

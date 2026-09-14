@@ -571,3 +571,10 @@ def test_cli_smoke_one_board_fixture():
     cmds = cli_smoke()
     assert any("indeed" in cmd or "adapters" in cmd for cmd in cmds)
 
+# === S15-73 ===
+
+def test_e2e_apply_dry_run_regressions():
+    from app.sprint15.ops import e2e_apply_dry_run
+    row = e2e_apply_dry_run()
+    assert row["live"] is False and row["dryRun"] is True
+
