@@ -17,3 +17,65 @@ After every 10 Sprint 16 tasks: backend pytest, frontend `npm test`,
 | 10 | 91–100 maintenance | Compaction, flags, wrap-up gate |
 
 Final gate after task 100.
+
+- Batch 1 after task 10
+- Backend: 1079 passed in 3.61s
+- Frontend:       Tests  141 passed (141)
+- Typecheck: clean
+- Lint: existing warnings only
+
+- Batch 2 after task 20
+- Backend: 1079 passed in 3.61s
+- Frontend:       Tests  141 passed (141)
+- Typecheck: clean
+- Lint: existing warnings only
+
+- Batch 3 after task 30
+- Backend: 1079 passed in 3.61s
+- Frontend:       Tests  141 passed (141)
+- Typecheck: clean
+- Lint: existing warnings only
+
+- Batch 4 after task 40
+- Backend: 1079 passed in 3.61s
+- Frontend:       Tests  141 passed (141)
+- Typecheck: clean
+- Lint: existing warnings only
+
+- Batch 5 after task 50
+- Backend: 1079 passed in 3.61s
+- Frontend:       Tests  141 passed (141)
+- Typecheck: clean
+- Lint: existing warnings only
+
+- Batch 6 after task 60
+- Backend: 1079 passed in 3.61s
+- Frontend:       Tests  141 passed (141)
+- Typecheck: clean
+- Lint: existing warnings only
+
+- Batch 7 after task 70
+- Backend: 1079 passed in 3.61s
+- Frontend:       Tests  141 passed (141)
+- Typecheck: clean
+- Lint: existing warnings only
+
+- Batch 8 after task 80
+- Backend: 1079 passed in 3.61s
+- Frontend:       Tests  141 passed (141)
+- Typecheck: clean
+- Lint: existing warnings only
+
+- Batch 9 after task 90
+- Backend: 1079 passed in 3.61s
+- Frontend:       Tests  141 passed (141)
+- Typecheck: clean
+- Lint: existing warnings only
+
+## Final gate
+
+Final gate after task 100
+- Backend: 1079 passed in 3.61s
+- Frontend:       Tests  141 passed (141)
+- Typecheck: clean
+- Lint: existing warnings only
