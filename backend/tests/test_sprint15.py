@@ -585,3 +585,11 @@ def test_unit_tests_remote_seniority_edge_cases():
     assert remote_v2("hybrid") == "hybrid"
     assert seniority_v2("principal engineer") == "principal"
 
+# === S15-75 ===
+
+def test_fixtures_s15_html_json_snapshots():
+    from app.sprint15.platform import fixtures_s15
+    row = fixtures_s15()
+    assert "s15_indeed.json" in row["extra"]
+    assert row["schema"] == "ajas.fixtures.v4"
+

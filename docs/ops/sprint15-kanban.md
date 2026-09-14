@@ -104,3 +104,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 072 CLI: smoke one board fixture
 - [x] 073 E2E: apply dry-run regressions
 - [x] 074 Unit tests: remote/seniority edge cases
+- [x] 075 Fixtures: s15 HTML/JSON snapshots
