@@ -43,3 +43,11 @@ def test_linkedin_jobs_adapter_v1_fixture_only():
     assert out["live"] is False
     assert out["flag"] is False
 
+# === S15-05 ===
+
+def test_google_for_jobs_adapter_v1():
+    from app.sprint15.ingest import google_jobs_v1, reset
+    reset()
+    out = google_jobs_v1({"jobs": [{"id": "g1", "title": "SWE"}]})
+    assert out["flag"] is False
+
