@@ -78,7 +78,7 @@ Landed as `[S16]` commits. CodeSpring updated after every task when the CLI is r
 - [x] 054 Follow-ups: skip if meeting booked
 - [x] 055 Notification: weekend quiet hours
 - [x] 056 Notification: digest vs instant
-- [ ] 057 Inbox: ATS vs human split v2
+- [x] 057 Inbox: ATS vs human split v2
 - [ ] 058 Templates: A/B body variants
 - [ ] 059 Signatures: legal disclaimer block
 - [ ] 060 Unsubscribe/List-Unsubscribe honor
