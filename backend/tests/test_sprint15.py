@@ -182,3 +182,11 @@ def test_normalization_seniority_ladder_v2():
     assert seniority_v2("Senior Software Engineer") == "senior"
     assert seniority_v2("internship") == "intern"
 
+# === S15-22 ===
+
+def test_normalization_remote_hybrid_onsite_v2():
+    from app.sprint15.parse import remote_v2
+    assert remote_v2("Remote-first") == "remote"
+    assert remote_v2("Hybrid 3 days") == "hybrid"
+    assert remote_v2("On-site Seattle") == "onsite"
+

@@ -31,3 +31,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - tests/lint/typecheck green after task 20
 
 - [x] 021 Normalization: seniority ladder v2
+- [x] 022 Normalization: remote hybrid onsite v2
