@@ -134,3 +134,11 @@ def test_source_adapter_rss_atom_feed_boards():
     assert "Staff Python" in row["titles"]
     assert row["live"] is False
 
+# === S15-16 ===
+
+def test_source_adapter_stale_listing_ttl():
+    from app.sprint15.ingest import reset, stale_ttl
+    reset()
+    assert stale_ttl(age_hours=72)["stale"] is True
+    assert stale_ttl(age_hours=1)["stale"] is False
+

@@ -21,3 +21,4 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 013 Source adapter: retry-after header honor
 - [x] 014 Source adapter: sitemap.xml board discovery
 - [x] 015 Source adapter: RSS and Atom feed boards
+- [x] 016 Source adapter: stale listing TTL
