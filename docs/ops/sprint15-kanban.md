@@ -39,3 +39,8 @@ Landed on `main` as `[S15]` commits. CodeSpring updated after every task.
 - [x] 027 Salary parsing v4: hourly/daily/annual
 - [x] 028 Skill extractor v4: tool vs language split
 - [x] 029 Resume parser v4: section order repair
+- [x] 030 Company alias graph (parent/subsidiaries)
+
+## Batch 3 gate
+- tests/lint/typecheck green after task 30
+

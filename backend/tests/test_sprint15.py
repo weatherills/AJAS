@@ -244,3 +244,11 @@ def test_resume_parser_v4_section_order_repair():
     assert row["schema"] == "ajas.resume.v4"
     assert row["repaired"] is True
 
+# === S15-30 ===
+
+def test_company_alias_graph_parent_subsidiaries():
+    from app.sprint15.parse import alias_graph
+    row = alias_graph("Contoso", ["Northwind", "Fabrikam"])
+    assert row["parent"] == "Contoso"
+    assert len(row["edges"]) == 2
+
