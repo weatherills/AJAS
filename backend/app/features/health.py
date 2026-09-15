@@ -39,7 +39,7 @@ def _status_payload() -> dict:
         "dependencies": dependencies,
         "flags": feature_flags(),
         "imap": imap_health(),
-        "version": "sprint18",
+        "version": "sprint19",
         "dependencyMatrix": {
             "cosmos": dependencies["storage"] == "cosmos",
             "openai": dependencies["openai"],

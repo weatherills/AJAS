@@ -15,7 +15,7 @@ def test_ziprecruiter_adapter_v1_pagination_backoff():
 
     reset()
     assert VERSION == "sprint14"
-    assert _status_payload()["version"] == "sprint18"
+    assert _status_payload()["version"] == "sprint19"
     assert feature_enabled("ziprecruiter_adapter") is False
     payload = json.loads((FIXTURES / "ziprecruiter.json").read_text())
     out = ziprecruiter_v1(payload)
@@ -706,7 +706,7 @@ def test_health_endpoints_v2_dependency_matrix_version():
     from app.sprint14.ops import health_matrix
 
     row = health_matrix()
-    assert row["version"] == "sprint18"
+    assert row["version"] == "sprint19"
     assert "workers" in row["dependencyMatrix"]
 
 # === S14-75 ===
@@ -899,7 +899,7 @@ def test_health_dependency_matrix_endpoint_v3():
 
     row = health_matrix()
     assert row["schema"] == "ajas.health.v3"
-    assert row["version"] == "sprint18"
+    assert row["version"] == "sprint19"
 
 # === S14-98 ===
 

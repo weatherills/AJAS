@@ -28,6 +28,7 @@ from app.features.sprint15 import bp as sprint15_bp
 from app.features.sprint16 import bp as sprint16_bp
 from app.features.sprint17 import bp as sprint17_bp
 from app.features.sprint18 import bp as sprint18_bp
+from app.features.sprint19 import bp as sprint19_bp
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
@@ -49,3 +50,4 @@ app.register_blueprint(sprint15_bp)
 app.register_blueprint(sprint16_bp)
 app.register_blueprint(sprint17_bp)
 app.register_blueprint(sprint18_bp)
+app.register_blueprint(sprint19_bp)
