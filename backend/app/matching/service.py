@@ -189,6 +189,11 @@ class MatchingService:
         self._list_cache[cache_key] = (now + 30, {"items": page, "nextCursor": next_cursor, "total": len(items)})
         return body
 
+    def get_match(self, user_id: str, match_id: str) -> dict:
+        run = self.store.get_run(match_id, user_id=user_id)
+        model = self.store.get_model(run.model_version_id)
+        return self._run_to_match(run, model)
+
     def get_operation(self, user_id: str, operation_id: str) -> dict:
         op = self._operations.get(operation_id)
         if op is None or op.user_id != user_id:
@@ -432,6 +437,7 @@ class MatchingService:
                 resume_hash=resume_hash,
                 job_hash=job_hash,
                 force_save=force_persist,
+                overall_score=score,
                 highlights=highlights,
                 gaps=gaps,
                 evidence=evidence,
@@ -510,6 +516,7 @@ class MatchingService:
         resume_hash: str,
         job_hash: str,
         force_save: bool = False,
+        overall_score: float | None = None,
         highlights: list[str] | None = None,
         gaps: list[str] | None = None,
         evidence: list[str] | None = None,
@@ -544,6 +551,7 @@ class MatchingService:
                 source=source,
                 idempotency_key_value=key,
                 force_save=force_save,
+                overall_score=overall_score,
             )
         except MatchingConflictError:
             found = self._find_saved(user_id, key)
@@ -572,7 +580,9 @@ class MatchingService:
 
     def _run_to_match(self, run: MatchRun, model: ModelRegistry) -> dict:
         used = self.store.get_model(run.model_version_id)
-        score = score_1dp(run.keyword_norm, run.semantic_norm, used.keyword_weight, used.semantic_weight)
+        score = round(float(run.overall_score_pct), 1)
+        if score <= 0 and (run.keyword_norm or run.semantic_norm):
+            score = score_1dp(run.keyword_norm, run.semantic_norm, used.keyword_weight, used.semantic_weight)
         body: dict[str, Any] = {
             "matchId": run.id,
             "score": score,
@@ -747,7 +757,10 @@ class MatchingService:
         mode = body.get("mode") or "sync"
         if mode not in {"sync", "async"}:
             raise MatchingValidationError("mode must be sync or async", path="mode")
-        explanation = bool(body.get("explanation"))
+        if "explanation" not in body:
+            explanation = True
+        else:
+            explanation = bool(body.get("explanation"))
         top_n = body.get("topN")
         if top_n is not None:
             if isinstance(top_n, bool) or not isinstance(top_n, int) or top_n < 1:

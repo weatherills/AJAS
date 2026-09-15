@@ -714,6 +714,10 @@ button:disabled {
     color: #475569;
   }
 
+  .why-body {
+    color: #0f172a;
+  }
+
   input,
   select,
   textarea,
@@ -1301,7 +1305,7 @@ select:focus-visible {
 
 .why-body {
   white-space: pre-wrap;
-  color: #e2e8f0;
+  color: inherit;
 }
 
 .threshold-number {

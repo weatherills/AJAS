@@ -37,9 +37,10 @@ def overall_score_pct(
     *,
     keyword_weight: float = DEFAULT_KEYWORD_WEIGHT,
     semantic_weight: float = DEFAULT_SEMANTIC_WEIGHT,
-) -> int:
+) -> float:
+    """0–100 match percentage to one decimal (PRD)."""
     raw = 100.0 * (keyword_weight * clamp_unit(keyword_norm) + semantic_weight * clamp_unit(semantic_norm))
-    return int(round(max(0.0, min(100.0, raw))))
+    return round(max(0.0, min(100.0, raw)), 1)
 
 
 def idempotency_key(

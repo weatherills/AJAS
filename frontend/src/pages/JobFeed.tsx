@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { jobsApi, matchingApi, resumeApi, settingsApi, USE_MOCK } from '../api'
 import type { JobCard, JobDetail, JobFilters, JobSourceName, SourceStatus } from '../api/jobsTypes'
 import type { MatchView } from '../api/matchingTypes'
+import type { ResumeListItem } from '../api/resumeTypes'
 import { ApplyModal } from '../components/ApplyModal'
 import { AppNav } from '../components/AppNav'
 import { JobCrossLinks } from '../components/JobCrossLinks'
@@ -12,6 +13,8 @@ import { WhyThisScore, WhyThisScoreInline } from '../components/MatchWhy'
 import { ToastStack } from '../components/Toast'
 import { apiToPercent, isSourceNotConfiguredError } from '../lib/settings'
 import { jobHaystack, matchedTerms, resumeHaystack, storedMatchesForJobs } from '../lib/matching'
+import { LAST_READY_KEY } from '../lib/runLock'
+import { canSelectForRun, preselectReady, uiStatus } from '../lib/status'
 import { jobHref, useHashSearch } from '../lib/routes'
 import { bulkDismiss, dismissSnackbar } from '../lib/dismiss'
 import { unifiedDiff } from '../lib/jdDiff'
@@ -84,6 +87,7 @@ export function JobFeedPage() {
   const [threshold, setThreshold] = useState(70)
   const [resumeId, setResumeId] = useState<string | null>(null)
   const [resumeText, setResumeText] = useState('')
+  const [resumes, setResumes] = useState<ResumeListItem[]>([])
   const [matches, setMatches] = useState<Record<string, MatchView>>({})
   const [onlyThreshold, setOnlyThreshold] = useState(false)
   const [whyMatch, setWhyMatch] = useState<MatchView | null>(null)
@@ -283,19 +287,19 @@ export function JobFeedPage() {
       }
       try {
         const list = await resumeApi.list()
+        if (cancelled) return
+        setResumes(list)
         const ready = preselectReady(list)
         if (!ready) {
-          if (!cancelled) {
-            setResumeId(null)
-            setResumeText('')
-          }
+          setResumeId(null)
+          setResumeText('')
           return
         }
         const detail = await resumeApi.get(ready)
-        if (!cancelled) {
-          setResumeId(ready)
-          setResumeText(resumeHaystack(detail))
-        }
+        if (cancelled) return
+        setResumeId(ready)
+        setResumeText(resumeHaystack(detail))
+        localStorage.setItem(LAST_READY_KEY, ready)
       } catch {
         if (!cancelled) setResumeId(null)
       }
@@ -303,6 +307,18 @@ export function JobFeedPage() {
     return () => {
       cancelled = true
     }
+  }, [])
+
+  const selectResume = useCallback(async (id: string) => {
+    if (!id) {
+      setResumeId(null)
+      setResumeText('')
+      return
+    }
+    const detail = await resumeApi.get(id)
+    setResumeId(id)
+    setResumeText(resumeHaystack(detail))
+    localStorage.setItem(LAST_READY_KEY, id)
   }, [])
 
   const scoreJobs = useCallback(
@@ -314,7 +330,8 @@ export function JobFeedPage() {
       setMatches((prev) => {
         const next = { ...prev }
         for (const job of jobs) {
-          if (!next[job.id]) {
+          const current = next[job.id]
+          if (!current || current.state === 'no_resume' || current.resumeId !== resumeId) {
             next[job.id] = {
               jobId: job.id,
               resumeId,
@@ -800,6 +817,34 @@ export function JobFeedPage() {
               Close
             </button>
           </div>
+          <label>
+            Score with
+            <select
+              value={resumeId || ''}
+              aria-label="Resume to score against"
+              onChange={(event) => {
+                void selectResume(event.target.value).catch((err) => {
+                  toast(err instanceof Error ? err.message : 'Could not load this resume.', 'error')
+                })
+              }}
+            >
+              <option value="">{resumes.length ? 'Select a resume' : 'No resume uploaded'}</option>
+              {resumes.map((item) => {
+                const status = uiStatus(item)
+                return (
+                  <option key={item.id} value={item.id} disabled={!canSelectForRun(status)}>
+                    {item.fileName} ({status})
+                  </option>
+                )
+              })}
+            </select>
+          </label>
+          {!resumeId && (
+            <p className="muted">
+              Choose a resume to compute match percentages.{' '}
+              <a href="#/resumes">Open Resumes</a>
+            </p>
+          )}
           <fieldset>
             <legend>Sources</legend>
             {ALL_SOURCES.map((name) => (

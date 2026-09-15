@@ -123,6 +123,7 @@ def test_function_app_registers_matching_routes(function_names):
     assert "compute_match" in function_names
     assert "rank_matches" in function_names
     assert "list_match_results" in function_names
+    assert "get_match_result" in function_names
     assert "get_operation" in function_names
     assert "cancel_operation" in function_names
     assert "match_compute_job" in function_names
@@ -509,6 +510,69 @@ def test_explanation_is_word_safe_and_capped(svc):
     assert body["explanation"]
     assert len(body["explanation"]) <= 500
     assert not body["explanation"].endswith(" ")
+
+
+def test_explanation_defaults_on_and_can_be_disabled(svc):
+    defaulted = _body(
+        routes.compute_match(
+            _req(
+                "POST",
+                "http://localhost/api/v1/matches/compute",
+                json_body={"resumeText": RESUME, "jobText": HIGH_JOB, "jobId": "job-why"},
+            )
+        )
+    )
+    assert defaulted["score"] >= 0
+    assert defaulted["explanation"]
+    assert "Match score" in defaulted["explanation"]
+    assert defaulted["breakdown"]["weights"] == {"keyword": 0.4, "semantic": 0.6}
+    off = _body(
+        routes.compute_match(
+            _req(
+                "POST",
+                "http://localhost/api/v1/matches/compute",
+                json_body={"resumeText": RESUME, "jobText": LOW_JOB, "explanation": False, "threshold": 0},
+            )
+        )
+    )
+    assert "explanation" not in off
+    assert "score" in off
+
+
+def test_get_persisted_match_includes_score_and_rationale(svc):
+    created = _body(
+        routes.compute_match(
+            _req(
+                "POST",
+                "http://localhost/api/v1/matches/compute",
+                json_body={"resumeText": RESUME, "jobText": HIGH_JOB, "jobId": "job-detail"},
+            )
+        )
+    )
+    assert created["persisted"] is True
+    match_id = created["matchId"]
+    detail = routes.get_match_result(
+        _req(
+            "GET",
+            f"http://localhost/api/v1/match-results/{match_id}",
+            route={"matchId": match_id},
+        )
+    )
+    body = _body(detail)
+    assert detail.status_code == 200
+    assert body["matchId"] == match_id
+    assert body["score"] == created["score"]
+    assert body["explanation"]
+    assert body["jobId"] == "job-detail"
+    other = routes.get_match_result(
+        _req(
+            "GET",
+            f"http://localhost/api/v1/match-results/{match_id}",
+            user=OTHER,
+            route={"matchId": match_id},
+        )
+    )
+    assert other.status_code == 404
 
 
 def test_async_compute_and_cancel(svc, queue):
