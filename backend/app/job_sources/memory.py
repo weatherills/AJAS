@@ -21,8 +21,11 @@ from app.job_sources.errors import (
     JobSourceValidationError,
 )
 from app.job_sources.keys import (
+    canonical_id_for,
     canonical_key,
+    content_hash as compute_content_hash,
     dedupe_hash,
+    dedupe_namespace,
     parse_ts,
     response_hash,
     utc_now,
@@ -38,7 +41,6 @@ from app.job_sources.models import (
     SourceFetchRun,
     SourceRateLimit,
     SourceTenant,
-    new_id,
 )
 
 
@@ -262,6 +264,8 @@ class InMemoryJobSourceStore:
         listing_state: str = "open",
         content_blob_url: str | None = None,
         namespace: str | None = None,
+        posted_at: str | None = None,
+        updated_at_source: str | None = None,
         run_id: str | None = None,
     ) -> tuple[JobPostingRaw, str]:
         tenant = self.get_tenant(tenant_id)
@@ -273,14 +277,23 @@ class InMemoryJobSourceStore:
             raise JobSourceValidationError("source_posting_id is required", path="source_posting_id")
         now = utc_now()
         digest = response_hash(payload)
-        ns = namespace if namespace is not None else tenant.tenant_key
+        ns = namespace if namespace is not None else dedupe_namespace(company=company, apply_url=apply_url)
         key = canonical_key(title=title, location=location, namespace=ns)
         dhash = dedupe_hash(key=key, body=body, employment_type=employment_type)
+        chash = compute_content_hash(
+            title=title,
+            company=company,
+            location=location,
+            employment_type=employment_type,
+            apply_url=apply_url,
+            description_text=body,
+        )
         current = self._current_raw(tenant_id, source_posting_id)
         latest = current or self._latest_raw(tenant_id, source_posting_id)
         outcome = "created"
         if latest is not None:
-            if latest.response_hash == digest and latest.listing_state == listing_state:
+            same_content = (latest.content_hash and latest.content_hash == chash) or latest.response_hash == digest
+            if same_content and latest.listing_state == listing_state:
                 latest.seen_last_at = now
                 latest.updated_at = now
                 self._raw[latest.id] = latest
@@ -305,6 +318,9 @@ class InMemoryJobSourceStore:
             response_hash=digest,
             canonical_key=key,
             dedupe_hash=dhash,
+            content_hash=chash,
+            posted_at=posted_at,
+            updated_at_source=updated_at_source or now,
             is_current=listing_state != "closed",
             seen_first_at=latest.seen_first_at if latest else now,
             seen_last_at=now,
@@ -469,14 +485,17 @@ class InMemoryJobSourceStore:
 
     def _link_canonical(self, raw: JobPostingRaw) -> JobPostingLink:
         now = utc_now()
-        existing = next((item for item in self._canonical.values() if item.dedupe_hash == raw.dedupe_hash), None)
+        cid = canonical_id_for(raw.canonical_key)
+        existing = self._canonical.get(cid)
+        if existing is None:
+            existing = next((item for item in self._canonical.values() if item.dedupe_hash == raw.dedupe_hash), None)
         if existing is None:
             existing = next(
                 (item for item in self._canonical.values() if item.canonical_key == raw.canonical_key), None
             )
         if existing is None:
             existing = JobPostingCanonical(
-                id=new_id(),
+                id=cid,
                 canonical_key=raw.canonical_key,
                 dedupe_hash=raw.dedupe_hash,
                 title=raw.title,

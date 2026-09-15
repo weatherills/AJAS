@@ -7,6 +7,8 @@ import json
 import re
 from typing import Any
 
+from app.job_sources.constants import LEVER_PAGE_LIMIT
+
 _EMAIL = re.compile(r"[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}", re.I)
 _TAG = re.compile(r"<[^>]+>")
 MAX_BODY_CHARS = 80_000
@@ -81,14 +83,20 @@ def greenhouse_job(job: dict) -> dict:
         "company": _first(job.get("company_name"), job.get("company")),
         "department": dept,
         "html": html_body,
+        "posted_at": _first(job.get("first_published"), job.get("created_at"), job.get("updated_at")),
+        "updated_at_source": _first(job.get("updated_at"), job.get("created_at")),
     }
 
 
-def lever_list_jobs(payload: Any) -> tuple[list[dict], str | None]:
+def lever_list_jobs(payload: Any, *, limit: int = LEVER_PAGE_LIMIT) -> tuple[list[dict], str | None]:
     jobs = payload if isinstance(payload, list) else payload.get("data") if isinstance(payload, dict) else []
     if not isinstance(jobs, list):
         return [], None
-    return jobs, (str(len(jobs)) if jobs else None)
+    if not jobs:
+        return [], None
+    # Stop when the page is shorter than the requested limit (last page).
+    next_hint = str(len(jobs)) if len(jobs) >= limit else None
+    return jobs, next_hint
 
 
 def lever_job(job: dict) -> dict:
@@ -104,7 +112,9 @@ def lever_job(job: dict) -> dict:
         "employment_type": _first(categories.get("commitment"), job.get("commitment")),
         "body": truncate(text),
         "apply_url": apply_url,
-        "company": _first(job.get("company"), categories.get("department")),
+        "company": _first(job.get("company")),
         "department": _first(categories.get("team"), categories.get("department")),
         "html": html_body or plain,
+        "posted_at": _first(job.get("createdAt"), job.get("created_at")),
+        "updated_at_source": _first(job.get("updatedAt"), job.get("updated_at"), job.get("createdAt")),
     }

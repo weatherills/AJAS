@@ -184,6 +184,24 @@ def test_canonical_and_dedupe_hashes_are_stable():
     assert response_hash('{"a":1}') != response_hash('{"a":2}')
 
 
+def test_dedupe_namespace_omits_source_and_canonical_id_is_sha1():
+    from app.job_sources.keys import canonical_id_for, content_hash, dedupe_namespace, normalize_apply_url
+
+    gh = dedupe_namespace(company="Acme", apply_url="https://boards.greenhouse.io/acme/jobs/1?gh_jid=1")
+    lv = dedupe_namespace(company="Acme", apply_url="https://boards.greenhouse.io/acme/jobs/1")
+    assert gh == lv
+    assert gh.startswith("acme:")
+    assert normalize_apply_url("https://WWW.Example.com/jobs/1/") == "example.com/jobs/1"
+    key = canonical_key(title="Staff Engineer", location="Remote", namespace=gh)
+    cid = canonical_id_for(key)
+    assert cid == canonical_id_for(key)
+    assert len(cid) == 40
+    assert cid == __import__("hashlib").sha1(key.encode("utf-8")).hexdigest()
+    assert content_hash(title="Staff", company="Acme", location="Remote", apply_url=gh, description_text="Build") == content_hash(
+        title=" staff ", company="ACME", location="Remote", apply_url=gh, description_text="Build"
+    )
+
+
 def test_seeded_greenhouse_and_lever(store):
     sources = {item.id: item for item in store.list_sources()}
     assert set(sources) == {"greenhouse", "lever"}
@@ -335,6 +353,41 @@ def test_cross_source_merge_shares_canonical_and_records_link_reason(store):
     assert store.list_canonical()[0].is_active is True
     store.close_posting(lever.id, "lv-99")
     assert store.list_canonical()[0].is_active is False
+
+
+def test_omit_source_namespace_merges_greenhouse_and_lever(store):
+    from app.job_sources.keys import canonical_id_for
+
+    greenhouse = store.upsert_tenant("greenhouse", "gh-board")
+    lever = store.upsert_tenant("lever", "lv-board")
+    apply_url = "https://boards.greenhouse.io/acme/jobs/1"
+    raw_gh, _ = store.ingest_raw(
+        greenhouse.id,
+        **_posting(
+            source_posting_id="gh-1",
+            company="Acme",
+            apply_url=apply_url,
+            namespace=None,
+        ),
+    )
+    raw_lv, _ = store.ingest_raw(
+        lever.id,
+        **_posting(
+            source_posting_id="lv-99",
+            company="Acme",
+            apply_url=apply_url,
+            namespace=None,
+            payload='{"id":"lv-99","title":"Staff Engineer"}',
+        ),
+    )
+    canonicals = store.list_canonical()
+    assert len(canonicals) == 1
+    assert canonicals[0].id == canonical_id_for(raw_gh.canonical_key)
+    assert len(canonicals[0].id) == 40
+    assert raw_gh.canonical_key == raw_lv.canonical_key
+    assert canonicals[0].canonical_key == raw_gh.canonical_key
+    links = store.list_links(canonical_id=canonicals[0].id)
+    assert {item.raw_id for item in links} == {raw_gh.id, raw_lv.id}
 
 
 def test_rate_limit_consume_and_backoff(store):

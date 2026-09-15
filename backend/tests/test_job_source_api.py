@@ -245,7 +245,91 @@ def test_lever_list_and_detail(svc, store, fetcher):
     svc.drain()
     run = store.get_run(_body(resp)["runId"])
     assert run.status in {"succeeded", "partial_success"}
-    assert store.list_raw(tenant.id, current_only=True)[0].source_posting_id == "lv-1"
+    raw = store.list_raw(tenant.id, current_only=True)[0]
+    assert raw.source_posting_id == "lv-1"
+    assert raw.posted_at or raw.content_hash
+    assert len(store.list_canonical()) == 1
+    assert len(store.list_canonical()[0].id) == 40
+
+
+def test_lever_company_falls_back_to_tenant_config(svc, store, fetcher):
+    tenant = store.upsert_tenant("lever", "spotify", config={"company": "Spotify"})
+    job = _lever_job("lv-sg")
+    job.pop("company")
+    list_url = "https://api.lever.co/v0/postings/spotify?mode=json&skip=0&limit=100"
+    detail = "https://api.lever.co/v0/postings/spotify/lv-sg"
+    fetcher.script(list_url, _json_resp([job]))
+    fetcher.script(detail, _json_resp(job))
+    routes.start_crawl(_req("POST", f"http://localhost/api/v1/sources/{tenant.id}/crawl", route={"id": tenant.id}))
+    svc.drain()
+    raw = store.list_raw(tenant.id, current_only=True)[0]
+    assert raw.company == "Spotify"
+
+
+def test_lever_stops_when_page_shorter_than_limit(svc, store, fetcher):
+    tenant = store.upsert_tenant("lever", "acme", config={"company": "Acme"})
+    list0 = "https://api.lever.co/v0/postings/acme?mode=json&skip=0&limit=100"
+    list_next = "https://api.lever.co/v0/postings/acme?mode=json&skip=2&limit=100"
+    fetcher.script(list0, _json_resp([_lever_job("lv-1"), _lever_job("lv-2")]))
+    fetcher.script("https://api.lever.co/v0/postings/acme/lv-1", _json_resp(_lever_job("lv-1")))
+    fetcher.script("https://api.lever.co/v0/postings/acme/lv-2", _json_resp(_lever_job("lv-2")))
+    routes.start_crawl(_req("POST", f"http://localhost/api/v1/sources/{tenant.id}/crawl", route={"id": tenant.id}))
+    svc.drain()
+    assert list_next not in fetcher.calls
+    assert {item.source_posting_id for item in store.list_raw(tenant.id, current_only=True)} == {"lv-1", "lv-2"}
+
+
+def test_cross_source_crawl_dedupes_same_role(svc, store, fetcher):
+    apply_url = "https://boards.greenhouse.io/acme/jobs/1"
+    gh = store.upsert_tenant("greenhouse", "acme", config={"company": "Acme"})
+    lv = store.upsert_tenant("lever", "acme-co", config={"company": "Acme"})
+    gh_list = "https://boards-api.greenhouse.io/v1/boards/acme/jobs"
+    lv_list = "https://api.lever.co/v0/postings/acme-co?mode=json&skip=0&limit=100"
+    job = _gh_job(1)
+    job["absolute_url"] = apply_url
+    lever = _lever_job("lv-1")
+    lever["applyUrl"] = apply_url
+    lever["hostedUrl"] = apply_url
+    fetcher.script(gh_list, _json_resp({"jobs": [job]}))
+    fetcher.script("https://boards-api.greenhouse.io/v1/boards/acme/jobs/1", _json_resp(job))
+    fetcher.script(lv_list, _json_resp([lever]))
+    fetcher.script("https://api.lever.co/v0/postings/acme-co/lv-1", _json_resp(lever))
+    routes.start_crawl(_req("POST", f"http://localhost/api/v1/sources/{gh.id}/crawl", route={"id": gh.id}))
+    svc.drain()
+    routes.start_crawl(_req("POST", f"http://localhost/api/v1/sources/{lv.id}/crawl", route={"id": lv.id}))
+    svc.drain()
+    canonicals = store.list_canonical()
+    assert len(canonicals) == 1
+    assert len(canonicals[0].id) == 40
+    raw_ids = {item.source_posting_id for tenant in (gh, lv) for item in store.list_raw(tenant.id, current_only=True)}
+    assert raw_ids == {"1", "lv-1"}
+    feed = _body(routes.list_jobs(_req("GET", "http://localhost/api/v1/jobs")))
+    staff = next(item for item in feed["items"] if item["title"] == "Staff Engineer")
+    assert {src["source"] for src in staff["sources"]} == {"greenhouse", "lever"}
+
+
+def test_content_change_writes_versioned_blob(svc, store, fetcher, blobs):
+    tenant = store.upsert_tenant("greenhouse", "acme")
+    list_url = "https://boards-api.greenhouse.io/v1/boards/acme/jobs"
+    detail = "https://boards-api.greenhouse.io/v1/boards/acme/jobs/1"
+    first = _gh_job(1)
+    second = _gh_job(1, content="<p>Changed role description.</p>")
+    fetcher.script(list_url, _json_resp({"jobs": [first]}))
+    fetcher.script(detail, _json_resp(first))
+    routes.start_crawl(_req("POST", f"http://localhost/api/v1/sources/{tenant.id}/crawl", route={"id": tenant.id}))
+    svc.drain()
+    current_paths = [path for path in blobs.objects if path.endswith("/1.json")]
+    assert len(current_paths) == 1
+    fetcher.script(list_url, _json_resp({"jobs": [second]}))
+    fetcher.script(detail, _json_resp(second))
+    routes.start_crawl(_req("POST", f"http://localhost/api/v1/sources/{tenant.id}/crawl", route={"id": tenant.id}))
+    svc.drain()
+    versioned = [path for path in blobs.objects if "/1." in path and not path.endswith("/1.json")]
+    assert versioned
+    assert current_paths[0] in blobs.objects
+    assert b"Changed role description" in blobs.objects[current_paths[0]]
+    assert store.list_runs(tenant.id)[-1].upsert_count >= 1
+    assert len(store.list_raw(tenant.id)) == 2
 
 
 def test_ssrf_base_url_is_rejected(svc, store, fetcher):
@@ -399,6 +483,23 @@ def test_department_filter(svc, store, fetcher):
     svc.drain()
     raw = store.list_raw(tenant.id, current_only=True)
     assert [item.source_posting_id for item in raw] == ["2"]
+
+
+def test_create_tenant_persists_filters(svc, store, fetcher):
+    list_url = "https://boards-api.greenhouse.io/v1/boards/discord/jobs"
+    fetcher.script(list_url, _json_resp({"jobs": []}), _json_resp({"jobs": []}))
+    resp = routes.create_source_tenant(
+        _req(
+            "POST",
+            "http://localhost/api/v1/sources/greenhouse/tenants",
+            route={"id": "greenhouse"},
+            json_body={"boardToken": "discord", "company": "Discord", "filters": {"location": "San Francisco, CA"}},
+        )
+    )
+    assert resp.status_code == 201
+    tenant = next(item for item in store.list_tenants("greenhouse") if item.tenant_key == "discord")
+    assert tenant.config.get("filters") == {"location": "San Francisco, CA"}
+    assert tenant.config.get("company") == "Discord"
 
 
 def test_disabled_tenant_rejected(svc, store):
