@@ -1419,6 +1419,18 @@ select:focus-visible {
   text-align: left;
   cursor: pointer;
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.review-row-title {
+  font-weight: 600;
+}
+
+.review-row-sub {
+  font-weight: 400;
+  font-size: 0.78rem;
 }
 
 .review-row-btn:focus-visible {
@@ -1510,7 +1522,12 @@ select:focus-visible {
   border-radius: 10px;
   padding: 0.75rem 0.9rem;
   background: rgba(99, 102, 241, 0.18);
-  color: #e2e8f0;
+  color: inherit;
+}
+
+.review-suggestion-label {
+  font-weight: 650;
+  margin: 0 0 0.25rem;
 }
 
 .review-actions {
@@ -2155,6 +2172,16 @@ select:focus-visible {
     color: #0f172a;
   }
 
+  .review-drawer .muted {
+    color: #475569;
+  }
+
+  .review-suggestion {
+    color: #1e293b;
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(79, 70, 229, 0.35);
+  }
+
   .review-actions {
     background: #f8fafc;
   }
@@ -2167,6 +2194,31 @@ select:focus-visible {
   .ops-page {
     color: #1e293b;
   }
+}
+
+html[data-theme='light'] .review-drawer,
+html[data-theme='light'] .job-drawer {
+  color: #1e293b;
+  background: #f8fafc;
+}
+
+html[data-theme='light'] .review-drawer h3,
+html[data-theme='light'] .job-drawer-head h2 {
+  color: #0f172a;
+}
+
+html[data-theme='light'] .review-drawer .muted {
+  color: #475569;
+}
+
+html[data-theme='light'] .review-suggestion {
+  color: #1e293b;
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(79, 70, 229, 0.35);
+}
+
+html[data-theme='light'] .review-actions {
+  background: #f8fafc;
 }
 
 kbd {

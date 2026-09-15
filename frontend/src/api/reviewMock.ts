@@ -23,6 +23,12 @@ function seedRow(partial: Partial<Row> & Pick<Row, 'matchId' | 'jobTitle' | 'com
     location: partial.location || 'Remote',
     score: partial.score === undefined ? 80 : partial.score,
     suggestion: partial.suggestion || 'approve',
+    confidence:
+      partial.confidence === undefined
+        ? partial.suggestion === 'none' || (partial.score === null)
+          ? null
+          : Math.round(partial.score === undefined ? 80 : partial.score)
+        : partial.confidence,
     status,
     source: partial.source || 'ai',
     createdAt,
