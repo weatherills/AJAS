@@ -55,6 +55,7 @@ class ResumeStore(Protocol):
         snapshot: StructuredResume,
         *,
         parsing_confidence: int | None = None,
+        source_version: str | None = None,
     ) -> Resume: ...
 
     def replace_structured_data(
@@ -82,6 +83,10 @@ class ResumeStore(Protocol):
     def list_parse_events(self, resume_id: str) -> list[ResumeParseEvent]: ...
 
     def clear_selections_for_resume(self, user_id: str, resume_id: str) -> int: ...
+
+    def set_user_active(self, user_id: str, resume_id: str) -> Resume: ...
+
+    def get_user_active(self, user_id: str) -> Resume | None: ...
 
 
 _store: ResumeStore | None = None

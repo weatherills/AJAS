@@ -56,7 +56,38 @@ Content-Type: application/json
   ]
 }
 
-### Retry a failed parse
+### Upload alias (Sprint 21)
+POST {{base}}/api/resumes/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----ResumeBoundary
+
+------ResumeBoundary
+Content-Disposition: form-data; name="file"; filename="cv.docx"
+Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+
+< ./cv.docx
+------ResumeBoundary--
+
+### Patch parsed fields alias
+PATCH {{base}}/api/resumes/{{resumeId}}/parsed
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "skills": ["Python", "Azure"]
+}
+
+### Field-level audit trail
+GET {{base}}/api/resumes/{{resumeId}}/audit
+Authorization: Bearer {{token}}
+
+### Set the user's default active resume (one per user)
+PUT {{base}}/api/resumes/{{resumeId}}/active
+Authorization: Bearer {{token}}
+
+### Get the user's default active resume
+GET {{base}}/api/resumes/active
+Authorization: Bearer {{token}}
 POST {{base}}/api/resumes/{{resumeId}}/retry-parse
 Authorization: Bearer {{token}}
 

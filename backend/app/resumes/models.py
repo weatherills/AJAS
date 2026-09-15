@@ -114,6 +114,10 @@ class Resume(BaseModel):
     last_edited_by: str | None = None
     created_at: str
     updated_at: str
+    schema_version: str = "1"
+    source_version: str | None = None
+    parsed_version: int = 0
+    is_active: bool = False
     contact: ResumeContact | None = None
     skills: list[ResumeSkill] = Field(default_factory=list)
     experiences: list[ResumeExperience] = Field(default_factory=list)

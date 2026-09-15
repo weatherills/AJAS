@@ -37,6 +37,10 @@ def resume_list_item(resume: Resume) -> dict[str, Any]:
         "lastParseAt": resume.parsed_at,
         "fileHash": resume.checksum_sha256,
         "validated": resume.validated,
+        "isActive": resume.is_active,
+        "schemaVersion": resume.schema_version,
+        "sourceVersion": resume.source_version,
+        "parsedVersion": resume.parsed_version,
     }
 
 
@@ -208,4 +212,22 @@ def selection_api(selection: RunResumeSelection) -> dict[str, Any]:
         "runId": selection.run_id,
         "resumeId": selection.resume_id,
         "effectiveAt": selection.created_at,
+    }
+
+
+def audit_item(event) -> dict[str, Any]:
+    detail = event.detail or {}
+    return {
+        "id": event.id,
+        "resumeId": event.resume_id,
+        "editor": detail.get("editor") or event.user_id,
+        "timestamp": event.created_at,
+        "eventType": event.event_type,
+        "old": detail.get("old"),
+        "new": detail.get("new"),
+        "detail": {
+            key: value
+            for key, value in detail.items()
+            if key not in {"old", "new", "editor"}
+        },
     }

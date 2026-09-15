@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     resume_max_pdf_pages: int = 20
     resume_upload_rate_per_hour: int = 30
     resume_max_concurrent_parses: int = 5
+    resume_av_fail: bool = False
 
     crawl_runs_queue: str = "crawl-runs"
     job_fetch_queue: str = "job-fetch"

@@ -6,6 +6,7 @@ import json
 from typing import Any, Protocol
 
 from app.config import get_settings
+from app.resumes.constants import AZURE_OPENAI_SOURCE_VERSION, HEURISTIC_SOURCE_VERSION
 from app.resumes.mapping import snapshot_from_parser
 from app.resumes.models import StructuredResume
 
@@ -16,6 +17,8 @@ class ResumeParser(Protocol):
 
 class HeuristicResumeParser:
     """Offline fallback used in tests and when Azure OpenAI is not configured."""
+
+    source_version = HEURISTIC_SOURCE_VERSION
 
     def parse(self, *, resume_id: str, text: str) -> StructuredResume:
         skills: list[str] = []
@@ -65,6 +68,8 @@ class HeuristicResumeParser:
 
 
 class AzureOpenAIResumeParser:
+    source_version = AZURE_OPENAI_SOURCE_VERSION
+
     def parse(self, *, resume_id: str, text: str) -> StructuredResume:
         from app.ai.openai_client import get_openai_client
 

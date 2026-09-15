@@ -11,7 +11,8 @@ The examples use `local-user`, which matches the frontend default.
 | --- | --- |
 | [review.http](review.http) | Match queue, saved-jobs sort, approve/reject, decision list/history |
 | [settings.http](settings.http) | Threshold, Auto-Apply flag, audit trail, source toggles, Microsoft 365 connect |
-| [resume.http](resume.http) | Upload, list, detail, preview URL, patch, retry-parse, run active resume |
+| [resume.http](resume.http) | Upload, list, detail, preview URL, patch, audit, retry-parse, user/run active resume |
+| [resume.openapi.yaml](resume.openapi.yaml) | OpenAPI 3 for resume endpoints, auth, and error codes |
 | [jobs.http](jobs.http) | Job feed, source status, on-demand Greenhouse/Lever crawl |
 | [matching.http](matching.http) | Compute/rank scores, warmup, A/B variant, SLO snapshot, list persisted results |
 | [email.http](email.http) | Graph webhook, mailbox status, threads, reply, suggestions, link |

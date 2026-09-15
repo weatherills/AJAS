@@ -7,6 +7,7 @@ from typing import Protocol
 from urllib.parse import parse_qs, urlparse
 
 from app.config import get_settings
+from app.resumes.errors import FileRejectedError
 
 
 class ResumeBlobStore(Protocol):
@@ -22,7 +23,26 @@ class ResumeBlobStore(Protocol):
 
     def get(self, blob_path: str) -> bytes: ...
 
+    def delete(self, blob_path: str) -> None: ...
+
     def sas_url(self, blob_path: str, *, minutes: int = 10) -> str: ...
+
+
+def scan_antivirus(data: bytes, *, mime_type: str | None = None) -> None:
+    """AV scan hook. Always-clean stub unless ``AJAS_AV_FAIL`` is set.
+
+    Production should swap this for a real scanner (Defender / ClamAV). The
+    stub never inspects file contents beyond a sentinel used in tests.
+    """
+    del mime_type
+    settings = get_settings()
+    force_fail = bool(getattr(settings, "resume_av_fail", False))
+    if force_fail or data.startswith(b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR"):
+        raise FileRejectedError(
+            "File failed antivirus scan",
+            status_code=400,
+            code="AV_REJECTED",
+        )
 
 
 class InMemoryBlobStore:
@@ -30,6 +50,7 @@ class InMemoryBlobStore:
         self.objects: dict[str, bytes] = {}
 
     def put(self, *, user_id: str, resume_id: str, filename: str, data: bytes, mime_type: str) -> str:
+        scan_antivirus(data, mime_type=mime_type)
         path = f"{user_id}/{resume_id}/{filename}"
         self.objects[path] = data
         return path
@@ -39,6 +60,9 @@ class InMemoryBlobStore:
             return self.objects[blob_path]
         except KeyError as exc:
             raise FileNotFoundError(blob_path) from exc
+
+    def delete(self, blob_path: str) -> None:
+        self.objects.pop(blob_path, None)
 
     def sas_url(self, blob_path: str, *, minutes: int = 10) -> str:
         expiry = datetime.now(timezone.utc) + timedelta(minutes=minutes)
@@ -57,6 +81,7 @@ class AzureResumeBlobStore:
         self._container = client.get_container_client(self._container_name)
 
     def put(self, *, user_id: str, resume_id: str, filename: str, data: bytes, mime_type: str) -> str:
+        scan_antivirus(data, mime_type=mime_type)
         path = f"{user_id}/{resume_id}/{filename}"
         try:
             self._container.create_container()
@@ -67,6 +92,12 @@ class AzureResumeBlobStore:
 
     def get(self, blob_path: str) -> bytes:
         return self._container.download_blob(blob_path).readall()
+
+    def delete(self, blob_path: str) -> None:
+        try:
+            self._container.delete_blob(blob_path)
+        except Exception:
+            pass
 
     def sas_url(self, blob_path: str, *, minutes: int = 10) -> str:
         from azure.storage.blob import BlobSasPermissions, generate_blob_sas

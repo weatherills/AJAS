@@ -89,6 +89,7 @@ class CosmosResumeStore:
         snapshot: StructuredResume,
         *,
         parsing_confidence: int | None = None,
+        source_version: str | None = None,
     ) -> Resume:
         working = self._hydrate_user(user_id, event_resume_id=resume_id)
         updated = working.record_parse_success(
@@ -96,6 +97,7 @@ class CosmosResumeStore:
             resume_id,
             snapshot,
             parsing_confidence=parsing_confidence,
+            source_version=source_version,
         )
         self._persist_resume(updated)
         self._persist_new_events(working, resume_id)
@@ -170,6 +172,21 @@ class CosmosResumeStore:
         for item in items:
             self._selections.delete_item(item=item["id"], partition_key=item["run_id"])
         return len(items)
+
+    def set_user_active(self, user_id: str, resume_id: str) -> Resume:
+        working = self._hydrate_user(user_id, event_resume_id=resume_id)
+        updated = working.set_user_active(user_id, resume_id)
+        for resume in working.list_resumes(user_id, include_deleted=True):
+            self._persist_resume(resume)
+        self._persist_new_events(working, resume_id)
+        return updated
+
+    def get_user_active(self, user_id: str) -> Resume | None:
+        rows = self.list_resumes(user_id)
+        for resume in rows:
+            if resume.is_active:
+                return resume
+        return None
 
     def list_parse_events(self, resume_id: str) -> list[ResumeParseEvent]:
         query = "SELECT * FROM c WHERE c.resume_id = @resume_id ORDER BY c.created_at DESC"

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from app.resumes.constants import ChildSource, ProcessingStatus
+from app.resumes.constants import CANONICAL_SCHEMA_VERSION, ChildSource, ProcessingStatus
 from app.resumes.errors import (
     ResumeNotFoundError,
     ResumeSelectionRejectedError,
@@ -62,6 +62,9 @@ class InMemoryResumeStore:
             text_preview=text_preview,
             checksum_sha256=checksum_sha256,
             processing_status="uploaded",
+            schema_version=CANONICAL_SCHEMA_VERSION,
+            parsed_version=0,
+            is_active=False,
             created_at=now,
             updated_at=now,
         )
@@ -128,6 +131,7 @@ class InMemoryResumeStore:
         snapshot: StructuredResume,
         *,
         parsing_confidence: int | None = None,
+        source_version: str | None = None,
     ) -> Resume:
         resume = self._require(user_id, resume_id)
         stamped = _stamp_children(
@@ -146,11 +150,21 @@ class InMemoryResumeStore:
         resume.parsed_at = now
         resume.parsing_error = None
         resume.updated_at = now
+        resume.schema_version = CANONICAL_SCHEMA_VERSION
+        resume.parsed_version = int(resume.parsed_version or 0) + 1
+        if source_version:
+            resume.source_version = source_version
         _apply_validated(resume, stamped, now)
         self._append_event(
             resume,
             "succeeded",
-            {"validated": resume.validated, "parsing_confidence": parsing_confidence},
+            {
+                "validated": resume.validated,
+                "parsing_confidence": parsing_confidence,
+                "schemaVersion": resume.schema_version,
+                "parsedVersion": resume.parsed_version,
+                "sourceVersion": resume.source_version,
+            },
         )
         return deepcopy(resume)
 
@@ -164,6 +178,7 @@ class InMemoryResumeStore:
         source: ChildSource = "manual",
     ) -> Resume:
         resume = self._require(user_id, resume_id)
+        old_values = _field_snapshot(resume)
         stamped = _stamp_children(snapshot, resume_id=resume.id, source=source)
         validate_structured(stamped)
         now = utc_now()
@@ -173,8 +188,21 @@ class InMemoryResumeStore:
         resume.educations = stamped.educations
         resume.last_edited_by = last_edited_by
         resume.updated_at = now
+        resume.schema_version = CANONICAL_SCHEMA_VERSION
+        resume.parsed_version = int(resume.parsed_version or 0) + 1
         _apply_validated(resume, stamped, now)
-        self._append_event(resume, "edited", {"validated": resume.validated})
+        new_values = _field_snapshot(resume)
+        self._append_event(
+            resume,
+            "edited",
+            {
+                "validated": resume.validated,
+                "editor": last_edited_by,
+                "old": old_values,
+                "new": new_values,
+                "parsedVersion": resume.parsed_version,
+            },
+        )
         return deepcopy(resume)
 
     def soft_delete(self, user_id: str, resume_id: str) -> Resume:
@@ -183,10 +211,32 @@ class InMemoryResumeStore:
             return deepcopy(resume)
         now = utc_now()
         resume.is_deleted = True
+        resume.is_active = False
         resume.deleted_at = now
         resume.updated_at = now
         self._append_event(resume, "deleted", {})
         return deepcopy(resume)
+
+    def set_user_active(self, user_id: str, resume_id: str) -> Resume:
+        target = self._require(user_id, resume_id)
+        if target.is_deleted:
+            raise ResumeSelectionRejectedError("cannot select a deleted resume")
+        now = utc_now()
+        for resume in self._resumes.values():
+            if resume.user_id != user_id:
+                continue
+            resume.is_active = resume.id == resume_id
+            resume.updated_at = now
+        target.is_active = True
+        target.updated_at = now
+        self._append_event(target, "activated", {"editor": user_id, "active": True})
+        return deepcopy(target)
+
+    def get_user_active(self, user_id: str) -> Resume | None:
+        for resume in self.list_resumes(user_id):
+            if resume.is_active:
+                return resume
+        return None
 
     def set_run_selection(
         self,
@@ -338,6 +388,29 @@ def _stamp_children(
         experiences=experiences,
         educations=educations,
     )
+
+
+def _field_snapshot(resume: Resume) -> dict:
+    return {
+        "skills": [skill.name for skill in resume.skills],
+        "experience": [
+            {"title": item.title, "company": item.company, "startDate": item.start_date, "endDate": item.end_date}
+            for item in resume.experiences
+        ],
+        "education": [
+            {"institution": item.institution, "degree": item.degree}
+            for item in resume.educations
+        ],
+        "contact": (
+            {
+                "fullName": resume.contact.full_name,
+                "email": resume.contact.email,
+                "phone": resume.contact.phone,
+            }
+            if resume.contact
+            else None
+        ),
+    }
 
 
 def _apply_validated(resume: Resume, snapshot: StructuredResume, now: str) -> None:

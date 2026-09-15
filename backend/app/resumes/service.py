@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import hashlib
+import time
 from datetime import datetime, timedelta, timezone
-
 from uuid import uuid4
 
 from app.config import get_settings
-from app.resumes.blobs import InMemoryBlobStore, ResumeBlobStore
+from app.metrics import increment
+from app.resumes.blobs import InMemoryBlobStore, ResumeBlobStore, scan_antivirus
+from app.resumes.constants import (
+    HEURISTIC_SOURCE_VERSION,
+    PARSE_BACKOFF_SECONDS,
+)
 from app.resumes.errors import (
     FileRejectedError,
     ResumeNotFoundError,
@@ -17,7 +22,7 @@ from app.resumes.errors import (
 from app.resumes.files import extract_text, sniff_mime, validate_upload
 from app.resumes.mapping import snapshot_from_patch
 from app.resumes.memory import InMemoryResumeStore
-from app.resumes.models import Resume, RunResumeSelection
+from app.resumes.models import Resume, ResumeParseEvent, RunResumeSelection
 from app.resumes.parser import HeuristicResumeParser, ResumeParser
 from app.resumes.queueing import InMemoryParseQueue, ParseQueue
 from app.resumes.store import ResumeStore
@@ -40,6 +45,7 @@ class ResumeService:
     def upload(self, *, user_id: str, filename: str, content_type: str | None, data: bytes) -> Resume:
         settings = get_settings()
         mime_type = sniff_mime(filename, content_type)
+        scan_antivirus(data, mime_type=mime_type)
         validate_upload(filename=filename, mime_type=mime_type, data=data)
         self._enforce_upload_limits(user_id, settings)
         checksum = hashlib.sha256(data).hexdigest()
@@ -66,8 +72,11 @@ class ResumeService:
                 "resumeId": resume.id,
                 "ownerUserId": user_id,
                 "blobPath": blob_path,
+                "attempt": 1,
+                "backoffSeconds": PARSE_BACKOFF_SECONDS[0],
             }
         )
+        increment("resume.upload")
         return self.store.get_resume(user_id, resume.id)
 
     def list_resumes(self, user_id: str, *, cursor: str | None, limit: int) -> dict:
@@ -104,6 +113,8 @@ class ResumeService:
         if updated.processing_status == "failed" and compute_validated(snapshot):
             updated = self.store.record_status(user_id, resume_id, "parsed")
             updated = self.store.get_resume(user_id, resume_id)
+        increment("resume.edit")
+        self._notify_matching(user_id)
         return updated
 
     def retry_parse(self, user_id: str, resume_id: str) -> Resume:
@@ -114,25 +125,49 @@ class ResumeService:
                 "resumeId": resume.id,
                 "ownerUserId": user_id,
                 "blobPath": resume.blob_uri,
+                "attempt": 1,
+                "backoffSeconds": PARSE_BACKOFF_SECONDS[0],
             }
         )
         return self.store.get_resume(user_id, resume_id)
 
     def delete(self, user_id: str, resume_id: str) -> None:
         try:
-            self.store.soft_delete(user_id, resume_id)
+            resume = self.store.get_resume(user_id, resume_id)
         except ResumeNotFoundError:
             return
+        if resume.is_deleted:
+            return
+        self.store.soft_delete(user_id, resume_id)
         self.store.clear_selections_for_resume(user_id, resume_id)
+        # Original blob is retained 30 days (Backend PRD). Adapter still exposes delete.
+        self._notify_matching(user_id)
+
+    def list_audit(self, user_id: str, resume_id: str) -> list[ResumeParseEvent]:
+        self.get(user_id, resume_id)
+        return self.store.list_parse_events(resume_id)
 
     def set_active(self, user_id: str, run_id: str, resume_id: str) -> RunResumeSelection:
-        return self.store.set_run_selection(run_id=run_id, user_id=user_id, resume_id=resume_id)
+        selection = self.store.set_run_selection(run_id=run_id, user_id=user_id, resume_id=resume_id)
+        self._notify_matching(user_id)
+        return selection
 
     def get_active(self, user_id: str, run_id: str) -> RunResumeSelection:
         selection = self.store.get_run_selection(run_id)
         if selection is None or selection.user_id != user_id:
             raise ResumeNotFoundError(run_id)
         return selection
+
+    def set_user_active(self, user_id: str, resume_id: str) -> Resume:
+        updated = self.store.set_user_active(user_id, resume_id)
+        self._notify_matching(user_id)
+        return updated
+
+    def get_user_active(self, user_id: str) -> Resume:
+        resume = self.store.get_user_active(user_id)
+        if resume is None or resume.is_deleted:
+            raise ResumeNotFoundError("active")
+        return resume
 
     def process_parse_job(self, message: dict, *, dequeue_count: int = 1) -> None:
         resume_id = message["resumeId"]
@@ -142,12 +177,24 @@ class ResumeService:
         if resume.is_deleted:
             return
         self.store.record_status(user_id, resume_id, "parsing")
+        started = time.perf_counter()
         try:
             data = self.blobs.get(blob_path)
             text = extract_text(resume.original_filename, resume.mime_type, data)
             snapshot = self.parser.parse(resume_id=resume_id, text=text)
-            self.store.record_parse_success(user_id, resume_id, snapshot, parsing_confidence=70)
+            source_version = getattr(self.parser, "source_version", HEURISTIC_SOURCE_VERSION)
+            self.store.record_parse_success(
+                user_id,
+                resume_id,
+                snapshot,
+                parsing_confidence=70,
+                source_version=source_version,
+            )
+            increment("resume.parse.ok")
+            increment("resume.parse.ms", (time.perf_counter() - started) * 1000)
+            self._notify_matching(user_id)
         except Exception as exc:
+            increment("resume.parse.fail")
             # Two retries after the first attempt (dequeue_count 1,2,3) then fail.
             if dequeue_count >= 3:
                 self.store.record_status(
@@ -157,6 +204,8 @@ class ResumeService:
                     parsing_error=_safe_parse_error(exc),
                 )
                 return
+            message["attempt"] = dequeue_count + 1
+            message["backoffSeconds"] = _backoff_seconds(dequeue_count)
             raise
 
     def _enforce_upload_limits(self, user_id: str, settings) -> None:
@@ -173,6 +222,21 @@ class ResumeService:
             raise ResumeRateLimitedError("Upload rate limit exceeded (30 per hour)")
         if in_flight >= settings.resume_max_concurrent_parses:
             raise ResumeRateLimitedError("Too many concurrent parses (max 5)")
+
+    def _notify_matching(self, user_id: str) -> None:
+        try:
+            from app.matching.runtime import try_get_service
+
+            matching = try_get_service()
+            if matching is not None:
+                matching.invalidate_list_cache(user_id)
+        except Exception:
+            return
+
+
+def _backoff_seconds(dequeue_count: int) -> int:
+    index = min(max(dequeue_count, 1), len(PARSE_BACKOFF_SECONDS)) - 1
+    return PARSE_BACKOFF_SECONDS[index]
 
 
 def _parse_ts(value: str) -> datetime:

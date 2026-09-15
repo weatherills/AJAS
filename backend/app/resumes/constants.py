@@ -13,6 +13,7 @@ ParseEventType = Literal[
     "duplicate_detected",
     "edited",
     "deleted",
+    "activated",
 ]
 
 PROCESSING_STATUSES: Final[frozenset[str]] = frozenset(
@@ -87,3 +88,10 @@ MAX_EDUCATIONS = 30
 MAX_SKILL_LEN = 100
 MAX_TITLE_LEN = 200
 MAX_DESCRIPTION_LEN = 2000
+
+CANONICAL_SCHEMA_VERSION: Final[str] = "1"
+HEURISTIC_SOURCE_VERSION: Final[str] = "heuristic-v1"
+AZURE_OPENAI_SOURCE_VERSION: Final[str] = "azure-openai-v1"
+# Attempt 1 / 2 / 3 delays before the next parse retry (seconds).
+PARSE_BACKOFF_SECONDS: Final[tuple[int, int, int]] = (1, 4, 16)
+USER_ACTIVE_RUN_PREFIX: Final[str] = "user:"

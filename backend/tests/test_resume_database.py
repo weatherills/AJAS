@@ -457,5 +457,36 @@ def test_clear_selections_for_resume(store):
     assert store.get_run_selection("run-x") is None
 
 
+def test_one_active_resume_per_user(store):
+    first = _upload(store, checksum="a1")
+    second = _upload(store, checksum="a2")
+    store.record_parse_success(USER, first.id, _snapshot(skills=[_skill("Python")]))
+    store.record_parse_success(USER, second.id, _snapshot(skills=[_skill("Go")]))
+    active = store.set_user_active(USER, first.id)
+    assert active.is_active is True
+    replaced = store.set_user_active(USER, second.id)
+    assert replaced.id == second.id
+    assert store.get_resume(USER, first.id).is_active is False
+    assert store.get_user_active(USER).id == second.id
+
+
+def test_edit_audit_keeps_old_and_new(store):
+    resume = _upload(store)
+    store.record_parse_success(USER, resume.id, _snapshot(skills=[_skill("Python")]))
+    store.replace_structured_data(
+        USER,
+        resume.id,
+        _snapshot(skills=[_skill("Go")]),
+        last_edited_by=USER,
+    )
+    edited = next(e for e in store.list_parse_events(resume.id) if e.event_type == "edited")
+    assert edited.detail["old"]["skills"] == ["Python"]
+    assert edited.detail["new"]["skills"] == ["Go"]
+    assert edited.detail["editor"] == USER
+    parsed = store.get_resume(USER, resume.id)
+    assert parsed.schema_version == "1"
+    assert parsed.parsed_version >= 2
+
+
 def test_new_id_is_unique():
     assert new_id() != new_id()

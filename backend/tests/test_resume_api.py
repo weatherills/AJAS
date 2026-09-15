@@ -456,3 +456,67 @@ def test_patch_contact(svc):
     assert patched["contact"]["fullName"] == "Jane Doe"
     assert patched["contact"]["email"] == "jane@example.com"
     assert patched["contact"]["linkedinUrl"] == "https://linkedin.com/in/jane"
+
+
+def test_audit_active_and_matching_invalidation(svc):
+    from app.matching.runtime import set_service as set_matching
+    from app.matching.service import MatchingService
+
+    matching = MatchingService()
+    matching._list_cache[("user-1", None, None, None, 50, None, None, "desc")] = (9e18, {"items": []})
+    set_matching(matching)
+    try:
+        created = _body(
+            routes.upload_resume(
+                _req("POST", "http://localhost/api/resumes", file=("cv.pdf", "application/pdf", _pdf()))
+            )
+        )
+        patched = routes.patch_parsed_resume(
+            _req(
+                "PATCH",
+                "http://localhost/api/resumes/x/parsed",
+                route={"id": created["id"]},
+                json_body={"skills": ["Python"]},
+            )
+        )
+        assert patched.status_code == 200
+        audit = _body(
+            routes.list_resume_audit(
+                _req("GET", "http://localhost/api/resumes/x/audit", route={"id": created["id"]})
+            )
+        )
+        edited = next(item for item in audit["items"] if item["eventType"] == "edited")
+        assert edited["old"]["skills"] == []
+        assert edited["new"]["skills"] == ["Python"]
+        assert edited["editor"] == USER
+
+        activated = routes.put_user_active_resume(
+            _req("PUT", "http://localhost/api/resumes/x/active", route={"id": created["id"]})
+        )
+        assert activated.status_code == 200
+        assert _body(activated)["isActive"] is True
+        current = _body(routes.get_user_active_resume(_req("GET", "http://localhost/api/resumes/active")))
+        assert current["id"] == created["id"]
+        assert matching._list_cache == {}
+    finally:
+        set_matching(None)
+
+
+def test_upload_alias_and_av_reject(svc):
+    ok = routes.upload_resume(
+        _req(
+            "POST",
+            "http://localhost/api/resumes/upload",
+            file=("cv.pdf", "application/pdf", _pdf()),
+        )
+    )
+    assert ok.status_code == 201
+    blocked = routes.upload_resume(
+        _req(
+            "POST",
+            "http://localhost/api/resumes",
+            file=("eicar.pdf", "application/pdf", b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR"),
+        )
+    )
+    assert blocked.status_code == 400
+    assert _body(blocked)["error"]["code"] == "AV_REJECTED"
