@@ -116,6 +116,11 @@ def _match_row(match: ReviewMatch, triage: dict[str, Any] | None = None) -> dict
         "location": match.location,
         "score": match.ai_score,
         "suggestion": match.suggestion,
+        "confidence": (
+            None
+            if match.suggestion == "none" or match.ai_score is None
+            else int(round(float(match.ai_score)))
+        ),
         "status": _api_status(match.status),
         "source": match.source,
         "createdAt": match.created_at,

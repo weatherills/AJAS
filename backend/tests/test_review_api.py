@@ -206,6 +206,7 @@ def test_detail_is_404_for_other_user(svc, store):
     assert body["match"]["score"] == 88.0
     assert body["match"]["why"]
     assert body["match"]["suggestion"] == "approve"
+    assert body["match"]["confidence"] == 88
     assert "se=" in body["blobs"]["jobUrl"]
     assert "se=" in body["blobs"]["resumeUrl"]
     assert "sig=" in body["blobs"]["jobUrl"]
@@ -219,6 +220,8 @@ def test_missing_rationale_serves_cache_and_enqueues_enrich(svc, store, queue):
     assert resp.status_code == 200
     body = _body(resp)
     assert body["match"]["summary"] is None
+    assert body["match"]["suggestion"] == "none"
+    assert body["match"]["confidence"] is None
     assert queue.of("review-enrich")
     assert queue.of("review-enrich")[0]["eventType"] == "EnrichRequested"
     audits = store.list_audit(USER, match_id=match.id, event_type="DEGRADED_VIEW")

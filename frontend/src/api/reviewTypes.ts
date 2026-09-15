@@ -20,6 +20,7 @@ export type ReviewMatch = {
   location: string
   score: number | null
   suggestion: Suggestion
+  confidence: number | null
   status: ReviewStatus
   source: ReviewSource
   createdAt: string

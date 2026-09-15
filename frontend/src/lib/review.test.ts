@@ -5,12 +5,17 @@ import {
   applyFilters,
   COMMENT_MAX,
   DEFAULT_FILTERS,
+  filtersForTab,
   findReviewRow,
   nextAfterRemove,
+  QUEUE_MIN_SCORE,
+  suggestionConfidence,
+  suggestionCopy,
   suggestionLabel,
   tabForMatch,
   truncateText,
   validateComment,
+  WHY_MAX,
 } from './review'
 
 describe('review helpers', () => {
@@ -30,6 +35,32 @@ describe('review helpers', () => {
     expect(cut.text.length).toBeLessThanOrEqual(12)
   })
 
+  it('exposes suggestion confidence and caps rationale at 400 characters', () => {
+    expect(suggestionConfidence('none', 88)).toBeNull()
+    expect(suggestionConfidence('approve', 88.4)).toBe(88)
+    const copy = suggestionCopy({
+      suggestion: 'approve',
+      score: 88,
+      why: 'x'.repeat(WHY_MAX + 80),
+      confidence: null,
+    })
+    expect(copy.available).toBe(true)
+    expect(copy.label).toBe('Recommend Approve')
+    expect(copy.confidence).toBe(88)
+    expect(copy.truncated).toBe(true)
+    expect(copy.rationale.length).toBeLessThanOrEqual(WHY_MAX)
+    expect(
+      suggestionCopy({ suggestion: 'none', score: 80, why: null, confidence: null }).label,
+    ).toBe('No suggestion available')
+  })
+
+  it('defaults match and saved queues to score 70 and leaves history unfiltered', () => {
+    expect(DEFAULT_FILTERS.minScore).toBe(QUEUE_MIN_SCORE)
+    expect(filtersForTab('matches').minScore).toBe(70)
+    expect(filtersForTab('saved').minScore).toBe(70)
+    expect(filtersForTab('history').minScore).toBe(0)
+  })
+
   it('selects the next queue row after a decision', () => {
     expect(nextAfterRemove(['a', 'b', 'c'], 'b')).toBe('c')
     expect(nextAfterRemove(['a'], 'a')).toBe(null)
@@ -44,6 +75,9 @@ describe('mock review api', () => {
     expect(result.items[0].jobTitle).toBe('Staff Platform Engineer')
     expect(result.items[0].jobId).toBe('job-1')
     expect(result.items[0].score).toBe(88)
+    expect(result.items[0].confidence).toBe(88)
+    expect(result.items.every((item) => (item.score ?? 0) >= QUEUE_MIN_SCORE)).toBe(true)
+    expect(result.items.some((item) => item.jobTitle === 'Product Designer')).toBe(false)
   })
 
   it('filters saved jobs separately from matches', async () => {

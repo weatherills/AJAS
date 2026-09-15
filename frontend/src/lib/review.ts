@@ -3,9 +3,11 @@ import type { ReviewApi, ReviewFilters, ReviewMatch, ReviewStatus, ReviewTab, Su
 export const COMMENT_MAX = 1000
 export const WHY_MAX = 400
 export const PAGE_SIZE = 25
+/** PRD default: Matches/Saved queues start filtered to score >70. */
+export const QUEUE_MIN_SCORE = 70
 
 export const DEFAULT_FILTERS: ReviewFilters = {
-  minScore: 0,
+  minScore: QUEUE_MIN_SCORE,
   maxScore: 100,
   company: '',
   location: '',
@@ -33,6 +35,25 @@ export function suggestionLabel(suggestion: Suggestion): string {
   if (suggestion === 'reject') return 'Recommend Reject'
   if (suggestion === 'review') return 'Recommend Review'
   return 'No suggestion available'
+}
+
+export function suggestionConfidence(suggestion: Suggestion, score: number | null | undefined): number | null {
+  if (suggestion === 'none' || score == null || !Number.isFinite(score)) return null
+  return Math.round(Math.min(100, Math.max(0, score)))
+}
+
+export function suggestionCopy(
+  match: Pick<ReviewMatch, 'suggestion' | 'score' | 'why' | 'confidence'>,
+): { label: string; confidence: number | null; rationale: string; truncated: boolean; available: boolean } {
+  const available = match.suggestion !== 'none'
+  const rationale = truncateText(match.why, WHY_MAX)
+  return {
+    label: suggestionLabel(match.suggestion),
+    confidence: match.confidence ?? suggestionConfidence(match.suggestion, match.score),
+    rationale: rationale.text,
+    truncated: rationale.truncated,
+    available,
+  }
 }
 
 export function statusLabel(status: ReviewStatus): string {
@@ -129,6 +150,8 @@ export function companiesFrom(items: ReviewMatch[]): string[] {
 export function filtersForTab(tab: ReviewTab): ReviewFilters {
   return {
     ...DEFAULT_FILTERS,
+    minScore: tab === 'history' ? 0 : QUEUE_MIN_SCORE,
+    maxScore: 100,
     status: tab === 'history' ? 'all' : 'awaiting',
     source: tab === 'saved' ? 'saved' : tab === 'matches' ? 'ai' : 'all',
   }
