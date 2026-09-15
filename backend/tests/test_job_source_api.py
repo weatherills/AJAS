@@ -252,6 +252,20 @@ def test_lever_list_and_detail(svc, store, fetcher):
     assert len(store.list_canonical()[0].id) == 40
 
 
+def test_lever_company_falls_back_to_tenant_config(svc, store, fetcher):
+    tenant = store.upsert_tenant("lever", "spotify", config={"company": "Spotify"})
+    job = _lever_job("lv-sg")
+    job.pop("company")
+    list_url = "https://api.lever.co/v0/postings/spotify?mode=json&skip=0&limit=100"
+    detail = "https://api.lever.co/v0/postings/spotify/lv-sg"
+    fetcher.script(list_url, _json_resp([job]))
+    fetcher.script(detail, _json_resp(job))
+    routes.start_crawl(_req("POST", f"http://localhost/api/v1/sources/{tenant.id}/crawl", route={"id": tenant.id}))
+    svc.drain()
+    raw = store.list_raw(tenant.id, current_only=True)[0]
+    assert raw.company == "Spotify"
+
+
 def test_lever_stops_when_page_shorter_than_limit(svc, store, fetcher):
     tenant = store.upsert_tenant("lever", "acme", config={"company": "Acme"})
     list0 = "https://api.lever.co/v0/postings/acme?mode=json&skip=0&limit=100"

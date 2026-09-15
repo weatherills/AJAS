@@ -112,7 +112,7 @@ def lever_job(job: dict) -> dict:
         "employment_type": _first(categories.get("commitment"), job.get("commitment")),
         "body": truncate(text),
         "apply_url": apply_url,
-        "company": _first(job.get("company"), categories.get("department")),
+        "company": _first(job.get("company")),
         "department": _first(categories.get("team"), categories.get("department")),
         "html": html_body or plain,
         "posted_at": _first(job.get("createdAt"), job.get("created_at")),
