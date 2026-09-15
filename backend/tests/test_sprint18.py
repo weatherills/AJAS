@@ -168,7 +168,7 @@ def test_health_v7_and_status_payload():
     from app.features.health import _status_payload
     from app.sprint18.ops import health_v7
 
-    assert _status_payload()["version"] == "sprint19"
+    assert _status_payload()["version"] == "sprint20"
     row = health_v7()
     assert row["version"] == "sprint18"
     assert row["schema"] == "ajas.health.v7"

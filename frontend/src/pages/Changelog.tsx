@@ -7,6 +7,7 @@ import { sprint16Changelog } from '../lib/sprint16'
 import { sprint17Changelog } from '../lib/sprint17'
 import { sprint18Changelog } from '../lib/sprint18'
 import { sprint19Changelog } from '../lib/sprint19'
+import { sprint20Changelog } from '../lib/sprint20'
 
 export function ChangelogPage() {
   return (
@@ -19,7 +20,7 @@ export function ChangelogPage() {
         </div>
       </header>
       <ol>
-        {[...sprint19Changelog(), ...sprint18Changelog(), ...sprint17Changelog(), ...sprint16Changelog(), ...sprint15Changelog(), ...sprint14Changelog(), ...sprint13Changelog(), ...changelogEntries()].map((entry) => (
+        {[...sprint20Changelog(), ...sprint19Changelog(), ...sprint18Changelog(), ...sprint17Changelog(), ...sprint16Changelog(), ...sprint15Changelog(), ...sprint14Changelog(), ...sprint13Changelog(), ...changelogEntries()].map((entry) => (
           <li key={entry.version}>
             <strong>{entry.version}</strong>
             <p>{entry.highlights.join(' · ')}</p>
