@@ -211,6 +211,34 @@ class AutoApplyService:
         record_action(actor=user_id, action="auto_apply.create", target=loaded.id, detail={"vendor": vendor, "state": _api_state(loaded)})
         return 201, {"request_id": loaded.id, "state": _api_state(loaded), "created_at": loaded.created_at}
 
+    def preview_cover_letter(self, user_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        vendor = _vendor(body.get("job_source") or "greenhouse")
+        if vendor == "manual":
+            vendor = "greenhouse"
+        resume_id = str(body.get("resume_id") or "resume-active")
+        answers = body.get("answers") if isinstance(body.get("answers"), dict) else {}
+        profile = self._profile_for(user_id, resume_id, answers)
+        from datetime import datetime, timezone
+
+        stamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        job_id = str(body.get("job_posting_id") or body.get("job_title") or "this role")
+        posting = body.get("posting_url")
+        attempt = AutoApplyAttempt(
+            user_id=user_id,
+            vendor=vendor,  # type: ignore[arg-type]
+            job_id=job_id,
+            posting_url=str(posting) if posting else None,
+            created_at=stamp,
+            updated_at=stamp,
+        )
+        explanation = body.get("match_explanation")
+        text = generate_cover_letter(
+            attempt,
+            profile,
+            explanation=str(explanation) if isinstance(explanation, str) and explanation.strip() else None,
+        )
+        return {"text": text, "source": "ai"}
+
     def get_request(self, user_id: str, request_id: str) -> dict[str, Any]:
         attempt = self.store.get_attempt(request_id, user_id=user_id)
         return self._detail(user_id, attempt)
@@ -436,6 +464,7 @@ class AutoApplyService:
         profile = self._profile_for(user_id, attempt.resume_id or "", answers)
         mappings = self.store.list_vendor_mappings(vendor)
         required_keys = [row.normalized_key for row in mappings if row.required] or ["full_name", "email"]
+        seen = set(required_keys)
         for key in required_keys:
             answered = answers.get(key) or answers.get(key.replace("_", ""))
             value = answered or profile.get(key) or profile.get("full_name")
@@ -446,6 +475,22 @@ class AutoApplyService:
                 field_key=key,
                 value=str(value),
                 required=True,
+                source="user_input" if answered else "profile",
+            )
+        for key in ("phone", "location"):
+            if key in seen:
+                continue
+            answered = answers.get(key)
+            value = answered or profile.get(key)
+            if not value:
+                continue
+            self.store.put_autofill(
+                user_id,
+                attempt.id,
+                vendor=vendor if vendor != "manual" else "greenhouse",
+                field_key=key,
+                value=str(value),
+                required=False,
                 source="user_input" if answered else "profile",
             )
 
@@ -572,4 +617,20 @@ class AutoApplyService:
                 if manual
                 else None
             ),
+            "vendor_fields": self._vendor_fields(user_id, attempt),
         }
+
+    def _vendor_fields(self, user_id: str, attempt: AutoApplyAttempt) -> dict[str, Any] | None:
+        if attempt.vendor not in {"greenhouse", "lever"}:
+            return None
+        autofill = self.store.list_autofill(user_id, attempt.id)
+        answers = {row.field_key: row.value or "" for row in autofill}
+        profile = self._profile_for(user_id, attempt.resume_id or "", answers)
+        mapped = map_vendor_fields(
+            attempt.vendor,
+            profile=profile,
+            answers=answers,
+            autofill=autofill,
+            mappings=self.store.list_vendor_mappings(attempt.vendor),
+        )
+        return {str(key): str(value) for key, value in mapped.items() if value is not None}

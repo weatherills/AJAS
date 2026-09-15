@@ -1358,9 +1358,10 @@ export function JobFeedPage() {
                   type="button"
                   className="primary"
                   disabled={!resumeId}
+                  title={!resumeId ? 'Upload a resume before Auto-Apply.' : 'Auto-fill and submit via Greenhouse or Lever when supported'}
                   onClick={() => setApplyJob(selected)}
                 >
-                  Apply from AJAS
+                  Auto-Apply
                 </button>
               </>
             )}

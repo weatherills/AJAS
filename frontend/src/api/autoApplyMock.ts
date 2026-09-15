@@ -72,6 +72,18 @@ export const mockAutoApplyApi: AutoApplyApi = {
           required: true,
           source: body.answers?.email ? 'user_input' : 'profile',
         },
+        {
+          field_key: 'phone',
+          value: body.answers?.phone || '+15555550100',
+          required: true,
+          source: body.answers?.phone ? 'user_input' : 'profile',
+        },
+        {
+          field_key: 'location',
+          value: body.answers?.location || 'Remote',
+          required: false,
+          source: body.answers?.location ? 'user_input' : 'profile',
+        },
       ],
       cover_letter_text:
         body.cover_letter_mode === 'generate'
@@ -136,5 +148,16 @@ export const mockAutoApplyApi: AutoApplyApi = {
       return text
     }
     throw new Error('Paste the letter, or use a .txt file in mock mode. PDF and DOCX need the live API.')
+  },
+  async previewCoverLetter(body) {
+    const name = body.answers?.full_name || 'Alex Jobseeker'
+    const role = body.job_posting_id || 'this role'
+    const posting = body.posting_url || `the ${body.job_source} posting`
+    return {
+      text:
+        `Dear hiring team,\n\nI am writing to apply for ${role} (${posting}).` +
+        ` My background matches the posting, and I would welcome the chance to contribute.\n\nSincerely,\n${name}\n`,
+      source: 'ai',
+    }
   },
 }

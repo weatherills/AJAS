@@ -153,6 +153,16 @@ def auto_apply_cover_extract(req: func.HttpRequest) -> func.HttpResponse:
         return _handle(exc)
 
 
+@bp.route(route="v1/auto-apply/cover-letter/preview", methods=["POST"])
+def auto_apply_cover_preview(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = _auth(req, WRITE_SCOPE)
+        body = get_service().preview_cover_letter(principal.user_id, _json_body(req))
+        return json_response(body)
+    except Exception as exc:
+        return _handle(exc)
+
+
 @bp.route(route="v1/auto-apply/webhooks/{provider}", methods=["POST"])
 def auto_apply_webhook(req: func.HttpRequest) -> func.HttpResponse:
     try:

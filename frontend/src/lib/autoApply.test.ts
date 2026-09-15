@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mockAutoApplyApi, resetAutoApplyMock } from '../api/autoApplyMock'
-import { canCancel, canMarkManualSubmitted, defaultPostingUrl, inferJobSource, stateLabel } from './autoApply'
+import { autoApplyDisabledReason, canCancel, canMarkManualSubmitted, copyAnswersText, defaultPostingUrl, inferJobSource, previewCoverLetter, stateLabel, vendorFieldPreview } from './autoApply'
 
 describe('auto-apply helpers', () => {
   it('infers vendor from job id or posting URL', () => {
@@ -13,10 +13,34 @@ describe('auto-apply helpers', () => {
     expect(defaultPostingUrl('job-staff', 'greenhouse')).toContain('greenhouse')
     expect(stateLabel('rate_limited')).toBe('Rate limited')
     expect(stateLabel('submitted')).toBe('Submitted')
+    expect(stateLabel('packaged')).toBe('Needs Action')
     expect(canCancel('queued')).toBe(true)
     expect(canCancel('submitted')).toBe(false)
     expect(canMarkManualSubmitted('packaged')).toBe(true)
     expect(canMarkManualSubmitted('submitted')).toBe(false)
+  })
+
+  it('maps Greenhouse and Lever autofill fields and drafts a cover letter', () => {
+    const gh = vendorFieldPreview('greenhouse', {
+      full_name: 'Jane Doe',
+      email: 'jane@example.com',
+      phone: '+15555550100',
+      location: 'Remote',
+    })
+    expect(gh.find((row) => row.label === 'first_name')?.value).toBe('Jane')
+    expect(gh.find((row) => row.label === 'last_name')?.value).toBe('Doe')
+    const lever = vendorFieldPreview('lever', {
+      full_name: 'Jane Doe',
+      email: 'jane@example.com',
+      phone: '+15555550100',
+      location: 'Austin',
+    })
+    expect(lever.find((row) => row.label === 'name')?.value).toBe('Jane Doe')
+    expect(previewCoverLetter({ name: 'Jane Doe', jobTitle: 'Staff', company: 'Acme', source: 'greenhouse' })).toMatch(
+      /Jane Doe/,
+    )
+    expect(copyAnswersText([{ label: 'email', value: 'a@b.c' }])).toBe('email: a@b.c')
+    expect(autoApplyDisabledReason({ resumeId: null, jobId: 'job-1' })).toMatch(/resume/)
   })
 })
 
@@ -76,6 +100,17 @@ describe('mock auto-apply api', () => {
     const detail = await mockAutoApplyApi.get(created.request_id)
     expect(detail.autofill.find((row) => row.field_key === 'full_name')?.value).toBe('Jane Doe')
     expect(detail.cover_letter_text).toMatch(/Jane Doe/)
+  })
+
+  it('previews a cover letter without creating an apply request', async () => {
+    resetAutoApplyMock()
+    const preview = await mockAutoApplyApi.previewCoverLetter({
+      job_source: 'lever',
+      job_posting_id: 'job-staff',
+      answers: { full_name: 'Jane Doe' },
+    })
+    expect(preview.text).toMatch(/Jane Doe/)
+    expect((await mockAutoApplyApi.list()).items).toHaveLength(0)
   })
 
     it('stores an uploaded cover letter', async () => {
