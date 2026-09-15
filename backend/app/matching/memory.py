@@ -165,6 +165,7 @@ class InMemoryMatchingStore:
         source: str = "sync",
         idempotency_key_value: str | None = None,
         force_save: bool = False,
+        overall_score: float | None = None,
     ) -> MatchRun:
         if not user_id:
             raise MatchingValidationError("user_id is required", path="user_id")
@@ -200,6 +201,8 @@ class InMemoryMatchingStore:
             keyword_weight=model.keyword_weight,
             semantic_weight=model.semantic_weight,
         )
+        if overall_score is not None:
+            score = round(max(0.0, min(100.0, float(overall_score))), 1)
         resume_ref = resume_id or resume_hash or ""
         job_ref = job_id or job_hash or ""
         key = idempotency_key_value or idempotency_key(
