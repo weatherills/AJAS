@@ -98,8 +98,18 @@ def log_learning_decision_prd(req: func.HttpRequest) -> func.HttpResponse:
 def get_learning_params(req: func.HttpRequest) -> func.HttpResponse:
     try:
         principal = _auth(req)
+        requested = (req.params.get("user_id") or req.params.get("userId") or "self").strip()
+        admin = _is_admin(req, principal)
+        if requested in {"", "self"}:
+            target = principal.user_id
+            seed = None
+        elif requested != principal.user_id and not admin:
+            raise LearningForbiddenError("admin required to read another user's params")
+        else:
+            target = requested
+            seed = False
         get_service().drain()
-        body = get_service().params(principal.user_id)
+        body = get_service().params(target, seed=seed)
         log_request(feature="learning", route="v1/learning/params", method="GET", status=200, user_id=principal.user_id)
         return json_response(body)
     except Exception as exc:

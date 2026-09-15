@@ -233,6 +233,28 @@ class InMemoryLearningStore:
     def users_with_decisions(self) -> list[str]:
         return sorted({row.user_id for row in self._decisions.values()})
 
+    def delete_user_data(self, user_id: str) -> None:
+        """Cascade-delete decisions, params, metrics, recs, and blobs for a user."""
+        rec_ids = {row.id for row in self._recs.values() if row.user_id == user_id}
+        decision_ids = {row.id for row in self._decisions.values() if row.user_id == user_id}
+        for rec_id in rec_ids:
+            self._recs.pop(rec_id, None)
+        for decision_id in decision_ids:
+            row = self._decisions.pop(decision_id, None)
+            if row:
+                self._by_rec.pop((user_id, row.recommendation_id), None)
+                self._by_idem.pop((user_id, row.idempotency_key), None)
+        self._params.pop(user_id, None)
+        for event_id, event in list(self._events.items()):
+            if event.user_id == user_id:
+                self._events.pop(event_id, None)
+        for metric_id, snap in list(self._metrics.items()):
+            if snap.user_id == user_id or snap.scope_ref == user_id:
+                self._metrics.pop(metric_id, None)
+        prefix = f"/users/{user_id}/"
+        for path in [key for key in self._blobs if key.startswith(prefix) or f"/{user_id}/" in key]:
+            self._blobs.pop(path, None)
+
 
 def _named_demo_jobs(*, align_feed: bool = False) -> list[tuple[str, float, str, int]]:
     """Named Learning demo jobs. Optionally remap ids onto the local job feed."""
