@@ -115,6 +115,7 @@ def test_function_app_registers_auto_apply_routes(function_names):
     assert "auto_apply_cancel" in function_names
     assert "auto_apply_manual_submit" in function_names
     assert "auto_apply_cover_extract" in function_names
+    assert "auto_apply_cover_preview" in function_names
     assert "auto_apply_webhook" in function_names
     assert "auto_apply_process_queued" in function_names
     assert "health" in function_names
@@ -161,9 +162,61 @@ def test_create_greenhouse_submits(svc):
     assert body["source"]["type"] == "greenhouse"
     assert body["source"]["external_application_id"]
     assert body["artifacts"]["resume_blob_sas"]
+    assert body["vendor_fields"]["first_name"]
+    assert body["vendor_fields"]["email"]
     events = [row["event"] for row in body["state_history"]]
     assert "queued" in events
     assert "submission_succeeded" in events
+
+
+def test_cover_letter_preview_does_not_create_a_request(svc):
+    resp = routes.auto_apply_cover_preview(
+        _req(
+            "POST",
+            "http://localhost/api/v1/auto-apply/cover-letter/preview",
+            json_body={
+                "job_source": "lever",
+                "job_posting_id": "job-staff",
+                "posting_url": "https://jobs.lever.co/acme/staff",
+                "answers": {"full_name": "Jane Doe"},
+            },
+        )
+    )
+    assert resp.status_code == 200
+    body = _body(resp)
+    assert "Jane Doe" in body["text"]
+    listed = routes.auto_apply_list(_req("GET", "http://localhost/api/v1/auto-apply/requests"))
+    assert _body(listed)["items"] == []
+
+
+def test_lever_submit_maps_name_field(svc):
+    resp = routes.auto_apply_create(
+        _req(
+            "POST",
+            "http://localhost/api/v1/auto-apply/requests",
+            json_body=_create_body(
+                job_source="lever",
+                job_posting_id="job-lever",
+                posting_url="https://jobs.lever.co/acme/staff",
+                answers={"full_name": "Jane Doe", "email": "jane@example.com"},
+            ),
+        )
+    )
+    assert resp.status_code == 201
+    request_id = _body(resp)["request_id"]
+    detail = _body(
+        routes.auto_apply_get(
+            _req(
+                "GET",
+                f"http://localhost/api/v1/auto-apply/requests/{request_id}",
+                route={"request_id": request_id},
+            )
+        )
+    )
+    assert detail["source"]["type"] == "lever"
+    assert detail["state"] == "submitted"
+    assert detail["vendor_fields"]["name"] == "Jane Doe"
+    assert detail["vendor_fields"]["email"] == "jane@example.com"
 
 
 def test_manual_and_captcha_urls_package(svc):

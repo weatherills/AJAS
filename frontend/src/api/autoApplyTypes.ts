@@ -41,6 +41,7 @@ export type ApplyDetail = {
   autofill: { field_key: string; value: string; required: boolean; source: string }[]
   cover_letter_text?: string | null
   cover_letter_source?: string | null
+  vendor_fields?: Record<string, string> | null
   validation_errors: unknown
   failure_reason: string | null
   submitted_at: string | null
@@ -71,4 +72,12 @@ export type AutoApplyApi = {
   cancel(requestId: string): Promise<{ state: string; request_id: string }>
   markManualSubmitted(requestId: string): Promise<{ state: string; request_id: string }>
   extractCoverLetter(file: File): Promise<string>
+  previewCoverLetter(body: {
+    job_source: JobSource
+    job_posting_id?: string
+    posting_url?: string
+    resume_id?: string
+    answers?: Record<string, string>
+    match_explanation?: string
+  }): Promise<{ text: string; source: string }>
 }
