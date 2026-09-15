@@ -2414,6 +2414,24 @@ kbd {
   }
 }
 
+@media (prefers-color-scheme: light) {
+  .email-pane,
+  .message-card,
+  .overflow-menu-list,
+  .composer-editor,
+  .composer textarea {
+    background: #fff;
+    color: #0f172a;
+    border-color: #cbd5e1;
+  }
+
+  .unlinked-badge {
+    color: #92400e;
+    background: #fef3c7;
+  }
+}
+
+
 
 
 
