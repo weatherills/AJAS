@@ -36,5 +36,7 @@ export function preselectReady(items: ResumeListItem[]) {
   const last = localStorage.getItem(LAST_READY_KEY)
   if (last && items.some((item) => item.id === last && canSelectForRun(uiStatus(item)))) return last
   const ready = items.find((item) => uiStatus(item) === 'Ready')
-  return ready?.id || ''
+  if (ready) return ready.id
+  const selectable = items.find((item) => canSelectForRun(uiStatus(item)))
+  return selectable?.id || ''
 }
