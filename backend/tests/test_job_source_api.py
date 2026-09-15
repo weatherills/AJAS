@@ -471,6 +471,23 @@ def test_department_filter(svc, store, fetcher):
     assert [item.source_posting_id for item in raw] == ["2"]
 
 
+def test_create_tenant_persists_filters(svc, store, fetcher):
+    list_url = "https://boards-api.greenhouse.io/v1/boards/discord/jobs"
+    fetcher.script(list_url, _json_resp({"jobs": []}), _json_resp({"jobs": []}))
+    resp = routes.create_source_tenant(
+        _req(
+            "POST",
+            "http://localhost/api/v1/sources/greenhouse/tenants",
+            route={"id": "greenhouse"},
+            json_body={"boardToken": "discord", "company": "Discord", "filters": {"location": "San Francisco, CA"}},
+        )
+    )
+    assert resp.status_code == 201
+    tenant = next(item for item in store.list_tenants("greenhouse") if item.tenant_key == "discord")
+    assert tenant.config.get("filters") == {"location": "San Francisco, CA"}
+    assert tenant.config.get("company") == "Discord"
+
+
 def test_disabled_tenant_rejected(svc, store):
     tenant = store.upsert_tenant("greenhouse", "acme", enabled=False)
     resp = routes.start_crawl(

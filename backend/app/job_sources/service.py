@@ -242,6 +242,11 @@ class CrawlService:
             config["site"] = tenant_key
         if isinstance(company, str) and company.strip():
             config["company"] = company.strip()
+        filters = payload.get("filters")
+        if filters is not None:
+            if not isinstance(filters, dict):
+                raise JobSourceValidationError("filters must be an object", path="filters")
+            config["filters"] = filters
         existing = next(
             (item for item in self.store.list_tenants(source_id) if item.tenant_key == tenant_key),
             None,
