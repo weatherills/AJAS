@@ -9,17 +9,18 @@ from email.utils import parsedate_to_datetime
 from typing import Any, Callable
 
 from app.config import get_settings as get_app_settings
-from app.job_sources.blobs import BlobStore, InMemoryBlobStore
+from app.job_sources.blobs import BlobStore, InMemoryBlobStore, current_raw_path, versioned_raw_path
 from app.job_sources.errors import (
     JobSourceNotFoundError,
     JobSourceRateLimitedError,
     JobSourceValidationError,
 )
 from app.job_sources.events import CrawlEventLog
-from app.job_sources.global_limit import consume_global
+from app.job_sources.global_limit import consume_global, domain_slot
 from app.job_sources.feed import feed_cards, filter_cards
 from app.job_sources.http import FetchResponse, HttpFetcher, UrllibFetcher
-from app.job_sources.keys import parse_ts, utc_now
+from app.job_sources.keys import dedupe_namespace, parse_ts, response_hash, utc_now
+from app.job_sources.constants import LEVER_PAGE_LIMIT
 from app.job_sources.models import SourceFetchRun, SourceTenant
 from app.job_sources.normalize import (
     greenhouse_job,
@@ -811,9 +812,23 @@ class CrawlService:
                 error="missing title, company, or apply_url",
             )
             return
-        blob_path = f"raw/{source_id}/{tenant.id}/{parsed['source_posting_id']}.json"
+        blob_path = current_raw_path(source_id, tenant.id, parsed["source_posting_id"])
+        current_raw = next(
+            (
+                item
+                for item in self.store.list_raw(tenant.id, current_only=True)
+                if item.source_posting_id == parsed["source_posting_id"]
+            ),
+            None,
+        )
+        digest = response_hash(raw_text)
+        if current_raw is not None and current_raw.response_hash != digest:
+            previous = self.blobs.get(blob_path)
+            if previous:
+                archive = versioned_raw_path(source_id, tenant.id, parsed["source_posting_id"], utc_now())
+                self.blobs.put(archive, previous)
         blob_url = self.blobs.put(blob_path, raw_text.encode("utf-8"))
-        namespace = str(tenant.config.get("namespace") or tenant.tenant_key)
+        namespace = dedupe_namespace(company=str(company), apply_url=parsed["apply_url"])
         self.store.ingest_raw(
             tenant.id,
             source_posting_id=parsed["source_posting_id"],
@@ -827,6 +842,8 @@ class CrawlService:
             listing_state="open",
             content_blob_url=blob_url,
             namespace=namespace,
+            posted_at=parsed.get("posted_at") or None,
+            updated_at_source=parsed.get("updated_at_source") or None,
             run_id=run_id,
         )
 
@@ -856,7 +873,10 @@ class CrawlService:
                 )
                 raise
             try:
-                response = self.fetcher.get(url, timeout=(10.0, 20.0))
+                with domain_slot(url):
+                    response = self.fetcher.get(url, timeout=(10.0, 20.0))
+            except JobSourceRateLimitedError:
+                raise
             except Exception as exc:
                 last_error = str(exc)
                 retries += 1
@@ -957,7 +977,7 @@ class CrawlService:
             if tenant.source_id == "greenhouse":
                 page = int(cursor) if cursor and cursor.isdigit() else 1
                 return with_query(url, page=page if page > 1 else None)
-            return with_query(url, mode="json", skip=skip, limit=100)
+            return with_query(url, mode="json", skip=skip, limit=LEVER_PAGE_LIMIT)
         if tenant.source_id == "greenhouse":
             page = int(cursor) if cursor and cursor.isdigit() else 1
             return greenhouse_list_url(tenant.tenant_key, page=page if page > 1 else None)
@@ -971,7 +991,7 @@ class CrawlService:
     def _parse_list(self, source_id: str, payload: Any) -> tuple[list[dict], str | None]:
         if source_id == "greenhouse":
             return greenhouse_list_jobs(payload)
-        return lever_list_jobs(payload)
+        return lever_list_jobs(payload, limit=LEVER_PAGE_LIMIT)
 
     def _passes_filters(self, tenant: SourceTenant, parsed: dict, raw_job: dict) -> bool:
         filters = tenant.config.get("filters") or {}

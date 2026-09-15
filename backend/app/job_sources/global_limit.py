@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+import threading
 import time
+from contextlib import contextmanager
+from urllib.parse import urlparse
 
+from app.job_sources.constants import MAX_IN_FLIGHT_PER_DOMAIN
 from app.job_sources.errors import JobSourceRateLimitedError
 
-GLOBAL_PER_MIN = 120
+GLOBAL_PER_MIN = 600  # 10 RPS across all sources
 DAILY_CAP = 10_000
 _tokens = float(GLOBAL_PER_MIN)
 _updated = time.monotonic()
 _day_count = 0
 _day_stamp = ""
+_inflight_lock = threading.Lock()
+_inflight: dict[str, threading.BoundedSemaphore] = {}
 
 
 def consume_global(*, cost: float = 1.0) -> dict:
@@ -40,3 +46,26 @@ def snapshot() -> dict:
         "dailyCap": DAILY_CAP,
         "dailyUsed": _day_count,
     }
+
+
+def _semaphore_for(host: str) -> threading.BoundedSemaphore:
+    with _inflight_lock:
+        sem = _inflight.get(host)
+        if sem is None:
+            sem = threading.BoundedSemaphore(MAX_IN_FLIGHT_PER_DOMAIN)
+            _inflight[host] = sem
+        return sem
+
+
+@contextmanager
+def domain_slot(url: str, *, timeout: float = 20.0):
+    """Cap concurrent HTTP requests per domain (PRD: max 3 in-flight)."""
+    host = (urlparse(url).hostname or "unknown").lower()
+    sem = _semaphore_for(host)
+    acquired = sem.acquire(timeout=timeout)
+    if not acquired:
+        raise JobSourceRateLimitedError(f"max {MAX_IN_FLIGHT_PER_DOMAIN} in-flight requests for {host}")
+    try:
+        yield host
+    finally:
+        sem.release()

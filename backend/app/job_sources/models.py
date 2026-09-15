@@ -101,6 +101,9 @@ class JobPostingRaw(BaseModel):
     response_hash: str
     canonical_key: str
     dedupe_hash: str
+    content_hash: str = ""
+    posted_at: str | None = None
+    updated_at_source: str | None = None
     is_current: bool = True
     seen_first_at: str
     seen_last_at: str
