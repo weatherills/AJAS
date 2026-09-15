@@ -40,4 +40,14 @@ def purge_plan(*, user_id: str, jobs: list[dict[str, Any]], emails: list[dict[st
 
 def apply_purge(plan: dict[str, Any]) -> dict[str, Any]:
     deleted = sum(len(plan.get(key) or []) for key in ("jobs", "emails", "matches"))
-    return {"status": "purged", "deleted": deleted, "userId": plan.get("userId")}
+    user_id = plan.get("userId")
+    if user_id:
+        try:
+            from app.learning.runtime import get_service as get_learning
+            from app.learning.runtime import try_get_service
+
+            learning = try_get_service() or get_learning()
+            learning.delete_user_data(str(user_id))
+        except Exception:
+            pass
+    return {"status": "purged", "deleted": deleted, "userId": user_id}

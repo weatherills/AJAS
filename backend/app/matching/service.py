@@ -346,7 +346,12 @@ class MatchingService:
         if len(resume_text) < 30 or len(job_text) < 30:
             self.low_confidence_events += 1
         model = self._model_for_user(user_id)
-        keyword_w, semantic_w, variant = weights_for(user_id, model.keyword_weight, model.semantic_weight)
+        overlay = self._learning_params(user_id)
+        learned = overlay is not None and overlay.source == "personalized"
+        if learned:
+            keyword_w, semantic_w, variant = model.keyword_weight, model.semantic_weight, "learned"
+        else:
+            keyword_w, semantic_w, variant = weights_for(user_id, model.keyword_weight, model.semantic_weight)
         keyword_norm = keyword_score(resume_text, job_text)
         fallback = False
         timeout = get_app_settings().match_semantic_timeout_sec
@@ -494,6 +499,16 @@ class MatchingService:
             body["matchId"] = match_id
         if explanation is not None:
             body["explanation"] = explanation
+        self._push_learning_recommendation(
+            user_id,
+            pair,
+            score=score,
+            keyword_norm=keyword_norm,
+            semantic_norm=semantic_norm,
+            threshold_used=options["threshold_used"],
+            match_id=match_id or f"score-{user_id}-{pair.get('job_id') or job_hash[:12]}",
+            model=model,
+        )
         return body
 
     def _persist(
@@ -801,11 +816,12 @@ class MatchingService:
 
     def _learning_params(self, user_id: str):
         try:
+            from app.learning.runtime import get_service as get_learning_service
             from app.learning.runtime import try_get_service
 
             service = try_get_service()
             if service is None:
-                return None
+                service = get_learning_service()
             return service.active_params(user_id)
         except Exception:
             return None
@@ -815,12 +831,65 @@ class MatchingService:
         params = self._learning_params(user_id)
         if params is None or params.source != "personalized":
             return model
-        return model.model_copy(
-            update={
-                "keyword_weight": params.weights.get("keyword", model.keyword_weight),
-                "semantic_weight": params.weights.get("semantic", model.semantic_weight),
-            }
-        )
+        keyword = float(params.weights.get("keyword", model.keyword_weight))
+        semantic = float(params.weights.get("semantic", model.semantic_weight))
+        model_id = f"{DEFAULT_MODEL_ID}:{params.model_version}"
+        try:
+            existing = self.store.get_model(model_id)
+            if abs(existing.keyword_weight - keyword) < 0.001 and abs(existing.semantic_weight - semantic) < 0.001:
+                return existing
+        except MatchingNotFoundError:
+            existing = None
+        try:
+            return self.store.register_model(
+                id=model_id,
+                ai_service=model.ai_service,
+                scorer_model=model.scorer_model,
+                scorer_model_version=model.scorer_model_version,
+                formula_version=f"learned-{params.model_version}",
+                keyword_weight=keyword,
+                semantic_weight=semantic,
+                normalization_method=model.normalization_method,
+                prompt_version=model.prompt_version,
+            )
+        except Exception:
+            return model.model_copy(update={"keyword_weight": keyword, "semantic_weight": semantic})
+
+    def _push_learning_recommendation(
+        self,
+        user_id: str,
+        pair: dict,
+        *,
+        score: float,
+        keyword_norm: float,
+        semantic_norm: float,
+        threshold_used: int,
+        match_id: str,
+        model: ModelRegistry,
+    ) -> None:
+        job_id = pair.get("job_id")
+        if not job_id and not match_id:
+            return
+        try:
+            from app.learning.runtime import get_service as get_learning_service
+            from app.learning.runtime import try_get_service
+
+            service = try_get_service()
+            if service is None:
+                service = get_learning_service()
+            service.record_scored_match(
+                user_id,
+                match_id=match_id,
+                job_id=job_id or match_id,
+                resume_id=pair.get("resume_id"),
+                score=score,
+                keyword=keyword_norm,
+                semantic=semantic_norm,
+                threshold_pct=threshold_used,
+                model_version=model.id,
+            )
+        except Exception:
+            pass
 
     def _check_rate(self, user_id: str) -> None:
         cfg = get_app_settings()

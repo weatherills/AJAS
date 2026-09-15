@@ -6,8 +6,13 @@
 GET {{base}}/api/health
 
 ### Current matching params (seeds local demo decisions)
-GET {{base}}/api/v1/learning/params
+GET {{base}}/api/v1/learning/params?user_id=self
 Authorization: Bearer {{token}}
+
+### Admin: another user's params
+GET {{base}}/api/v1/learning/params?user_id=other-user
+Authorization: Bearer {{token}}
+X-Admin: 1
 
 ### Metrics for this user (7d)
 GET {{base}}/api/v1/metrics?scope=self&period=7d

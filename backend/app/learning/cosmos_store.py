@@ -51,6 +51,34 @@ class CosmosLearningStore:
             raise AttributeError(name)
         return wrapper
 
+    def delete_user_data(self, user_id: str) -> None:
+        working = self._hydrate()
+        recs = [row.id for row in working.list_recommendations(user_id)]
+        decisions = [row.id for row in working.list_decisions(user_id)]
+        events = [row.id for row in working.list_events(user_id)]
+        metrics = [row.id for row in working.list_metrics(scope_ref=user_id)]
+        working.delete_user_data(user_id)
+        for rec_id in recs:
+            self._delete_item(self._recs, rec_id, user_id)
+        for decision_id in decisions:
+            self._delete_item(self._decisions, decision_id, user_id)
+        self._delete_item(self._params, user_id, user_id)
+        for event_id in events:
+            self._delete_item(self._events, event_id, event_id)
+        for metric_id in metrics:
+            self._delete_item(self._metrics, metric_id, user_id)
+
+    def _delete_item(self, client: Any, item_id: str, partition_key: str) -> None:
+        try:
+            client.delete_item(item=item_id, partition_key=partition_key)
+        except CosmosResourceNotFoundError:
+            return
+        except Exception:
+            try:
+                client.delete_item(item=item_id, partition_key=item_id)
+            except Exception:
+                return
+
     def _all_items(self, client: Any) -> list[dict]:
         try:
             return list(client.query_items(query="SELECT * FROM c", enable_cross_partition_query=True))
