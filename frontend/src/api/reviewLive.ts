@@ -1,5 +1,5 @@
 import { json, request } from './live'
-import type { ReviewApi, ReviewDecision, ReviewMatch, ReviewStatus } from './reviewTypes'
+import type { ResumeHighlights, ReviewApi, ReviewDecision, ReviewMatch, ReviewStatus } from './reviewTypes'
 import { applyFilters, suggestionConfidence } from '../lib/review'
 
 type ApiMatch = {
@@ -21,6 +21,7 @@ type ApiMatch = {
   summary?: string | null
   why?: string | null
   highlights?: string[] | null
+  resumeHighlights?: ResumeHighlights | null
   decidedAt?: string | null
   latestDecisionId?: string | null
 }
@@ -55,7 +56,7 @@ function mapMatch(row: ApiMatch, extra: Partial<ReviewMatch> = {}): ReviewMatch 
     summary: row.summary ?? null,
     why: row.why ?? null,
     highlights: row.highlights ?? null,
-    resumeHighlights: null,
+    resumeHighlights: extra.resumeHighlights ?? row.resumeHighlights ?? null,
     decidedAt: row.decidedAt ?? null,
     latestDecisionId: row.latestDecisionId ?? null,
     comment: extra.comment ?? null,

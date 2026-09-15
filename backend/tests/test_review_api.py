@@ -207,6 +207,7 @@ def test_detail_is_404_for_other_user(svc, store):
     assert body["match"]["why"]
     assert body["match"]["suggestion"] == "approve"
     assert body["match"]["confidence"] == 88
+    assert body["match"]["resumeHighlights"]["matched"]
     assert "se=" in body["blobs"]["jobUrl"]
     assert "se=" in body["blobs"]["resumeUrl"]
     assert "sig=" in body["blobs"]["jobUrl"]
