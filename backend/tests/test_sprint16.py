@@ -10,7 +10,7 @@ def test_builtin_adapter_v1_pagination_backoff():
 
     reset()
     assert VERSION == "sprint16"
-    assert _status_payload()["version"] == "sprint17"
+    assert _status_payload()["version"] == "sprint18"
     assert feature_enabled("builtin_adapter") is False
     out = builtin_v1({"jobs": [{"id": "1", "title": "Backend"}, {"id": "2", "title": "Data"}]})
     assert out["live"] is False and out["flag"] is False
