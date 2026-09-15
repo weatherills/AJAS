@@ -1,6 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import { mockEmailApi, setEmailSuggestFail } from '../api/emailMock'
-import { demoMailbox, fillTemplate, graphConnected, leftoverVars, mailboxReadable, oauthConfigured, previewable, relativeTime, validateAttachments, attachmentNeedsAuthFetch } from './email'
+import {
+  attachmentKind,
+  attachmentKindLabel,
+  demoMailbox,
+  fillTemplate,
+  graphConnected,
+  htmlToPlain,
+  insertAtCaret,
+  leftoverVars,
+  mailboxReadable,
+  needsSendConfirm,
+  oauthConfigured,
+  plainToHtml,
+  previewable,
+  relativeTime,
+  sanitizeMailHtml,
+  validateAttachments,
+  attachmentNeedsAuthFetch,
+} from './email'
 
 describe('email helpers', () => {
   it('fills template variables and reports leftovers', () => {
@@ -17,11 +35,41 @@ describe('email helpers', () => {
     expect(relativeTime('2026-09-09T10:00:00Z', now)).toBe('2h ago')
   })
 
-  it('rejects oversized attachments', () => {
+  it('rejects oversized attachments per file and keeps valid ones', () => {
     const huge = new File([new Uint8Array(11 * 1024 * 1024)], 'huge.bin')
-    expect(validateAttachments([huge]).error).toMatch(/10 MB/)
     const ok = new File([new Uint8Array(12)], 'ok.txt')
+    const mixed = validateAttachments([huge, ok])
+    expect(mixed.error).toMatch(/10 MB/)
+    expect(mixed.rejected.map((item) => item.name)).toEqual(['huge.bin'])
+    expect(mixed.accepted.map((item) => item.name)).toEqual(['ok.txt'])
     expect(validateAttachments([ok]).error).toBeNull()
+  })
+
+  it('inserts template text at the caret', () => {
+    expect(insertAtCaret('Hi there', ' Maya', 2, 2)).toEqual({ text: 'Hi Maya there', caret: 7 })
+  })
+
+  it('sanitizes HTML mail and converts to plain text', () => {
+    const dirty = '<p>Hello<script>alert(1)</script> <a href="javascript:alert(1)" onclick="x">world</a></p>'
+    const clean = sanitizeMailHtml(dirty)
+    expect(clean).not.toMatch(/script/i)
+    expect(clean).not.toMatch(/onclick/i)
+    expect(clean).not.toMatch(/javascript:/i)
+    expect(htmlToPlain('<p>Line one<br>Line two</p>')).toContain('Line one')
+    expect(plainToHtml('A\nB')).toContain('<br>')
+  })
+
+  it('asks for confirmation on multiple recipients or empty subject', () => {
+    expect(needsSendConfirm({ to: ['a@x.test'], cc: ['b@x.test'], subject: 'Re: Hello' })).toBe(true)
+    expect(needsSendConfirm({ to: ['a@x.test'], cc: [], subject: '' })).toBe(true)
+    expect(needsSendConfirm({ to: ['a@x.test'], cc: [], subject: 'Re: Hello' })).toBe(false)
+  })
+
+  it('classifies attachment kinds for preview vs download', () => {
+    expect(attachmentKind('application/pdf', 'brief.pdf')).toBe('pdf')
+    expect(attachmentKind('image/png', 'shot.png')).toBe('image')
+    expect(attachmentKind('application/zip', 'pack.zip')).toBe('file')
+    expect(attachmentKindLabel('pdf')).toBe('PDF')
   })
 })
 
@@ -134,6 +182,8 @@ describe('mock email api', () => {
 
   it('exposes a previewable download URL for stored attachments', async () => {
     const messages = await mockEmailApi.listMessages('t-staff')
+    expect(messages.items[0].bodyHtml).toMatch(/Staff Engineer/)
+    expect(messages.items[0].cc).toContain('hiring@acme.test')
     const file = messages.items[0].attachments[0]
     expect(file.downloadUrl).toContain('brief.pdf')
     expect(previewable(file.contentType, file.fileName)).toBe(true)

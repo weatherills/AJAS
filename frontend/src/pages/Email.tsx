@@ -107,9 +107,10 @@ export function EmailPage() {
         </div>
       </header>
       {USE_MOCK && <p className="banner">Demo data (mock API).</p>}
-      {graph && (
+      {readable && (
         <p className="muted">
           From: {status?.address} · Last synced {formatWhen(status?.lastSyncedAt)}
+          {syncing ? ' · Syncing…' : ''}
           {jobFilter ? ' · Showing threads for this job. ' : ''}
           {jobFilter && (
             <a className="primary-link" href="#/email">
@@ -133,7 +134,7 @@ export function EmailPage() {
           </button>
         </p>
       )}
-      {!loading && status && !graph && <EmailMailboxNotice status={status} />}
+      {!loading && status && !graph && <EmailMailboxNotice status={status} onConnected={() => void load()} />}
       {!loading && status && demo && <EmailDemoBanner status={status} />}
       {demo && jobFilter && (
         <p className="muted">
@@ -193,6 +194,7 @@ export function EmailPage() {
           {selected && (
             <EmailThreadPane
               thread={selected}
+              fromAddress={status?.address}
               onThreadChange={(next) => {
                 setThreads((prev) => prev.map((item) => (item.id === next.id ? next : item)))
               }}

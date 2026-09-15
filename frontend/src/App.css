@@ -742,6 +742,19 @@ button:disabled {
     border-color: #cbd5e1;
   }
 
+  .email-pane,
+  .message-card,
+  .overflow-menu-list,
+  .composer-editor {
+    background: #fff;
+    color: #0f172a;
+  }
+
+  .unlinked-badge {
+    color: #92400e;
+    background: #fef3c7;
+  }
+
   .email-graph-notice.is-unconfigured,
   .oauth-unconfigured {
     background: #fffbeb;
@@ -1825,13 +1838,85 @@ select:focus-visible {
   width: 100%;
 }
 
-.composer textarea {
+.composer-editor {
   margin-top: 0.5rem;
+  min-height: 8rem;
   background: #0f172a;
   color: #e2e8f0;
   border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 8px;
   padding: 0.6rem 0.7rem;
+  overflow: auto;
+}
+
+.composer-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+}
+
+.rich-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.rich-toolbar button {
+  width: auto;
+  min-width: 2.2rem;
+  font-weight: 700;
+}
+
+.composer.is-dragging {
+  outline: 2px dashed #818cf8;
+  outline-offset: 4px;
+}
+
+.overflow-menu {
+  position: relative;
+}
+
+.overflow-menu-list {
+  position: absolute;
+  right: 0;
+  z-index: 5;
+  margin: 0.25rem 0 0;
+  padding: 0.35rem;
+  list-style: none;
+  background: #111827;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+  min-width: 10rem;
+}
+
+.overflow-menu-list button {
+  width: 100%;
+  text-align: left;
+}
+
+.attach-kind {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.template-preview {
+  font-size: 0.9rem;
+}
+
+.message-html {
+  white-space: normal;
+}
+
+.warn-text mark {
+  background: #fde68a;
+  color: #111827;
+  padding: 0 0.15rem;
+  border-radius: 3px;
 }
 
 .suggestion-card {

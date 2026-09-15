@@ -3,7 +3,7 @@ import { emailApi } from '../api'
 import type { EmailStatus, EmailThread } from '../api/emailTypes'
 import { EmailDemoBanner, EmailMailboxNotice } from './EmailMailboxNotice'
 import { EmailThreadPane } from './EmailThreadPane'
-import { demoMailbox, graphConnected, mailboxReadable, relativeTime } from '../lib/email'
+import { demoMailbox, formatWhen, graphConnected, mailboxReadable, relativeTime } from '../lib/email'
 
 export function JobEmailsTab({ jobId }: { jobId: string }) {
   const [status, setStatus] = useState<EmailStatus | null>(null)
@@ -43,17 +43,33 @@ export function JobEmailsTab({ jobId }: { jobId: string }) {
   const readable = mailboxReadable(status)
 
   if (loading) return <p className="skeleton">Loading emails…</p>
-  if (error) return <p className="inline-error">{error}</p>
+  if (error)
+    return (
+      <p className="inline-error">
+        {error}{' '}
+        <button type="button" className="link-btn" onClick={() => void load()}>
+          Retry
+        </button>
+      </p>
+    )
   if (status && !readable) {
-    return <EmailMailboxNotice status={status} compact jobScoped />
+    return <EmailMailboxNotice status={status} compact jobScoped onConnected={() => void load()} />
   }
 
   return (
     <div className="job-emails">
-      {status && !graph && <EmailMailboxNotice status={status} compact jobScoped />}
+      {status && !graph && <EmailMailboxNotice status={status} compact jobScoped onConnected={() => void load()} />}
       {status && demo && <EmailDemoBanner status={status} />}
       <div className="job-emails-head">
-        <h3>{demo ? 'Demo emails' : 'Emails'}</h3>
+        <div>
+          <h3>{demo ? 'Demo emails' : 'Emails'}</h3>
+          {readable && (
+            <p className="muted">
+              Last synced {formatWhen(status?.lastSyncedAt)}
+              {syncing ? ' · Syncing…' : ''}
+            </p>
+          )}
+        </div>
         {readable && (
           <button
             type="button"
@@ -75,13 +91,18 @@ export function JobEmailsTab({ jobId }: { jobId: string }) {
       </div>
       {graph && threads.length === 0 && <p className="muted">No emails yet. Try Refresh.</p>}
       {demo && threads.length === 0 && <p className="muted">No demo emails for this job.</p>}
-      <ul className="job-email-threads">
+      <ul className="job-email-threads" aria-label="Job email threads">
         {threads.map((item) => (
           <li key={item.id}>
             <button type="button" className={item.id === selectedId ? 'is-selected' : ''} onClick={() => setSelectedId(item.id)}>
-              {item.subject}
-              <span className="muted"> · {relativeTime(item.lastMessageAt)}</span>
-              {item.unreadCount > 0 && <span className="unread-dot" />}
+              <strong>{item.subject}</strong>
+              {item.unreadCount > 0 && <span className="unread-dot" aria-label={`${item.unreadCount} unread`} />}
+              {item.participants?.length ? (
+                <span className="muted"> · {item.participants.filter(Boolean).slice(0, 3).join(', ')}</span>
+              ) : null}
+              {item.snippet ? <p className="muted">{item.snippet}</p> : null}
+              <span className="muted">{relativeTime(item.lastMessageAt)}</span>
+              {!item.linked && <span className="unlinked-badge">Unlinked</span>}
             </button>
           </li>
         ))}
@@ -90,6 +111,7 @@ export function JobEmailsTab({ jobId }: { jobId: string }) {
         <EmailThreadPane
           compact
           thread={selected}
+          fromAddress={status?.address}
           onThreadChange={(next) => setThreads((prev) => prev.map((item) => (item.id === next.id ? next : item)))}
         />
       )}
