@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { reviewApi, settingsApi, USE_MOCK } from '../api'
+import { autoApplyApi, reviewApi, settingsApi, USE_MOCK } from '../api'
 import type { DecisionValue, ReviewDetail, ReviewFilters, ReviewMatch, ReviewTab } from '../api/reviewTypes'
 import { AppNav } from '../components/AppNav'
 import { ApplyModal } from '../components/ApplyModal'
@@ -26,7 +26,9 @@ import {
   truncateText,
   validateComment,
   WHY_MAX,
+  withAppliedFlags,
 } from '../lib/review'
+import { appliedJobIds } from '../lib/autoApply'
 import {
   a11yShortcuts,
   bulkDismissWithUndo,
@@ -121,7 +123,9 @@ export function ReviewPage() {
     try {
       const result = await reviewApi.list(tab, filters)
       if (gen !== loadGen.current) return
-      setItems(result.items)
+      const applyList = await autoApplyApi.list().catch(() => ({ items: [] }))
+      const items = withAppliedFlags(result.items, appliedJobIds(applyList.items))
+      setItems(items)
       setTotal(result.total)
       setLoadError(null)
       setVisible(PAGE_SIZE)

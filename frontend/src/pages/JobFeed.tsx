@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { jobsApi, matchingApi, resumeApi, settingsApi, USE_MOCK } from '../api'
+import { jobsApi, learningApi, matchingApi, resumeApi, settingsApi, USE_MOCK } from '../api'
 import type { JobCard, JobDetail, JobFilters, JobSourceName, SourceStatus } from '../api/jobsTypes'
 import type { MatchView } from '../api/matchingTypes'
 import { ApplyModal } from '../components/ApplyModal'
@@ -11,6 +11,7 @@ import { MatchMeter } from '../components/MatchMeter'
 import { WhyThisScore, WhyThisScoreInline } from '../components/MatchWhy'
 import { ToastStack } from '../components/Toast'
 import { apiToPercent, isSourceNotConfiguredError } from '../lib/settings'
+import { preselectReady } from '../lib/status'
 import { jobHaystack, matchedTerms, resumeHaystack, storedMatchesForJobs } from '../lib/matching'
 import { jobHref, useHashSearch } from '../lib/routes'
 import { bulkDismiss, dismissSnackbar } from '../lib/dismiss'
@@ -267,8 +268,17 @@ export function JobFeedPage() {
     void (async () => {
       try {
         const doc = await settingsApi.get()
+        let nextThreshold = apiToPercent(doc.matchThreshold)
+        try {
+          const params = await learningApi.params()
+          if (params.source === 'personalized' || params.tuningMode === 'manual') {
+            nextThreshold = Math.round(params.score_threshold * 100)
+          }
+        } catch {
+          /* keep settings threshold */
+        }
         if (!cancelled) {
-          setThreshold(apiToPercent(doc.matchThreshold))
+          setThreshold(nextThreshold)
           const next = feedSourcesFromSettings(doc.sources)
           if (next === null) {
             setFilters((prev) => (prev.sources.length ? prev : { ...prev, sources: [...ALL_SOURCES] }))
@@ -283,7 +293,9 @@ export function JobFeedPage() {
       }
       try {
         const list = await resumeApi.list()
-        const ready = preselectReady(list)
+        const userActive = await resumeApi.getUserActive().catch(() => null)
+        const ready =
+          userActive && list.some((item) => item.id === userActive.id) ? userActive.id : preselectReady(list)
         if (!ready) {
           if (!cancelled) {
             setResumeId(null)

@@ -1,4 +1,5 @@
 import type { ApplyDetail, ApplySummary, AutoApplyApi, CreateApplyBody } from './autoApplyTypes'
+import { markMockReviewApplied } from './reviewMock'
 
 const rows = new Map<string, ApplyDetail>()
 
@@ -89,6 +90,7 @@ export const mockAutoApplyApi: AutoApplyApi = {
       updated_at: stamped,
     }
     rows.set(requestId, detail)
+    markMockReviewApplied(body.job_posting_id)
     return { request_id: requestId, state: detail.state, created_at: stamped }
   },
   async list() {

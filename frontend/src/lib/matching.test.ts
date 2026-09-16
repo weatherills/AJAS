@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { recordMockDecision, resetMockLearning } from '../api/learningMock'
 import { mockMatchingApi } from '../api/matchingMock'
+import { mockReviewApi, resetReviewMock } from '../api/reviewMock'
+import { DEFAULT_FILTERS } from './review'
 import {
   fitBucket,
   evidenceSentences,
@@ -122,6 +124,7 @@ describe('mock matching api', () => {
   })
 
   it('persists a Save match below the threshold', async () => {
+    resetReviewMock()
     const row = await mockMatchingApi.scoreOne({
       resumeId: 'seed-ready',
       resumeText: 'python azure cosmos matching crawlers',
@@ -133,6 +136,8 @@ describe('mock matching api', () => {
     expect((row.score || 0) < 70).toBe(true)
     expect(row.persisted).toBe(true)
     expect(row.matchId).toBe('match-des')
+    const saved = await mockReviewApi.list('saved', { ...DEFAULT_FILTERS, source: 'saved', status: 'awaiting' })
+    expect(saved.items.some((item) => item.matchId === 'match-des')).toBe(true)
   })
 
   it('returns a no-resume state without a resume id', async () => {

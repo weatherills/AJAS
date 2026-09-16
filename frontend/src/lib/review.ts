@@ -203,3 +203,8 @@ export async function findReviewRow(
   }
   return null
 }
+
+export function withAppliedFlags(items: ReviewMatch[], appliedJobIds: Iterable<string>): ReviewMatch[] {
+  const applied = new Set(appliedJobIds)
+  return items.map((item) => ({ ...item, applied: item.applied || applied.has(item.jobId) }))
+}

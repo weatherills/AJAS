@@ -7,5 +7,14 @@ describe('apply prefs resume chooser', () => {
     expect(loadApplyPrefs().defaultResumeId).toBe('r2')
     expect(chooseResume([{ id: 'r1' }, { id: 'r2' }], 'r2')).toBe('r2')
     expect(chooseResume([{ id: 'r1' }], 'missing')).toBe('r1')
+    expect(
+      chooseResume(
+        [
+          { id: 'failed', status: 'parse_failed', validated: false },
+          { id: 'ready', status: 'parsed', validated: true },
+        ],
+        'failed',
+      ),
+    ).toBe('ready')
   })
 })

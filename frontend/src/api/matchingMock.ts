@@ -8,6 +8,7 @@ import {
 } from '../lib/matching'
 import type { MatchingApi, MatchView } from './matchingTypes'
 import { mockLearningSnapshot } from './learningMock'
+import { upsertMockReviewMatch } from './reviewMock'
 
 function now() {
   return new Date().toISOString()
@@ -103,7 +104,21 @@ function scoreOne(
               ? { key: 'fair', label: 'Fair match', min: 40, score: Math.round(score) }
               : { key: 'poor', label: 'Poor match', min: 0, score: Math.round(score) },
   }
-  if (row.persisted) persisted[`${resumeId}:${job.id}`] = row
+  if (row.persisted) {
+    persisted[`${resumeId}:${job.id}`] = row
+    const titleLine = (job.text.split('\n')[0] || job.id).replace(/^Title:\s*/i, '').trim()
+    const companyLine = job.text.split('\n').find((line) => /^Company:/i.test(line))
+    upsertMockReviewMatch({
+      matchId: row.matchId || `match-${job.id}`,
+      jobId: job.id,
+      resumeId,
+      jobTitle: titleLine || job.id,
+      company: companyLine ? companyLine.replace(/^Company:\s*/i, '').trim() : 'Unknown',
+      score,
+      why: row.explanation,
+      source: persist ? 'saved' : 'ai',
+    })
+  }
   return row
 }
 

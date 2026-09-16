@@ -37,3 +37,9 @@ export function canCancel(state: string): boolean {
 export function canMarkManualSubmitted(state: string): boolean {
   return state === 'packaged' || state === 'needs_review'
 }
+
+const APPLIED_STATES = new Set(['queued', 'submitting', 'submitted', 'packaged', 'rate_limited', 'created'])
+
+export function appliedJobIds(items: { job_id: string | null; state: string }[]): string[] {
+  return items.filter((item) => item.job_id && APPLIED_STATES.has(item.state)).map((item) => item.job_id as string)
+}

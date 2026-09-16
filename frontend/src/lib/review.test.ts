@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { mockAutoApplyApi, resetAutoApplyMock } from '../api/autoApplyMock'
 import { mockLearningSnapshot, resetMockLearning } from '../api/learningMock'
 import { mockReviewApi, resetReviewMock, setReviewFailNext } from '../api/reviewMock'
 import {
@@ -91,13 +92,32 @@ describe('mock review api', () => {
     expect(after.weights.keyword).toBeGreaterThan(before.weights.keyword)
     const detail = await mockReviewApi.get('match-staff')
     expect(detail.match.status).toBe('approved')
-    expect(detail.match.applied).toBe(true)
+    expect(detail.match.applied).toBe(false)
     await mockReviewApi.reopen('match-staff')
     const undone = mockLearningSnapshot()
     expect(undone.sample_size).toBe(before.sample_size)
     expect(undone.weights.keyword).toBe(before.weights.keyword)
     const pending = await mockReviewApi.get('match-staff')
     expect(pending.match.status).toBe('pending')
+  })
+
+  it('marks Applied after an auto-apply submit, not after approve', async () => {
+    resetReviewMock()
+    resetAutoApplyMock()
+    const staff = (await mockReviewApi.list('matches', { ...DEFAULT_FILTERS, source: 'ai' })).items.find(
+      (item) => item.matchId === 'match-staff',
+    )
+    expect(staff?.applied).toBe(false)
+    await mockReviewApi.decide('match-staff', { decision: 'approve' }, { etag: staff!.etag, idempotencyKey: 'apply-flag' })
+    expect((await mockReviewApi.get('match-staff')).match.applied).toBe(false)
+    await mockAutoApplyApi.create({
+      job_source: 'greenhouse',
+      job_posting_id: 'job-1',
+      posting_url: 'https://boards.greenhouse.io/demo/jobs/job-1',
+      cover_letter_mode: 'none',
+      consent_approved: true,
+    })
+    expect((await mockReviewApi.get('match-staff')).match.applied).toBe(true)
   })
 
   it('keeps the comment when save fails', async () => {

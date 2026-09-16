@@ -4,6 +4,7 @@ import type { CoverLetterMode, JobSource } from '../api/autoApplyTypes'
 import type { ResumeListItem } from '../api/resumeTypes'
 import { defaultPostingUrl, inferJobSource } from '../lib/autoApply'
 import { chooseResume, loadApplyPrefs, saveApplyPrefs } from '../lib/applyPrefs'
+import { preselectReady } from '../lib/status'
 
 const FALLBACK_CONTACT = {
   full_name: 'Alex Jobseeker',
@@ -43,14 +44,19 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
   }, [])
 
   useEffect(() => {
-    void resumeApi
-      .list()
-      .then((items) => {
+    void (async () => {
+      try {
+        const items = await resumeApi.list()
         setResumes(items)
-        const chosen = chooseResume(items, resumeId || prefs.defaultResumeId || null)
+        const userActive = await resumeApi.getUserActive().catch(() => null)
+        const chosen =
+          chooseResume(items, resumeId || userActive?.id || prefs.defaultResumeId || null) ||
+          preselectReady(items)
         if (chosen) setActiveResumeId(chosen)
-      })
-      .catch(() => setResumes([]))
+      } catch {
+        setResumes([])
+      }
+    })()
   }, [resumeId, prefs.defaultResumeId])
 
   useEffect(() => {
@@ -141,13 +147,16 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
             }}
             aria-label="Resume version for this apply"
           >
-            {(resumes.length ? resumes : activeResumeId ? [{ id: activeResumeId, fileName: activeResumeId }] : []).map(
-              (item) => (
-                <option key={item.id} value={item.id}>
-                  {'fileName' in item ? item.fileName : item.id}
-                </option>
-              ),
-            )}
+            {(resumes.length
+              ? resumes.map((item) => ({ id: item.id, fileName: item.fileName }))
+              : activeResumeId
+                ? [{ id: activeResumeId, fileName: activeResumeId }]
+                : []
+            ).map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.fileName}
+              </option>
+            ))}
           </select>
         </label>
         <label>

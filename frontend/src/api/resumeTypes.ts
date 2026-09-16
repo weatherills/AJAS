@@ -11,6 +11,7 @@ export type ResumeListItem = {
   lastParseAt: string | null
   fileHash: string
   validated: boolean
+  isActive?: boolean
 }
 
 export type Experience = {
@@ -60,4 +61,6 @@ export type ResumeApi = {
   retryParse(id: string): Promise<void>
   setActive(runId: string, resumeId: string): Promise<{ runId: string; resumeId: string; effectiveAt: string }>
   getActive(runId: string): Promise<{ runId: string; resumeId: string; effectiveAt: string } | null>
+  getUserActive(): Promise<ResumeDetail | null>
+  setUserActive(resumeId: string): Promise<ResumeDetail>
 }

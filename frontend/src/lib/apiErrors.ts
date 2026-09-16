@@ -30,7 +30,7 @@ export function describeApiError(err: unknown): { message: string; retryable: bo
       message: err.message,
       retryable: err.retryable || err.status >= 500,
       retryAfter: err.retryAfter,
-      remediation: remediationFor(err.code, err.status),
+      remediation: remediationFor(err.code ?? undefined, err.status),
     }
   }
   if (err instanceof Error) return { message: err.message, retryable: false, retryAfter: null, remediation: 'Fix the request and try again.' }
