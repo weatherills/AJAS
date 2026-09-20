@@ -23,7 +23,12 @@ jobs:
           python -m pip install -U pip
           pip install -r requirements-dev.txt pytest-cov pytest-xdist
       - name: Test
-        run: pytest -n auto --cov=app --cov-report=term --cov-fail-under=40
+        run: pytest -n auto --cov=app --cov-report=term --cov-report=xml --junitxml=junit.xml --cov-fail-under=40
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-junit
+          path: backend/junit.xml
 
   storage-emulator:
     runs-on: ubuntu-latest
@@ -55,7 +60,12 @@ jobs:
           AZURITE: '1'
           BLOB_CONNECTION_STRING: UseDevelopmentStorage=true
           QUEUE_CONNECTION_STRING: UseDevelopmentStorage=true
-        run: pytest tests/test_storage_*.py --cov=app/storage --cov-report=term --cov-fail-under=80
+        run: pytest tests/test_storage_*.py --cov=app/storage --cov-report=term --cov-report=xml --junitxml=storage-junit.xml --cov-fail-under=80
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: storage-junit
+          path: backend/storage-junit.xml
 
   secret-scan:
     runs-on: ubuntu-latest
@@ -84,3 +94,21 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npx tsc --noEmit
+
+  playwright:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+        env:
+          VITE_USE_MOCK: 'true'

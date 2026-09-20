@@ -53,3 +53,11 @@ app.register_blueprint(sprint17_bp)
 app.register_blueprint(sprint18_bp)
 app.register_blueprint(sprint19_bp)
 app.register_blueprint(sprint20_bp)
+
+
+@app.timer_trigger(schedule="0 0 3 * * *", arg_name="timer", run_on_startup=False)
+def retention_purge(timer: func.TimerRequest) -> None:
+    """Nightly Cosmos/Blob retention pass (Database PRD TTL + purge job)."""
+    from app.storage.jobs import run_retention_job
+
+    run_retention_job(None)

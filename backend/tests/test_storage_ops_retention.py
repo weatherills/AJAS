@@ -138,4 +138,6 @@ def test_ci_workflow_runs_emulator_tests_and_fails_on_coverage_drop():
     assert "--cov=app/storage" in text
     assert "--cov-fail-under=80" in text
     assert "--cov-fail-under=40" in text
+    assert "junitxml" in text
+    assert "playwright" in text
     assert "tests/test_storage_*.py" in text

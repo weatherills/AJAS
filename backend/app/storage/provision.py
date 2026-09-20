@@ -6,9 +6,9 @@ import json
 from typing import Any
 
 from app.config import get_settings
-from app.storage.blob_layout import blob_container_names
+from app.storage.blob_layout import blob_container_names, config_blob_containers
 from app.storage.catalog import container_catalog, cosmos_create_kwargs, ensure_all_containers
-from app.storage.queue_schemas import all_queue_names
+from app.storage.queue_schemas import all_queue_names, config_queue_names
 
 
 def provision_cosmos(database: Any | None = None) -> list[str]:
@@ -63,11 +63,15 @@ def provision_queues(service: Any | None = None) -> list[str]:
 
 
 def provision_all(*, cosmos: bool = True, blobs: bool = True, queues: bool = True, dry_run: bool = False) -> dict[str, Any]:
+    blob_names = sorted(set(blob_container_names()) | set(config_blob_containers()))
+    queue_names = sorted(set(all_queue_names()) | {poison_or_plain for poison_or_plain in _queues_from_config()})
     plan = {
         "cosmos": [spec.id for spec in container_catalog()] if cosmos else [],
-        "blobs": list(blob_container_names()) if blobs else [],
-        "queues": list(all_queue_names()) if queues else [],
+        "blobs": blob_names if blobs else [],
+        "queues": queue_names if queues else [],
         "dry_run": dry_run,
+        "configQueues": list(config_queue_names()),
+        "configBlobs": list(config_blob_containers()),
     }
     if dry_run:
         plan["status"] = "planned"
@@ -122,3 +126,13 @@ def cosmos_kwargs_preview() -> list[dict[str, Any]]:
 
 def dumps_plan() -> str:
     return json.dumps(provision_all(dry_run=True), indent=2, default=str)
+
+
+def _queues_from_config() -> list[str]:
+    from app.storage.queue_schemas import poison_queue_name
+
+    names: list[str] = []
+    for name in config_queue_names():
+        names.append(name)
+        names.append(poison_queue_name(name))
+    return names

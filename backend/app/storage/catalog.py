@@ -603,6 +603,42 @@ def ttl_containers() -> list[ContainerSpec]:
     return [spec for spec in container_catalog() if spec.default_ttl is not None]
 
 
+def render_cosmos_schema() -> str:
+    """Markdown schema for docs/cosmos.schema.md — keep committed copy in sync."""
+    lines = [
+        "# Cosmos DB schema",
+        "",
+        "Generated from `app.storage.catalog` and the Database PRDs.",
+        "Unique-key paths omit the partition key (Cosmos unique keys are per partition).",
+        "TTL is reserved for transient scrape/ingest/webhook rows; durable history is purged by job.",
+        "",
+        "| Container | Feature | Entity | Partition key | TTL (days) | Unique keys | Composites |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for spec in container_catalog():
+        ttl = "" if spec.default_ttl is None else str(spec.default_ttl // 86_400)
+        unique = "; ".join("+".join(paths) for paths in spec.unique_keys) or "—"
+        composites = len(spec.indexing_policy.get("compositeIndexes") or [])
+        lines.append(
+            f"| `{spec.id}` | {spec.feature} | {spec.entity} | `{spec.partition_key}` | {ttl or '—'} | {unique} | {composites} |"
+        )
+    lines.extend(["", "## Query patterns and RU notes", ""])
+    for spec in container_catalog():
+        lines.append(f"### `{spec.id}`")
+        lines.append("")
+        if spec.query_patterns:
+            for pattern in spec.query_patterns:
+                lines.append(f"- Query: {pattern}")
+        if spec.relationships:
+            for rel in spec.relationships:
+                lines.append(f"- Rel: {rel}")
+        if spec.logical_unique:
+            lines.append(f"- Logical unique: `{', '.join(spec.logical_unique)}`")
+        lines.append(f"- RU: {spec.ru_note}")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def indexing_report() -> list[dict[str, Any]]:
     rows = []
     for spec in container_catalog():

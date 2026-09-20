@@ -141,3 +141,19 @@ def apply_seed(dal: CosmosDAL) -> dict[str, int]:
             dal.upsert(container, row)
         counts[container] = len(rows)
     return counts
+
+
+SAMPLE_RESUME_BYTES = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+SAMPLE_JOB_RAW = b'{"id":"seed-job-001","title":"Staff Platform Engineer"}\n'
+
+
+def seed_blobs(put) -> dict[str, str]:
+    """Upload sample resume + job-raw artifacts. ``put(container, key, data)``."""
+    from app.storage.blob_layout import checksum_blob_name, job_raw_key, resume_key
+
+    resume_name = checksum_blob_name("ada-lovelace.pdf", "b" * 64)
+    resume_path = resume_key(SEED_USER_ID, SEED_RESUME_ID, resume_name)
+    raw_path = job_raw_key("seed-tenant-001", "post-seed-001", STAMP)
+    put("resumes", resume_path, SAMPLE_RESUME_BYTES)
+    put("job-raw", raw_path, SAMPLE_JOB_RAW)
+    return {"resumes": resume_path, "job-raw": raw_path}

@@ -109,6 +109,27 @@ def cover_letter_key(user_id: str, cover_letter_id: str, ext: str = "md") -> str
     return f"{user_id}/{cover_letter_id}.{ext}"
 
 
+def checksum_blob_name(filename: str, checksum_sha256: str) -> str:
+    """Stable blob object name: original stem + short checksum + extension."""
+    digest = (checksum_sha256 or "0" * 12).replace("/", "")[:12]
+    if "." in filename:
+        stem, ext = filename.rsplit(".", 1)
+        return f"{stem}.{digest}.{ext}"
+    return f"{filename}.{digest}"
+
+
+def config_blob_containers() -> tuple[str, ...]:
+    from app.config import get_settings
+
+    settings = get_settings()
+    return (
+        settings.review_blob_container,
+        settings.resume_blob_container,
+        settings.job_raw_blob_container,
+        settings.mail_blob_container,
+    )
+
+
 def match_explanation_key(user_id: str, match_id: str) -> str:
     return f"{user_id}/{match_id}/explanation.json"
 

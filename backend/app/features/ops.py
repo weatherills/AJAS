@@ -95,6 +95,32 @@ def ops_storage(req: func.HttpRequest) -> func.HttpResponse:
         return _handle(exc)
 
 
+@bp.route(route="v1/ops/queues", methods=["GET"])
+def ops_queues(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = get_principal(req)
+        require_role(principal, "admin")
+        from app.dlq import depth as dlq_depth
+        from app.queue_health import snapshot as queue_snapshot
+        from app.slo_pipelines import snapshot as slo_snapshot
+
+        return json_response({"queues": queue_snapshot(dlq_depth=dlq_depth()), "pipelines": slo_snapshot()})
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/ops/retention", methods=["POST"])
+def ops_retention(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = get_principal(req)
+        require_role(principal, "admin")
+        from app.storage.jobs import run_retention_job
+
+        return json_response(run_retention_job(None))
+    except Exception as exc:
+        return _handle(exc)
+
+
 @bp.route(route="v1/ops/flags", methods=["GET"])
 def ops_flags(req: func.HttpRequest) -> func.HttpResponse:
     bind_request(req)

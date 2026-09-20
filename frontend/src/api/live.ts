@@ -62,19 +62,28 @@ function authorizationHeader(): string {
 
 export async function request(path: string, init: RequestInit = {}): Promise<Response> {
   captureAadTokenFromHash()
-  const headers = new Headers(init.headers)
-  headers.set('Authorization', authorizationHeader())
-  const csrf = getCsrfToken()
-  if (csrf && !headers.has('X-CSRF-Token')) headers.set('X-CSRF-Token', csrf)
   const method = (init.method || 'GET').toUpperCase()
-  const isForm = typeof FormData !== 'undefined' && init.body instanceof FormData
-  if (method !== 'GET' && method !== 'HEAD' && !headers.has('Content-Type') && init.body && !isForm) {
-    headers.set('Content-Type', 'application/json')
+  const maxAttempts = method === 'GET' || method === 'HEAD' ? 3 : 2
+  let last: Response | undefined
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const headers = new Headers(init.headers)
+    headers.set('Authorization', authorizationHeader())
+    const csrf = getCsrfToken()
+    if (csrf && !headers.has('X-CSRF-Token')) headers.set('X-CSRF-Token', csrf)
+    const isForm = typeof FormData !== 'undefined' && init.body instanceof FormData
+    if (method !== 'GET' && method !== 'HEAD' && !headers.has('Content-Type') && init.body && !isForm) {
+      headers.set('Content-Type', 'application/json')
+    }
+    last = await fetch(path, { ...init, headers, credentials: 'include' })
+    const nextCsrf = last.headers.get('X-CSRF-Token')
+    if (nextCsrf) setCsrfToken(nextCsrf)
+    const retryable = last.status === 429 || last.status >= 500
+    if (last.ok || !retryable || attempt === maxAttempts) return last
+    const retryAfter = Number(last.headers.get('Retry-After') || 0)
+    const waitMs = retryAfter > 0 ? retryAfter * 1000 : 50 * 2 ** (attempt - 1)
+    await new Promise((resolve) => setTimeout(resolve, waitMs))
   }
-  const resp = await fetch(path, { ...init, headers, credentials: 'include' })
-  const nextCsrf = resp.headers.get('X-CSRF-Token')
-  if (nextCsrf) setCsrfToken(nextCsrf)
-  return resp
+  return last as Response
 }
 
 export class ApiError extends Error {

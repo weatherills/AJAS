@@ -189,3 +189,15 @@ def parse_queue_message(queue: str, body: dict[str, Any]) -> QueueMessage:
 
 def encode_queue_message(message: QueueMessage) -> dict[str, Any]:
     return message.model_dump()
+
+
+def config_queue_names() -> tuple[str, ...]:
+    """Queue names declared on ``Settings`` (fields ending in ``_queue``)."""
+    from app.config import get_settings
+
+    settings = get_settings()
+    names = []
+    for field_name, value in settings.model_dump().items():
+        if field_name.endswith("_queue") and isinstance(value, str) and value.strip():
+            names.append(value.strip())
+    return tuple(sorted(set(names)))

@@ -54,7 +54,15 @@ def _status_payload() -> dict:
             "keyVault": {"ok": dependencies["keyVault"], "live": bool(settings.key_vault_uri)},
             "workers": {"ok": all(workers.values()), "live": True, "items": workers},
         },
+        "queueHealth": _queue_health(),
     }
+
+
+def _queue_health() -> dict:
+    from app.dlq import depth as dlq_depth
+    from app.queue_health import snapshot as queue_snapshot
+
+    return queue_snapshot(dlq_depth=dlq_depth())
 
 
 @bp.route(route="health", methods=["GET", "OPTIONS"])
