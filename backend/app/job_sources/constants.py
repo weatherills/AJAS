@@ -17,9 +17,11 @@ SEEDED_SOURCES: Final[tuple[tuple[str, str], ...]] = (
     ("lever", "Lever"),
 )
 
-DEFAULT_TOKENS_PER_MIN: Final[int] = 60
+DEFAULT_TOKENS_PER_MIN: Final[int] = 180  # ≤3 RPS per source
 DEFAULT_BURST: Final[int] = 10
 DEFAULT_CRAWL_INTERVAL_SECONDS: Final[int] = 3600
+MAX_IN_FLIGHT_PER_DOMAIN: Final[int] = 3
+LEVER_PAGE_LIMIT: Final[int] = 100
 
 SOURCES_CONTAINER: Final[str] = "job_sources"
 TENANTS_CONTAINER: Final[str] = "source_tenants"

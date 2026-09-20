@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+from app.job_sources.constants import LEVER_PAGE_LIMIT
 from app.job_sources.errors import JobSourceValidationError
 
 GREENHOUSE_HOSTS = frozenset({"boards-api.greenhouse.io", "boards.greenhouse.io"})
@@ -109,7 +110,7 @@ def greenhouse_detail_url(tenant_key: str, job_id: str) -> str:
     return f"https://boards-api.greenhouse.io/v1/boards/{tenant_key}/jobs/{job_id}"
 
 
-def lever_list_url(tenant_key: str, *, skip: int = 0, limit: int = 100) -> str:
+def lever_list_url(tenant_key: str, *, skip: int = 0, limit: int = LEVER_PAGE_LIMIT) -> str:
     url = f"https://api.lever.co/v0/postings/{tenant_key}"
     return with_query(url, mode="json", skip=skip, limit=limit)
 

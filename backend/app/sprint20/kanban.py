@@ -26,7 +26,7 @@ from app.flags import feature_enabled
 from app.job_sources.circuit import allow as circuit_allow, record_status
 from app.job_sources.errors import JobSourceValidationError
 from app.job_sources.http_policy import jittered_backoff, rotate_user_agent
-from app.job_sources.keys import canonical_key, dedupe_hash
+from app.job_sources.keys import canonical_key, dedupe_hash, dedupe_namespace
 from app.job_sources.models import JobPostingCanonical
 from app.job_sources.normalize import greenhouse_job, greenhouse_list_jobs, lever_job, lever_list_jobs, payload_dumps
 from app.job_sources.robots import can_fetch
@@ -181,7 +181,7 @@ def robots_fail_closed(url: str) -> dict[str, Any]:
 
 def _digest(*, title: str, company: str, location: str, url: str = "", source: str = "") -> tuple[str, str]:
     # Job Source PRD: same role across GH/Lever must collapse — do not namespace by source.
-    key = canonical_key(title=title, location=location, namespace=f"{company}:{url}")
+    key = canonical_key(title=title, location=location, namespace=dedupe_namespace(company=company, apply_url=url))
     return key, dedupe_hash(key=key, body=url, employment_type=source and "")
 
 

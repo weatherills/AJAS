@@ -34,3 +34,36 @@ def test_parse_rejects_empty_and_ssrf():
         parse_board_input("lever", url="http://jobs.lever.co/acme")
     with pytest.raises(JobSourceValidationError):
         parse_board_input("greenhouse", token="acme/../admin")
+
+
+def test_lever_list_jobs_stops_on_short_page():
+    from app.job_sources.constants import LEVER_PAGE_LIMIT
+    from app.job_sources.normalize import lever_list_jobs
+
+    short, nxt = lever_list_jobs([{"id": "a"}, {"id": "b"}], limit=LEVER_PAGE_LIMIT)
+    assert len(short) == 2
+    assert nxt is None
+    full, nxt = lever_list_jobs([{"id": str(i)} for i in range(LEVER_PAGE_LIMIT)], limit=LEVER_PAGE_LIMIT)
+    assert len(full) == LEVER_PAGE_LIMIT
+    assert nxt == str(LEVER_PAGE_LIMIT)
+    empty, nxt = lever_list_jobs([])
+    assert empty == []
+    assert nxt is None
+
+
+def test_domain_slot_caps_in_flight():
+    from contextlib import ExitStack
+
+    from app.job_sources.constants import MAX_IN_FLIGHT_PER_DOMAIN
+    from app.job_sources.errors import JobSourceRateLimitedError
+    from app.job_sources.global_limit import domain_slot
+
+    url = "https://boards-api.greenhouse.io/v1/boards/acme/jobs"
+    with ExitStack() as stack:
+        for _ in range(MAX_IN_FLIGHT_PER_DOMAIN):
+            stack.enter_context(domain_slot(url, timeout=0.05))
+        with pytest.raises(JobSourceRateLimitedError):
+            with domain_slot(url, timeout=0.05):
+                pass
+    with domain_slot(url, timeout=0.05):
+        pass

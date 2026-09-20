@@ -19,7 +19,7 @@ from app.job_sources.errors import (
     JobSourceStoreError,
     JobSourceValidationError,
 )
-from app.job_sources.keys import canonical_key, dedupe_hash, response_hash
+from app.job_sources.keys import canonical_id_for, canonical_key, content_hash, dedupe_hash, dedupe_namespace, response_hash
 from app.job_sources.memory import InMemoryJobSourceStore
 from app.job_sources.models import (
     CrawlSchedule,
@@ -57,9 +57,12 @@ __all__ = [
     "SourceFetchRun",
     "SourceRateLimit",
     "SourceTenant",
+    "canonical_id_for",
     "canonical_key",
     "container_specs",
+    "content_hash",
     "dedupe_hash",
+    "dedupe_namespace",
     "ensure_job_source_containers",
     "get_job_source_store",
     "response_hash",
