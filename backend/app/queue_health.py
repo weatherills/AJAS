@@ -34,3 +34,35 @@ def requeue(jobs: list[QueueJob], *, now: float | None = None, timeout_sec: floa
             job.started_at = now if now is not None else time()
             retried += 1
     return {"stuck": len(stuck), "retried": retried, "dead": dead}
+
+
+def snapshot(*, depths: dict[str, int] | None = None, dlq_depth: int = 0, jobs: list[QueueJob] | None = None) -> dict:
+    from app.queue_backpressure import backpressure
+    from app.storage.queue_schemas import poison_queue_name, queue_names
+
+    depths = depths or {}
+    queues = []
+    for name in queue_names():
+        depth = int(depths.get(name, 0))
+        poison = int(depths.get(poison_queue_name(name), 0))
+        pressure = backpressure(depth)
+        queues.append(
+            {
+                "queue": name,
+                "depth": depth,
+                "poisonDepth": poison,
+                "lag": depth,
+                **pressure,
+            }
+        )
+    stuck = detect_stuck(jobs or [])
+    return {
+        "schema": "ajas.queue.health.v1",
+        "queues": queues,
+        "dlqDepth": int(dlq_depth),
+        "stuck": len(stuck),
+        "maxDepth": max((row["depth"] for row in queues), default=0),
+        "alerts": [
+            row for row in queues if row["mode"] != "open" or row["poisonDepth"] > 0
+        ],
+    }

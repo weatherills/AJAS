@@ -1,6 +1,6 @@
 import { json, request } from './live'
-import type { ReviewApi, ReviewDecision, ReviewMatch, ReviewStatus } from './reviewTypes'
-import { applyFilters } from '../lib/review'
+import type { ResumeHighlights, ReviewApi, ReviewDecision, ReviewMatch, ReviewStatus } from './reviewTypes'
+import { applyFilters, suggestionConfidence } from '../lib/review'
 
 type ApiMatch = {
   matchId: string
@@ -11,6 +11,7 @@ type ApiMatch = {
   location: string
   score: number | null
   suggestion: string
+  confidence?: number | null
   status: string
   source: string
   createdAt: string
@@ -20,6 +21,7 @@ type ApiMatch = {
   summary?: string | null
   why?: string | null
   highlights?: string[] | null
+  resumeHighlights?: ResumeHighlights | null
   decidedAt?: string | null
   latestDecisionId?: string | null
 }
@@ -32,6 +34,7 @@ function mapStatus(status: string): ReviewStatus {
 
 function mapMatch(row: ApiMatch, extra: Partial<ReviewMatch> = {}): ReviewMatch {
   const status = mapStatus(row.status)
+  const suggestion = (row.suggestion as ReviewMatch['suggestion']) || 'none'
   return {
     matchId: row.matchId,
     jobId: row.jobId,
@@ -40,19 +43,20 @@ function mapMatch(row: ApiMatch, extra: Partial<ReviewMatch> = {}): ReviewMatch 
     company: row.company,
     location: row.location,
     score: row.score,
-    suggestion: (row.suggestion as ReviewMatch['suggestion']) || 'none',
+    suggestion,
+    confidence: extra.confidence ?? row.confidence ?? suggestionConfidence(suggestion, row.score),
     status,
     source: row.source === 'saved' ? 'saved' : 'ai',
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     queuedAt: row.queuedAt || row.createdAt,
     etag: row.etag,
-    postingUrl: null,
+    postingUrl: extra.postingUrl ?? null,
     applied: status === 'approved',
     summary: row.summary ?? null,
     why: row.why ?? null,
     highlights: row.highlights ?? null,
-    resumeHighlights: null,
+    resumeHighlights: extra.resumeHighlights ?? row.resumeHighlights ?? null,
     decidedAt: row.decidedAt ?? null,
     latestDecisionId: row.latestDecisionId ?? null,
     comment: extra.comment ?? null,
@@ -139,6 +143,7 @@ export const liveReviewApi: ReviewApi = {
         comment: decision?.comment ?? null,
         decision: decision?.decision ?? null,
         scoreAtDecision: decision?.aiScore ?? null,
+        postingUrl: body.blobs?.jobUrl ?? null,
       }),
       decision,
       blobs: { jobUrl: body.blobs?.jobUrl ?? null, resumeUrl: body.blobs?.resumeUrl ?? null },

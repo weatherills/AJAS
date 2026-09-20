@@ -9,14 +9,16 @@ from app.config import get_settings
 from app.flags import feature_enabled
 from app.job_sources.keys import parse_ts
 from app.mail.pii import redact_pii
+from app.storage.retention import RETENTION_DAYS as STORAGE_DAYS
 
 DAYS = {
-    "jobs": 365,
-    "emails": 180,
-    "logs": 30,
-    "matches": 365,
-    "resumes": 730,
+    "jobs": STORAGE_DAYS["jobs"],
+    "emails": STORAGE_DAYS["emails"],
+    "logs": STORAGE_DAYS["logs"],
+    "matches": STORAGE_DAYS["matches"],
+    "resumes": STORAGE_DAYS["resumes"],
     "consent": 730,
+    "applications": STORAGE_DAYS["applications"],
 }
 
 
@@ -77,6 +79,7 @@ def plan_purge(
         "jobRetentionDays": job_keep,
         "mailRetentionDays": mail_keep,
         "policy": policy(),
+        "days": dict(DAYS),
     }
 
 

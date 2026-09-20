@@ -22,6 +22,7 @@ import {
   PAGE_SIZE,
   saveReviewPreset,
   statusLabel,
+  suggestionCopy,
   suggestionLabel,
   truncateText,
   validateComment,
@@ -302,7 +303,7 @@ export function ReviewPage() {
           { decision, comment: parsed.value.trim() || undefined },
           { etag: detail.match.etag, idempotencyKey: crypto.randomUUID() },
         )
-        toast('Recorded.', 'info', {
+        toast('Decision saved', 'info', {
           actionLabel: 'Undo',
           onAction: () => void reopenMatch(currentId),
         })
@@ -481,7 +482,7 @@ export function ReviewPage() {
 
   const paneOpen = Boolean(selectedId)
   const why = truncateText(detail?.match.why, WHY_MAX)
-  const suggestion = detail?.match.suggestion || 'none'
+  const suggestion = detail ? suggestionCopy(detail.match) : null
 
   return (
     <div className={`page library-page feed-page review-page ${paneOpen ? 'feed-page-open' : ''}`}>
@@ -825,7 +826,8 @@ export function ReviewPage() {
                               aria-current={active ? 'true' : undefined}
                               onClick={() => void openRow(item.matchId, historyMode ? item.latestDecisionId || undefined : undefined)}
                             >
-                              {item.jobTitle}
+                              <span className="review-row-title">{item.jobTitle}</span>
+                              <span className="review-row-sub muted">{suggestionLabel(item.suggestion)}</span>
                             </button>
                           </td>
                           <td>{item.company}</td>
@@ -974,13 +976,21 @@ export function ReviewPage() {
                   </p>
                   <p className="muted">Last refreshed {formatWhen(detail.match.updatedAt)}</p>
                 </section>
-                <section className="review-suggestion">
+                <section className="review-suggestion" aria-label="AI suggestion">
                   <h3>AI suggestion</h3>
-                  <p>{suggestionLabel(suggestion)}</p>
-                  {suggestion === 'none' ? (
-                    <p className="muted">No suggestion available</p>
+                  {suggestion?.available ? (
+                    <>
+                      <p className="review-suggestion-label">{suggestion.label}</p>
+                      {suggestion.confidence != null && (
+                        <p className="muted">Confidence {suggestion.confidence}%</p>
+                      )}
+                      <p>
+                        {suggestion.rationale || 'No additional rationale.'}
+                        {suggestion.truncated ? '…' : ''}
+                      </p>
+                    </>
                   ) : (
-                    <p>{why.text || detail.match.summary}</p>
+                    <p className="muted">No suggestion available</p>
                   )}
                 </section>
                 <section>

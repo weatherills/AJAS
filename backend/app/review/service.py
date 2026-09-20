@@ -116,6 +116,11 @@ def _match_row(match: ReviewMatch, triage: dict[str, Any] | None = None) -> dict
         "location": match.location,
         "score": match.ai_score,
         "suggestion": match.suggestion,
+        "confidence": (
+            None
+            if match.suggestion == "none" or match.ai_score is None
+            else int(round(float(match.ai_score)))
+        ),
         "status": _api_status(match.status),
         "source": match.source,
         "createdAt": match.created_at,
@@ -128,6 +133,18 @@ def _match_row(match: ReviewMatch, triage: dict[str, Any] | None = None) -> dict
     }
 
 
+def _resume_highlights(match: ReviewMatch) -> dict[str, Any] | None:
+    if not match.resume_id:
+        return None
+    matched = [str(item).strip() for item in (match.highlights_json or []) if str(item).strip()]
+    return {
+        "matched": matched[:5],
+        "missing": [],
+        "years": None,
+        "keywords": matched[:6],
+    }
+
+
 def _match_detail(match: ReviewMatch, triage: dict[str, Any] | None = None) -> dict[str, Any]:
     body = _match_row(match, triage)
     body.update(
@@ -135,6 +152,7 @@ def _match_detail(match: ReviewMatch, triage: dict[str, Any] | None = None) -> d
             "summary": match.summary,
             "why": match.why,
             "highlights": match.highlights_json,
+            "resumeHighlights": _resume_highlights(match),
             "summaryBlobUri": match.summary_blob_uri,
             "decidedAt": match.decided_at,
             "latestDecisionId": match.latest_decision_id,

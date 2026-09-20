@@ -1,0 +1,44 @@
+"""HTTP + queue + blob contract used by frontend live clients."""
+
+from __future__ import annotations
+
+ENDPOINTS: tuple[dict[str, str], ...] = (
+    {"id": "health", "method": "GET", "path": "/api/health", "client": "n/a"},
+    {"id": "review.list", "method": "GET", "path": "/api/v1/matches", "client": "reviewLive.list"},
+    {"id": "review.get", "method": "GET", "path": "/api/v1/matches/{matchId}", "client": "reviewLive.get"},
+    {"id": "review.decide", "method": "POST", "path": "/api/v1/matches/{matchId}/decision", "client": "reviewLive.decide"},
+    {"id": "review.reopen", "method": "POST", "path": "/api/v1/matches/{matchId}/reopen", "client": "reviewLive.reopen"},
+    {"id": "review.bulk", "method": "POST", "path": "/api/v1/matches/bulk", "client": "reviewLive.bulk"},
+    {"id": "review.history", "method": "GET", "path": "/api/v1/decisions/history", "client": "reviewLive.list"},
+    {"id": "matching.rank", "method": "POST", "path": "/api/v1/matches/rank", "client": "matchingLive.scoreMany"},
+    {"id": "matching.ops", "method": "GET", "path": "/api/v1/operations/{operationId}", "client": "matchingLive.scoreMany"},
+    {"id": "autoApply.create", "method": "POST", "path": "/api/v1/auto-apply/requests", "client": "autoApplyLive.create"},
+    {"id": "autoApply.list", "method": "GET", "path": "/api/v1/auto-apply/requests", "client": "autoApplyLive.list"},
+    {"id": "autoApply.get", "method": "GET", "path": "/api/v1/auto-apply/requests/{request_id}", "client": "autoApplyLive.get"},
+    {"id": "autoApply.cancel", "method": "POST", "path": "/api/v1/auto-apply/requests/{request_id}/cancel", "client": "autoApplyLive.cancel"},
+    {"id": "email.status", "method": "GET", "path": "/api/v1/email/status", "client": "emailLive.status"},
+    {"id": "email.threads", "method": "GET", "path": "/api/v1/email/threads", "client": "emailLive.listThreads"},
+    {"id": "email.reply", "method": "POST", "path": "/api/v1/threads/{threadId}/reply", "client": "emailLive.reply"},
+    {"id": "jobs.list", "method": "GET", "path": "/api/v1/jobs", "client": "jobsLive"},
+    {"id": "resumes.list", "method": "GET", "path": "/api/resumes", "client": "resumeLive"},
+    {"id": "settings.get", "method": "GET", "path": "/api/v1/settings", "client": "settingsLive"},
+    {"id": "learning.metrics", "method": "GET", "path": "/api/v1/metrics", "client": "learningLive"},
+    {"id": "ops.storage", "method": "GET", "path": "/api/v1/ops/storage", "client": "n/a"},
+    {"id": "ops.queues", "method": "GET", "path": "/api/v1/ops/queues", "client": "n/a"},
+    {"id": "ops.slo", "method": "GET", "path": "/api/v1/ops/slo", "client": "n/a"},
+)
+
+
+def endpoint_table() -> list[dict[str, str]]:
+    return [dict(row) for row in ENDPOINTS]
+
+
+def frontend_path_needles() -> list[str]:
+    needles = []
+    for row in ENDPOINTS:
+        path = row["path"]
+        if row["client"] == "n/a":
+            continue
+        # Strip /api prefix variants for source search: live clients use /api/...
+        needles.append(path.split("?")[0])
+    return needles

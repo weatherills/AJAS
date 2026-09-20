@@ -46,6 +46,10 @@ def listing() -> list[dict[str, Any]]:
     return list(_DLQ)
 
 
+def depth() -> int:
+    return sum(1 for item in _DLQ if item.get("status") == "dead")
+
+
 def replay(item_id: str, *, sample_rate: float = 1.0, roll: float | None = None) -> dict[str, Any] | None:
     item = inspect(item_id)
     if not item:
