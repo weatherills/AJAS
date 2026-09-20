@@ -55,6 +55,8 @@ class LearningStore(Protocol):
 
     def users_with_decisions(self) -> list[str]: ...
 
+    def delete_user_data(self, user_id: str) -> None: ...
+
 
 _store: LearningStore | None = None
 

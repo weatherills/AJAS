@@ -114,3 +114,12 @@ def test_demo_seed_has_enough_samples_for_window():
     params = store.get_or_create_params("u1")
     assert params.weights["keyword"] == DEFAULT_WEIGHTS["keyword"]
     assert params.source == "global"
+
+
+def test_delete_user_data_removes_decisions_and_params():
+    store = InMemoryLearningStore(seed=False)
+    store.seed_demo("u1")
+    store.delete_user_data("u1")
+    assert store.list_decisions("u1") == []
+    assert store.list_recommendations("u1") == []
+    assert store.get_or_create_params("u1").sample_size == 0

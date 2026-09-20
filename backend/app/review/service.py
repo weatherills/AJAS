@@ -602,6 +602,16 @@ class ReviewService:
 
     def _match_threshold(self, user_id: str) -> float:
         try:
+            from app.learning.runtime import try_get_service as try_learning
+
+            learning = try_learning()
+            if learning is not None:
+                params = learning.active_params(user_id)
+                if params.source == "personalized":
+                    return float(params.score_threshold)
+        except Exception:
+            pass
+        try:
             from app.settings.mapping import api_threshold
             from app.settings.runtime import try_get_service
             from app.settings.store import get_settings_store

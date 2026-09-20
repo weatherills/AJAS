@@ -45,11 +45,21 @@ def purge_plan(*, user_id: str, jobs: list[dict[str, Any]], emails: list[dict[st
 
 def apply_purge(plan: dict[str, Any], store: Any | None = None) -> dict[str, Any]:
     deleted = sum(len(plan.get(key) or []) for key in ("jobs", "emails", "matches", "resumes", "applications"))
-    result: dict[str, Any] = {"status": "purged", "deleted": deleted, "userId": plan.get("userId")}
-    if store is not None and plan.get("userId"):
+    user_id = plan.get("userId")
+    result: dict[str, Any] = {"status": "purged", "deleted": deleted, "userId": user_id}
+    if user_id:
+        try:
+            from app.learning.runtime import get_service as get_learning
+            from app.learning.runtime import try_get_service
+
+            learning = try_get_service() or get_learning()
+            learning.delete_user_data(str(user_id))
+        except Exception:
+            pass
+    if store is not None and user_id:
         from app.storage.retention import execute_gdpr_delete
 
-        gdpr = execute_gdpr_delete(store, str(plan["userId"]))
+        gdpr = execute_gdpr_delete(store, str(user_id))
         result["deleted"] = deleted + int(gdpr.get("deletedDocs") or 0)
         result["gdpr"] = gdpr
     return result

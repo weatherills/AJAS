@@ -192,8 +192,10 @@ class LearningService:
         self._maybe_enqueue_tune(user_id)
         self.drain()
 
-    def params(self, user_id: str) -> dict:
-        if self.local_mode:
+    def params(self, user_id: str, *, seed: bool | None = None) -> dict:
+        if seed is None:
+            seed = self.local_mode
+        if seed:
             self.store.seed_demo(user_id)
         row = self.store.get_or_create_params(user_id)
         return {
@@ -246,6 +248,7 @@ class LearningService:
         delta = None
         if prior.decisions:
             delta = round((snap.precision_proxy - prior.precision_proxy) * 100, 1)
+        buckets = [self._metrics_public(snap), self._metrics_public(prior)]
         return {
             "period": period,
             "scope": scope,
@@ -263,6 +266,7 @@ class LearningService:
             "liftVsBaseline": round((snap.precision_proxy - 0.5) * 100, 1) if snap.decisions else None,
             "empty": snap.decisions == 0,
             "summary": self._summary_text(snap, period),
+            "buckets": buckets,
         }
 
     def drift(self, user_id: str, *, period: str = "7d") -> dict:
@@ -397,6 +401,64 @@ class LearningService:
     def active_params(self, user_id: str) -> ModelParams:
         return self.store.get_or_create_params(user_id)
 
+    def record_scored_match(
+        self,
+        user_id: str,
+        *,
+        match_id: str,
+        job_id: str,
+        resume_id: str | None = None,
+        score: float = 0.0,
+        keyword: float | None = None,
+        semantic: float | None = None,
+        threshold_pct: int | float | None = None,
+        model_version: str | None = None,
+        components: dict | None = None,
+    ) -> Recommendation:
+        """Snapshot a matching score so later approve/reject can tune weights."""
+        if not user_id or not match_id:
+            raise LearningValidationError("user_id and match_id are required")
+        unit = as_unit_score(score)
+        if threshold_pct is None:
+            threshold = self.store.get_or_create_params(user_id).score_threshold
+        else:
+            threshold = as_unit_score(threshold_pct if float(threshold_pct) > 1 else float(threshold_pct) * 100)
+        status = "pending"
+        try:
+            existing = self.store.get_recommendation(match_id)
+            status = existing.status
+        except LearningNotFoundError:
+            existing = None
+        rec = Recommendation(
+            id=match_id,
+            user_id=user_id,
+            job_id=job_id or "unknown",
+            resume_id=resume_id,
+            score=unit,
+            score_components=components
+            or {
+                key: value
+                for key, value in {"keyword": keyword, "semantic": semantic}.items()
+                if value is not None
+            },
+            weight_config_id=self.store.get_or_create_params(user_id).model_version or GLOBAL_CONFIG_ID,
+            threshold=threshold,
+            recommended=unit >= threshold,
+            status=status,
+            generated_at=self.clock(),
+            model_version=model_version or DEFAULT_MODEL_VERSION,
+        )
+        saved = self.store.upsert_recommendation(rec)
+        self.store.put_blob(
+            f"/users/{user_id}/recommendations/{saved.id}.json",
+            {"score": saved.score, "components": saved.score_components, "threshold": saved.threshold},
+        )
+        return saved
+
+    def delete_user_data(self, user_id: str) -> None:
+        self.store.delete_user_data(user_id)
+        log.info("ajas.learning.purge user_id=%s", user_id)
+
     def _require_recommendation(self, user_id: str, rec_id: str) -> Recommendation:
         try:
             rec = self.store.get_recommendation(rec_id)
@@ -438,8 +500,10 @@ class LearningService:
                 params.source = "global"
                 params.weights = dict(DEFAULT_WEIGHTS)
                 params.score_threshold = DEFAULT_THRESHOLD
+                params.status = "active"
                 params.updated_at = self.clock()
                 self.store.put_params(params)
+                self._push_matching(params)
                 continue
             approvals = sum(1 for row in window if row.decision == "approve")
             rejections = sum(1 for row in window if row.decision == "reject")
@@ -461,27 +525,12 @@ class LearningService:
                 strictness = 1
             new_kw = max(old_kw - cfg.learning_max_weight_delta, min(old_kw + cfg.learning_max_weight_delta, new_kw))
             new_th = max(old_th - cfg.learning_max_threshold_delta, min(old_th + cfg.learning_max_threshold_delta, new_th))
+            new_th = self._respect_shown_floor(uid, old_th, new_th, cfg.learning_max_threshold_delta, cfg.learning_min_shown_per_week)
             new_sem = clamp_unit(1.0 - new_kw)
             current = self._compute_metrics(uid, "7d")
             prior = self._compute_metrics(uid, "7d", offset=True)
             if prior.precision_proxy and current.precision_proxy < prior.precision_proxy * 0.9:
-                if params.previous:
-                    params.weights = dict(params.previous.get("weights") or DEFAULT_WEIGHTS)
-                    params.score_threshold = float(params.previous.get("score_threshold") or DEFAULT_THRESHOLD)
-                params.source = "global"
-                params.status = "active"
-                self.store.put_event(
-                    WeightTuningEvent(
-                        user_id=uid,
-                        old_config_id=params.model_version,
-                        new_config_id=params.model_version,
-                        reason="precision_proxy dropped >10%",
-                        automatic=True,
-                        rolled_back=True,
-                        created_at=self.clock(),
-                    )
-                )
-                self.store.put_params(params)
+                self._rollback(params, uid, reason="precision_proxy dropped >10%")
                 continue
             old_version = params.model_version
             config = WeightConfig(
@@ -498,12 +547,14 @@ class LearningService:
             params.weights = dict(config.weights)
             params.score_threshold = config.threshold
             params.source = "personalized"
-            params.status = "active"
+            params.status = "staged"
             params.strictness = strictness
             params.sample_size = len(window)
             params.model_version = f"{DEFAULT_MODEL_VERSION}-{config.id[:8]}"
             params.effective_at = self.clock()
             params.updated_at = self.clock()
+            self.store.put_params(params)
+            params.status = "active"
             self.store.put_params(params)
             self.store.put_event(
                 WeightTuningEvent(
@@ -519,15 +570,58 @@ class LearningService:
             self._push_matching(params)
             log.info("ajas.learning.tune user_id=%s version=%s", uid, params.model_version)
 
+    def _respect_shown_floor(self, user_id: str, old_th: float, new_th: float, max_delta: float, min_shown: int) -> float:
+        week_start = parse_ts(self.clock()) - timedelta(days=7)
+        recs = [row for row in self.store.list_recommendations(user_id) if parse_ts(row.generated_at) >= week_start]
+        if not recs:
+            return new_th
+
+        def shown_at(threshold: float) -> int:
+            return sum(1 for row in recs if row.score >= threshold)
+
+        candidate = new_th
+        floor_th = max(0.10, old_th - max_delta)
+        while shown_at(candidate) < min_shown and candidate > floor_th + 1e-9:
+            candidate = round(candidate - 0.01, 3)
+        return max(old_th - max_delta, min(old_th + max_delta, candidate))
+
+    def _rollback(self, params: ModelParams, user_id: str, *, reason: str) -> None:
+        if params.previous:
+            params.weights = dict(params.previous.get("weights") or DEFAULT_WEIGHTS)
+            params.score_threshold = float(params.previous.get("score_threshold") or DEFAULT_THRESHOLD)
+        else:
+            params.weights = dict(DEFAULT_WEIGHTS)
+            params.score_threshold = DEFAULT_THRESHOLD
+        params.source = "global"
+        params.status = "active"
+        params.updated_at = self.clock()
+        self.store.put_event(
+            WeightTuningEvent(
+                user_id=user_id,
+                old_config_id=params.model_version,
+                new_config_id=params.model_version,
+                reason=reason,
+                automatic=True,
+                rolled_back=True,
+                created_at=self.clock(),
+            )
+        )
+        self.store.put_params(params)
+        self._push_matching(params)
+        log.info("ajas.learning.rollback user_id=%s reason=%s", user_id, reason)
+
     def _push_matching(self, params: ModelParams) -> None:
         try:
+            from app.matching.runtime import get_service as get_matching_service
+            from app.matching.runtime import try_get_service as try_matching
             from app.matching.store import get_matching_store
 
-            store = get_matching_store()
             pct = int(round(params.score_threshold * 100))
-            store.update_prefs(params.user_id, threshold_pct=pct)
+            get_matching_store().update_prefs(params.user_id, threshold_pct=pct)
+            matching = try_matching() or get_matching_service()
+            matching.invalidate_list_cache(params.user_id)
         except Exception:
-            pass
+            log.exception("ajas.learning.push_matching failed user_id=%s", params.user_id)
 
     def _compute_metrics(self, user_id: str | None, period: str, *, offset: bool = False) -> MetricsSnapshot:
         now = parse_ts(self.clock())
@@ -545,10 +639,12 @@ class LearningService:
                 decisions.extend(self.store.list_decisions(uid))
         recs_w = [row for row in recs if start <= parse_ts(row.generated_at) < end]
         dec_w = [row for row in decisions if start <= parse_ts(row.updated_at) < end]
-        approvals = sum(1 for row in dec_w if row.decision == "approve")
-        rejections = sum(1 for row in dec_w if row.decision == "reject")
-        skips = sum(1 for row in dec_w if row.decision == "skip")
         shown = [row for row in recs_w if row.recommended]
+        shown_ids = {row.id for row in shown}
+        surfaced = [row for row in dec_w if row.recommendation_id in shown_ids] if shown_ids else []
+        approvals = sum(1 for row in surfaced if row.decision == "approve")
+        rejections = sum(1 for row in surfaced if row.decision == "reject")
+        skips = sum(1 for row in dec_w if row.decision == "skip")
         scored_min = [row for row in recs_w if row.score >= MIN_SCORE]
         precision = approvals / max(approvals + rejections, 1) if (approvals + rejections) else 0.0
         recall = len(shown) / max(len(scored_min), 1) if scored_min else 0.0
@@ -583,6 +679,21 @@ class LearningService:
             threshold=(params.score_threshold if params else DEFAULT_THRESHOLD),
             model_version=(params.model_version if params else DEFAULT_MODEL_VERSION),
         )
+
+    def _metrics_public(self, snap: MetricsSnapshot) -> dict:
+        return {
+            "period_start": snap.period_start,
+            "period_end": snap.period_end,
+            "user_id": snap.user_id,
+            "approvals": snap.approvals,
+            "rejections": snap.rejections,
+            "suggestions_shown": snap.suggestions_shown,
+            "precision_proxy": snap.precision_proxy,
+            "recall_proxy": snap.recall_proxy,
+            "at_k": {"3": snap.at_3, "10": snap.at_10},
+            "threshold": snap.threshold,
+            "model_version": snap.model_version,
+        }
 
     def _summary_text(self, snap: MetricsSnapshot, period: str) -> str:
         if snap.decisions == 0:

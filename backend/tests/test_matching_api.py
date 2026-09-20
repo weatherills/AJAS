@@ -652,3 +652,54 @@ def test_keyword_title_outweighs_company():
 def test_cosine_identical_and_orthogonal():
     assert cosine_similarity([1.0, 0.0], [1.0, 0.0]) == 1.0
     assert cosine_similarity([1.0, 0.0], [0.0, 1.0]) == 0.0
+
+
+def test_compute_uses_personalized_learning_weights(monkeypatch, store, queue, clock):
+    from app.learning.memory import InMemoryLearningStore
+    from app.learning.queues import InMemoryJobQueue as LearningQueue
+    from app.learning.runtime import set_service as set_learning
+    from app.learning.service import LearningService
+
+    monkeypatch.setenv("AUTH_MODE", "dev")
+    get_settings.cache_clear()
+    learning_store = InMemoryLearningStore(seed=False)
+    params = learning_store.get_or_create_params(USER)
+    params.source = "personalized"
+    params.weights = {"keyword": 0.8, "semantic": 0.2}
+    params.score_threshold = 0.5
+    learning_store.put_params(params)
+    set_learning(LearningService(store=learning_store, queue=LearningQueue(), local_mode=False))
+    orthogonal = ScriptedEmbedder(
+        table={RESUME: [1.0, 0.0], HIGH_JOB: [0.0, 1.0]},
+        default=[0.0, 1.0],
+    )
+    matching = MatchingService(store=store, queue=queue, embedder=orthogonal, clock=clock)
+    set_service(matching)
+    body = _body(
+        routes.compute_match(
+            _req(
+                "POST",
+                "http://localhost/api/v1/matches/compute",
+                json_body={"resumeText": RESUME, "jobText": HIGH_JOB, "jobId": "job-learned", "threshold": 0},
+            )
+        )
+    )
+    defaulted = _body(
+        routes.compute_match(
+            _req(
+                "POST",
+                "http://localhost/api/v1/matches/compute",
+                json_body={"resumeText": RESUME, "jobText": HIGH_JOB, "jobId": "job-learned-th"},
+            )
+        )
+    )
+    rec = learning_store.get_recommendation(body["matchId"])
+    set_learning(None)
+    set_service(None)
+    get_settings.cache_clear()
+    assert body["breakdown"]["weights"] == {"keyword": 0.8, "semantic": 0.2}
+    assert body["breakdown"]["variant"] == "learned"
+    assert body["score"] == 80.0
+    assert defaulted["thresholdUsed"] == 50
+    assert rec.job_id == "job-learned"
+    assert rec.score == pytest.approx(0.8)
