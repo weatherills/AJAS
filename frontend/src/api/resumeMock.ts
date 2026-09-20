@@ -6,6 +6,7 @@ type Row = ResumeDetail & { blob?: Blob }
 const rows = new Map<string, Row>()
 const files = new Map<string, Blob>()
 const selections = new Map<string, { runId: string; resumeId: string; effectiveAt: string }>()
+let userActiveId: string | null = 'seed-ready'
 const timers = new Map<string, number>()
 
 function now() {
@@ -24,6 +25,7 @@ function toList(row: Row): ResumeListItem {
     lastParseAt: row.lastParseAt,
     fileHash: row.fileHash,
     validated: row.validated,
+    isActive: userActiveId === row.id,
   }
 }
 
@@ -133,10 +135,24 @@ export const mockApi: ResumeApi = {
     if (!row || row.status === 'deleted') throw new Error('cannot select a deleted resume')
     const sel = { runId, resumeId, effectiveAt: now() }
     selections.set(runId, sel)
+    userActiveId = resumeId
     return sel
   },
   async getActive(runId) {
     return selections.get(runId) ?? null
+  },
+  async getUserActive() {
+    if (!userActiveId) return null
+    const row = rows.get(userActiveId)
+    if (!row || row.status === 'deleted') return null
+    return structuredClone(row)
+  },
+  async setUserActive(resumeId) {
+    const row = rows.get(resumeId)
+    if (!row || row.status === 'deleted') throw new Error('cannot select a deleted resume')
+    userActiveId = resumeId
+    row.isActive = true
+    return structuredClone(row)
   },
 }
 
@@ -182,4 +198,5 @@ export function resetMock() {
   rows.clear()
   files.clear()
   selections.clear()
+  userActiveId = null
 }

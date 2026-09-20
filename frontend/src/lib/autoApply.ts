@@ -127,3 +127,9 @@ export function autoApplyDisabledReason(opts: { resumeId?: string | null; jobId?
   if (!opts.jobId) return 'This posting is missing job metadata, so Auto-Apply is unavailable.'
   return null
 }
+
+const APPLIED_STATES = new Set(['queued', 'submitting', 'submitted', 'packaged', 'rate_limited', 'created'])
+
+export function appliedJobIds(items: { job_id: string | null; state: string }[]): string[] {
+  return items.filter((item) => item.job_id && APPLIED_STATES.has(item.state)).map((item) => item.job_id as string)
+}

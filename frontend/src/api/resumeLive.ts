@@ -50,4 +50,12 @@ export const liveResumeApi: ResumeApi = {
     if (resp.status === 404) return null
     return json(resp)
   },
+  async getUserActive() {
+    const resp = await request('/api/resumes/active')
+    if (resp.status === 404) return null
+    return json(resp)
+  },
+  async setUserActive(resumeId) {
+    return json(await request(`/api/resumes/${resumeId}/active`, { method: 'PUT' }))
+  },
 }

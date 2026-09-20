@@ -1,3 +1,6 @@
+import type { ResumeListItem } from '../api/resumeTypes'
+import { canSelectForRun, uiStatus } from './status'
+
 const KEY = 'ajas.apply.prefs'
 const MEMORY = new Map<string, string>()
 
@@ -55,7 +58,19 @@ export function saveApplyPrefs(prefs: ApplyPrefs): void {
   writeStore(JSON.stringify(prefs))
 }
 
-export function chooseResume(resumes: { id: string }[], preferred: string | null | undefined): string | null {
-  if (preferred && resumes.some((item) => item.id === preferred)) return preferred
-  return resumes[0]?.id || preferred || null
+export function chooseResume(
+  resumes: { id: string; status?: string; validated?: boolean }[],
+  preferred: string | null | undefined,
+): string | null {
+  const selectable = resumes.filter((item) => {
+    if (!item.status) return true
+    return canSelectForRun(
+      uiStatus({
+        status: item.status as ResumeListItem['status'],
+        validated: item.validated ?? true,
+      }),
+    )
+  })
+  if (preferred && selectable.some((item) => item.id === preferred)) return preferred
+  return selectable[0]?.id || null
 }

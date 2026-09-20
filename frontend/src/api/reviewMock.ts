@@ -36,7 +36,7 @@ function seedRow(partial: Partial<Row> & Pick<Row, 'matchId' | 'jobTitle' | 'com
     queuedAt: partial.queuedAt || createdAt,
     etag: partial.etag || '1',
     postingUrl: partial.postingUrl || `https://jobs.example.com/${partial.matchId}`,
-    applied: partial.applied ?? status === 'approved',
+    applied: partial.applied ?? false,
     summary: partial.summary === undefined ? 'Strong overlap on platform work, Python, and Azure.' : partial.summary,
     why: partial.why === undefined ? 'The resume matches core backend and platform keywords in this posting.' : partial.why,
     highlights: partial.highlights === undefined ? ['Python services', 'Azure', 'Kubernetes', 'Staff-level scope'] : partial.highlights,
@@ -215,6 +215,48 @@ export function setReviewFailNext(value = true) {
   failNext = value
 }
 
+export function upsertMockReviewMatch(input: {
+  matchId: string
+  jobId: string
+  resumeId: string | null
+  jobTitle?: string
+  company?: string
+  score: number
+  why?: string
+  source?: 'ai' | 'saved'
+}) {
+  seed()
+  const existing = rows.get(input.matchId)
+  if (existing) {
+    existing.score = input.score
+    existing.resumeId = input.resumeId
+    if (input.why) existing.why = input.why
+    existing.updatedAt = stamp(0)
+    return cloneMatch(existing)
+  }
+  return cloneMatch(
+    seedRow({
+      matchId: input.matchId,
+      jobId: input.jobId,
+      resumeId: input.resumeId,
+      jobTitle: input.jobTitle || input.jobId,
+      company: input.company || 'Unknown',
+      score: input.score,
+      source: input.source || 'saved',
+      why: input.why,
+      applied: false,
+    }),
+  )
+}
+
+export function markMockReviewApplied(jobId: string | null | undefined) {
+  if (!jobId) return
+  seed()
+  for (const row of rows.values()) {
+    if (row.jobId === jobId) row.applied = true
+  }
+}
+
 resetReviewMock()
 
 export const mockReviewApi: ReviewApi = {
@@ -272,7 +314,6 @@ export const mockReviewApi: ReviewApi = {
     }
     row.decisions.push(event)
     row.status = body.decision === 'approve' ? 'approved' : 'rejected'
-    row.applied = row.status === 'approved'
     row.latestDecisionId = event.decisionId
     row.decidedAt = now
     row.comment = event.comment

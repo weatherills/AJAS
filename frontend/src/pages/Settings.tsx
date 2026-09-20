@@ -394,6 +394,15 @@ export function SettingsPage() {
       setLearningSample(patched.sample_size)
       setLearningStatus('saved')
       setLearningTick((tick) => tick + 1)
+      const learnedPercent = Math.round(patched.score_threshold * 100)
+      if (Number.isFinite(learnedPercent)) {
+        try {
+          const next = await settingsApi.patch({ matchThreshold: percentToApi(learnedPercent) })
+          applyDoc(next)
+        } catch {
+          /* learning prefs saved even if settings threshold sync fails */
+        }
+      }
       toast('Preferences updated. Takes effect on new suggestions.')
     } catch {
       setLearningStatus('error')

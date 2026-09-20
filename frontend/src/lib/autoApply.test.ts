@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mockAutoApplyApi, resetAutoApplyMock } from '../api/autoApplyMock'
-import { autoApplyDisabledReason, canCancel, canMarkManualSubmitted, copyAnswersText, defaultPostingUrl, inferJobSource, previewCoverLetter, stateLabel, vendorFieldPreview } from './autoApply'
+import { autoApplyDisabledReason, appliedJobIds, canCancel, canMarkManualSubmitted, copyAnswersText, defaultPostingUrl, inferJobSource, previewCoverLetter, stateLabel, vendorFieldPreview } from './autoApply'
 
 describe('auto-apply helpers', () => {
   it('infers vendor from job id or posting URL', () => {
@@ -65,6 +65,7 @@ describe('mock auto-apply api', () => {
     expect(packaged.state).toBe('packaged')
     const listed = await mockAutoApplyApi.list()
     expect(listed.items).toHaveLength(2)
+    expect(appliedJobIds(listed.items)).toContain('job-staff')
     expect(listed.items[0].created_at).toBeTruthy()
     expect(listed.items[0].updated_at).toBeTruthy()
     const detail = await mockAutoApplyApi.get(submitted.request_id)

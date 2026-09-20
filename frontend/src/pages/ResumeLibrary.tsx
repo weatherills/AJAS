@@ -433,6 +433,7 @@ export function ResumeLibrary() {
               disabled={!applyResumeId}
               onClick={async () => {
                 await resumeApi.setActive(runId, applyResumeId)
+                await resumeApi.setUserActive(applyResumeId).catch(() => undefined)
                 localStorage.setItem(LAST_READY_KEY, applyResumeId)
                 localStorage.setItem(RUN_LOCK_KEY, applyResumeId)
                 toast(`Active resume set for ${runId}`)
