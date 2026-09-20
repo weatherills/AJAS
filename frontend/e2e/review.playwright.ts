@@ -9,5 +9,5 @@ test('review queue, shortcuts, archive tab, and empty history copy', async ({ pa
   await page.keyboard.press('Escape')
   await expect(page.getByText('Review keyboard shortcuts')).toHaveCount(0)
   await page.getByRole('tab', { name: 'History' }).click()
-  await expect(page.getByText(/No decisions yet|decisions/i)).toBeVisible()
+  await expect(page.getByRole('table', { name: 'Decision history' })).toBeVisible()
 })

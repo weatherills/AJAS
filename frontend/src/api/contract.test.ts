@@ -28,8 +28,9 @@ describe('frontend live clients', () => {
   it('cover every contracted client path', () => {
     for (const row of endpoints) {
       if (row.client === 'n/a') continue
-      const needle = row.path.replace(/\{[^}]+\}/g, '')
-      expect(liveSources.includes(needle) || liveSources.includes(row.path)).toBe(true)
+      const escaped = row.path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const pattern = new RegExp(escaped.replace(/\\\{[^}]+\\\}/g, '[^\\s\'"`]+'))
+      expect(pattern.test(liveSources), `${row.id} ${row.path}`).toBe(true)
     }
   })
 
