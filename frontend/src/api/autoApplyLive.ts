@@ -32,4 +32,14 @@ export const liveAutoApplyApi: AutoApplyApi = {
     )
     return data.text
   },
+  async previewCoverLetter(body) {
+    const data = await json<{ text: string; source?: string }>(
+      await request('/api/v1/auto-apply/cover-letter/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    )
+    return { text: data.text, source: data.source || 'ai' }
+  },
 }

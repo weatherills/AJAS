@@ -1644,6 +1644,20 @@ select:focus-visible {
   gap: 0.55rem !important;
 }
 
+.apply-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0.85rem;
+}
+
+.apply-cover-gen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0.35rem 0 0.75rem;
+}
+
 .status-submitted,
 .status-ready {
   color: #34d399;
