@@ -136,7 +136,12 @@ describe('mock matching api', () => {
     expect((row.score || 0) < 70).toBe(true)
     expect(row.persisted).toBe(true)
     expect(row.matchId).toBe('match-des')
-    const saved = await mockReviewApi.list('saved', { ...DEFAULT_FILTERS, source: 'saved', status: 'awaiting' })
+    const saved = await mockReviewApi.list('saved', {
+      ...DEFAULT_FILTERS,
+      source: 'saved',
+      status: 'awaiting',
+      minScore: 0,
+    })
     expect(saved.items.some((item) => item.matchId === 'match-des')).toBe(true)
   })
 
