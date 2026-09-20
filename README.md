@@ -71,6 +71,18 @@ npm run dev                         # http://localhost:3000
 ### Local Azure services
 
 Azurite emulates Blob/Queue/Table storage locally (started automatically by the
-Cloud Agent environment; otherwise run `azurite`). Cosmos DB and Azure OpenAI
-are managed services — provide connection settings in
-`backend/local.settings.json` when implementing features that use them.
+Cloud Agent environment; otherwise `docker compose up azurite`). Cosmos DB is
+optional locally: unit tests use an in-memory store unless
+`COSMOS_CONNECTION_STRING` is set. The Linux Cosmos emulator is
+`docker compose --profile cosmos up`.
+
+Database bootstrap, migrations, seeds, backup, and troubleshooting live in
+[`docs/db-setup.md`](docs/db-setup.md). The committed container catalog is
+[`docs/cosmos.schema.md`](docs/cosmos.schema.md).
+
+```bash
+python scripts/provision_storage.py --dry-run
+python scripts/provision_storage.py --blobs --queues
+python scripts/migrate_storage.py
+python scripts/backup_storage.py export --dest var/backup
+```

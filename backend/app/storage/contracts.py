@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 ENDPOINTS: tuple[dict[str, str], ...] = (
     {"id": "health", "method": "GET", "path": "/api/health", "client": "n/a"},
     {"id": "review.list", "method": "GET", "path": "/api/v1/matches", "client": "reviewLive.list"},
@@ -39,6 +41,65 @@ def frontend_path_needles() -> list[str]:
         path = row["path"]
         if row["client"] == "n/a":
             continue
-        # Strip /api prefix variants for source search: live clients use /api/...
         needles.append(path.split("?")[0])
     return needles
+
+
+# Frontend ReviewMatch (camelCase) ← Cosmos `matches` document (snake_case).
+FE_DB_REVIEW_MATCH: dict[str, str] = {
+    "matchId": "id",
+    "jobId": "job_id",
+    "resumeId": "resume_id",
+    "jobTitle": "job_title",
+    "company": "company",
+    "location": "location",
+    "score": "ai_score",
+    "suggestion": "suggestion",
+    "status": "status",
+    "source": "source",
+    "createdAt": "created_at",
+    "updatedAt": "updated_at",
+    "queuedAt": "queued_at",
+    "etag": "etag",
+    "why": "why",
+    "summary": "summary",
+    "latestDecisionId": "latest_decision_id",
+    "decidedAt": "decided_at",
+}
+
+FE_DB_DECISION: dict[str, str] = {
+    "decisionId": "id",
+    "matchId": "match_id",
+    "decision": "decision",
+    "comment": "comment",
+    "createdAt": "created_at",
+    "aiScore": "ai_score",
+    "suggestion": "suggestion",
+}
+
+
+def project_review_match(row: dict[str, Any]) -> dict[str, Any]:
+    """Shape a Cosmos matches document as the frontend ReviewMatch DTO."""
+    status = str(row.get("status") or "pending").lower()
+    if status == "pending":
+        status = "pending"
+    return {
+        "matchId": row.get("id"),
+        "jobId": row.get("job_id"),
+        "resumeId": row.get("resume_id"),
+        "jobTitle": row.get("job_title"),
+        "company": row.get("company"),
+        "location": row.get("location"),
+        "score": row.get("ai_score"),
+        "suggestion": row.get("suggestion") or "none",
+        "status": status if status in {"pending", "approved", "rejected"} else "pending",
+        "source": row.get("source") or "ai",
+        "createdAt": row.get("created_at"),
+        "updatedAt": row.get("updated_at"),
+        "queuedAt": row.get("queued_at"),
+        "etag": row.get("etag") or row.get("_etag"),
+        "why": row.get("why"),
+        "summary": row.get("summary"),
+        "latestDecisionId": row.get("latest_decision_id"),
+        "decidedAt": row.get("decided_at"),
+    }

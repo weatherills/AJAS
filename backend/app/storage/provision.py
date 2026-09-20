@@ -7,7 +7,7 @@ from typing import Any
 
 from app.config import get_settings
 from app.storage.blob_layout import blob_container_names, config_blob_containers
-from app.storage.catalog import container_catalog, cosmos_create_kwargs, ensure_all_containers
+from app.storage.catalog import container_catalog, cosmos_create_kwargs
 from app.storage.queue_schemas import all_queue_names, config_queue_names
 
 
@@ -16,7 +16,10 @@ def provision_cosmos(database: Any | None = None) -> list[str]:
         from app.storage.cosmos import get_database
 
         database = get_database()
-    return ensure_all_containers(database)
+    from app.storage.migrate import apply_migrations
+
+    result = apply_migrations(database)
+    return list(result["containers"])
 
 
 def provision_blobs(service: Any | None = None) -> list[str]:
@@ -72,6 +75,8 @@ def provision_all(*, cosmos: bool = True, blobs: bool = True, queues: bool = Tru
         "dry_run": dry_run,
         "configQueues": list(config_queue_names()),
         "configBlobs": list(config_blob_containers()),
+        "schemaVersion": "ajas.cosmos.v1",
+        "throughput": "serverless",
     }
     if dry_run:
         plan["status"] = "planned"
@@ -89,17 +94,25 @@ def provision_all(*, cosmos: bool = True, blobs: bool = True, queues: bool = Tru
 
 
 def connection_info() -> dict[str, str]:
-    """Env values Functions should receive after provisioning."""
+    """Env values Functions should receive after provisioning. Secrets stay as 'set'."""
+    from app.storage.identity import assert_no_plaintext_secrets, resolve_blob_auth, resolve_cosmos_auth, resolve_queue_auth
+
     settings = get_settings()
-    return {
+    info = {
         "COSMOS_CONNECTION_STRING": _present(settings.cosmos_connection_string),
+        "COSMOS_ENDPOINT": _present(settings.cosmos_endpoint),
         "COSMOS_DATABASE": settings.cosmos_database,
+        "COSMOS_AUTH": resolve_cosmos_auth(settings)["mode"],
         "BLOB_CONNECTION_STRING": _present(settings.blob_connection_string),
+        "BLOB_AUTH": resolve_blob_auth(settings)["mode"],
         "QUEUE_CONNECTION_STRING": _present(settings.queue_connection_string),
+        "QUEUE_AUTH": resolve_queue_auth(settings)["mode"],
         "COSMOS_CONTAINERS": str(len(container_catalog())),
         "BLOB_CONTAINERS": ",".join(blob_container_names()),
         "QUEUE_NAMES": ",".join(all_queue_names()),
     }
+    assert_no_plaintext_secrets(info)
+    return info
 
 
 def _present(value: str) -> str:

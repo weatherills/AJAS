@@ -2,8 +2,17 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections import defaultdict
 from typing import Any
+
+from app.storage.dal import ConflictError
+
+
+def _etag_of(payload: dict[str, Any]) -> str:
+    blob = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
+    return hashlib.sha1(blob).hexdigest()[:16]
 
 
 class FakeQueryResult(list):
@@ -19,33 +28,82 @@ class FakeItemResult(dict):
         self.headers = {"x-ms-request-charge": str(charge)}
 
 
+class FakeScripts:
+    def __init__(self) -> None:
+        self.sprocs: dict[str, dict[str, Any]] = {}
+        self.udfs: dict[str, dict[str, Any]] = {}
+        self.triggers: dict[str, dict[str, Any]] = {}
+
+    def create_stored_procedure(self, body: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:
+        payload = dict(body or kwargs.get("body") or {})
+        if payload["id"] in self.sprocs:
+            raise ValueError(f"sproc exists {payload['id']}")
+        self.sprocs[payload["id"]] = payload
+        return payload
+
+    def upsert_stored_procedure(self, body: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:
+        payload = dict(body or kwargs.get("body") or {})
+        self.sprocs[payload["id"]] = payload
+        return payload
+
+    def create_user_defined_function(self, body: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:
+        payload = dict(body or kwargs.get("body") or {})
+        self.udfs[payload["id"]] = payload
+        return payload
+
+    def upsert_user_defined_function(self, body: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:
+        payload = dict(body or kwargs.get("body") or {})
+        self.udfs[payload["id"]] = payload
+        return payload
+
+    def create_trigger(self, body: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:
+        payload = dict(body or kwargs.get("body") or {})
+        self.triggers[payload["id"]] = payload
+        return payload
+
+    def upsert_trigger(self, body: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:
+        payload = dict(body or kwargs.get("body") or {})
+        self.triggers[payload["id"]] = payload
+        return payload
+
+
 class FakeContainer:
     def __init__(self, pk_field: str) -> None:
         self.pk_field = pk_field.lstrip("/")
         self.items: dict[tuple[str, str], dict[str, Any]] = {}
+        self.scripts = FakeScripts()
 
     def create_item(self, body: dict[str, Any] | None = None, **kwargs: Any) -> FakeItemResult:
         payload = dict(body or kwargs.get("body") or {})
         key = (str(payload.get(self.pk_field) or payload.get("id")), str(payload["id"]))
         if key in self.items:
             raise ValueError(f"conflict {key}")
-        self.items[key] = dict(payload)
-        return FakeItemResult(payload)
+        stored = dict(payload)
+        stored["_etag"] = _etag_of(stored)
+        self.items[key] = stored
+        return FakeItemResult(stored)
 
     def upsert_item(self, body: dict[str, Any] | None = None, **kwargs: Any) -> FakeItemResult:
         payload = dict(body or kwargs.get("body") or {})
         key = (str(payload.get(self.pk_field) or payload.get("id")), str(payload["id"]))
-        self.items[key] = dict(payload)
-        return FakeItemResult(payload)
+        stored = dict(payload)
+        stored["_etag"] = _etag_of(stored)
+        self.items[key] = stored
+        return FakeItemResult(stored)
 
-    def replace_item(self, item: str, body: dict[str, Any], **kwargs: Any) -> FakeItemResult:
-        payload = dict(body)
+    def replace_item(self, item: str, body: dict[str, Any] | None = None, **kwargs: Any) -> FakeItemResult:
+        payload = dict(body or {})
         pk = str(payload.get(self.pk_field) or payload.get("id"))
         key = (pk, item if isinstance(item, str) else payload["id"])
         if key not in self.items:
             raise KeyError(item)
-        self.items[key] = payload
-        return FakeItemResult(payload)
+        expected = kwargs.get("etag") or kwargs.get("if_match")
+        if expected and self.items[key].get("_etag") != expected:
+            raise ConflictError(f"etag mismatch for {item}")
+        stored = dict(payload)
+        stored["_etag"] = _etag_of(stored)
+        self.items[key] = stored
+        return FakeItemResult(stored)
 
     def read_item(self, item: str, partition_key: Any, **kwargs: Any) -> FakeItemResult:
         key = (str(partition_key), str(item))
@@ -75,6 +133,19 @@ class FakeContainer:
         return FakeQueryResult(window, continuation=token, charge=2.0)
 
 
+def _pk_for_container(name: str) -> str:
+    try:
+        from app.storage.catalog import container_by_id
+
+        return container_by_id(name).partition_key.lstrip("/")
+    except Exception:
+        if name in {"users", "job_postings_canonical", "email_templates", "job_sources", "schema_migrations"}:
+            return "id"
+        if name in {"email_threads", "email_messages"}:
+            return "email_account_id"
+        return "user_id"
+
+
 class FakeDatabase:
     def __init__(self) -> None:
         self._containers: dict[str, FakeContainer] = {}
@@ -82,12 +153,7 @@ class FakeDatabase:
 
     def get_container_client(self, name: str) -> FakeContainer:
         if name not in self._containers:
-            pk = "user_id"
-            if name in {"users", "job_postings_canonical", "email_templates", "job_sources"}:
-                pk = "id"
-            elif name in {"email_threads", "email_messages"}:
-                pk = "email_account_id"
-            self._containers[name] = FakeContainer(pk)
+            self._containers[name] = FakeContainer(_pk_for_container(name))
         return self._containers[name]
 
     def create_container_if_not_exists(self, **kwargs: Any) -> None:

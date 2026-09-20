@@ -1,13 +1,13 @@
 """Cosmos DB client factory.
 
-Thin, lazily-constructed accessor so feature code shares a single configured
-client. Containers and query logic are added per feature (resumes, job_postings,
-matches, run selections, ...).
+Uses a connection string (local/CI), an emulator key, or DefaultAzureCredential
+against COSMOS_ENDPOINT. Secrets are never logged.
 """
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from app.config import get_settings
+from app.storage.identity import resolve_cosmos_auth
 
 if TYPE_CHECKING:  # pragma: no cover - import only for type checkers
     from azure.cosmos import CosmosClient, DatabaseProxy
@@ -19,9 +19,16 @@ def get_cosmos_client() -> "CosmosClient":
     from azure.cosmos import CosmosClient
 
     settings = get_settings()
-    if not settings.cosmos_connection_string:
-        raise RuntimeError("COSMOS_CONNECTION_STRING is not configured.")
-    return CosmosClient.from_connection_string(settings.cosmos_connection_string)
+    auth = resolve_cosmos_auth(settings)
+    if auth["mode"] == "connection_string":
+        return CosmosClient.from_connection_string(settings.cosmos_connection_string)
+    if auth["mode"] == "key":
+        return CosmosClient(url=settings.cosmos_endpoint, credential=settings.cosmos_key)
+    if auth["mode"] == "aad":
+        from app.storage.identity import default_azure_credential
+
+        return CosmosClient(url=settings.cosmos_endpoint, credential=default_azure_credential())
+    raise RuntimeError("Cosmos is not configured. Set COSMOS_CONNECTION_STRING or COSMOS_ENDPOINT.")
 
 
 def get_database() -> "DatabaseProxy":

@@ -49,4 +49,9 @@ func start           # serves http://localhost:7071/api/health
 cd backend
 pip install -r requirements-dev.txt
 pytest
+pytest tests/test_storage_*.py --cov=app/storage --cov-fail-under=80
 ```
+
+Database bootstrap (`python scripts/provision_storage.py --dry-run`) and
+emulator notes are in the repo-root `docs/db-setup.md`.
+

@@ -28,11 +28,12 @@ def main() -> int:
     parser.add_argument("--all", action="store_true", help="cosmos + blobs + queues")
     parser.add_argument("--dry-run", action="store_true", help="print the plan without calling Azure")
     parser.add_argument("--seed", action="store_true", help="upsert deterministic seed documents")
+    parser.add_argument("--migrate", action="store_true", help="apply container + stored-logic migrations")
     args = parser.parse_args()
 
-    live = args.cosmos or args.blobs or args.queues or args.all
+    live = args.cosmos or args.blobs or args.queues or args.all or args.migrate
     dry_run = args.dry_run or not live
-    include_cosmos = args.all or args.cosmos or not live
+    include_cosmos = args.all or args.cosmos or args.migrate or not live
     include_blobs = args.all or args.blobs or not live
     include_queues = args.all or args.queues or not live
     from app.storage.provision import cosmos_kwargs_preview, provision_all

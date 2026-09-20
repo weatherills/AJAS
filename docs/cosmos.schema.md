@@ -44,6 +44,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `resume_variants` | auto_apply | ResumeVariant | `/user_id` | — | — | 1 |
 | `resumes` | resumes | Resume | `/user_id` | — | — | 1 |
 | `run_resume_selections` | resumes | RunResumeSelection | `/run_id` | — | — | 1 |
+| `schema_migrations` | platform | SchemaMigration | `/id` | — | — | 1 |
 | `settings_audit_log` | settings | SettingsAudit | `/user_id` | — | — | 2 |
 | `source_fetch_runs` | job_sources | SourceFetchRun | `/source_tenant_id` | — | — | 1 |
 | `source_rate_limits` | job_sources | SourceRateLimit | `/source_tenant_id` | — | — | 2 |
@@ -315,6 +316,12 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - Logical unique: `run_id`
 - RU: Document id equals run_id so uniqueness is free.
 
+### `schema_migrations`
+
+- Query: point read by version id
+- Logical unique: `id`
+- RU: Tiny catalog of applied schema versions; one row per version.
+
 ### `settings_audit_log`
 
 - Query: user_id + created_at desc
@@ -393,34 +400,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 
 ### `weight_config`
 
-- Query: p
-- Query: o
-- Query: i
-- Query: n
-- Query: t
-- Query:  
-- Query: r
-- Query: e
-- Query: a
-- Query: d
-- Query: ;
-- Query:  
-- Query: i
-- Query: s
-- Query: _
-- Query: a
-- Query: c
-- Query: t
-- Query: i
-- Query: v
-- Query: e
-- Query:  
-- Query: l
-- Query: o
-- Query: o
-- Query: k
-- Query: u
-- Query: p
+- Query: point read; is_active lookup
 - Logical unique: `weight_config_id`
 - RU: Catalog sized; at most one is_active=true (app-enforced).
 

@@ -78,6 +78,13 @@ _OVERLAYS: dict[str, _Overlay] = {
         relationships=("root for all user-scoped containers",),
         ru_note="PK /id so point reads ~1 RU. Email uniqueness is enforced in the DAL (PK is not /email).",
     ),
+    "schema_migrations": _Overlay(
+        feature="platform",
+        entity="SchemaMigration",
+        logical_unique=("id",),
+        query_patterns=("point read by version id",),
+        ru_note="Tiny catalog of applied schema versions; one row per version.",
+    ),
     "event_log": _Overlay(
         feature="platform",
         entity="EventLog",
@@ -391,7 +398,7 @@ _OVERLAYS: dict[str, _Overlay] = {
         feature="learning",
         entity="WeightConfig",
         logical_unique=("weight_config_id",),
-        query_patterns=("point read; is_active lookup"),
+        query_patterns=("point read; is_active lookup",),
         indexing_policy=_policy([{"path": "/is_active", "order": "ascending"}]),
         ru_note="Catalog sized; at most one is_active=true (app-enforced).",
     ),
@@ -520,6 +527,11 @@ def _platform_specs() -> list[dict[str, Any]]:
             "partition_key": "/user_id",
             "indexing_policy": _OVERLAYS["event_log"].indexing_policy,
         },
+        {
+            "id": "schema_migrations",
+            "partition_key": "/id",
+            "indexing_policy": _policy([{"path": "/applied_at", "order": "descending"}]),
+        },
     ]
 
 
@@ -583,6 +595,7 @@ def cosmos_create_kwargs(spec: ContainerSpec) -> dict[str, Any]:
         kwargs["unique_key_policy"] = policy
     if spec.default_ttl is not None:
         kwargs["default_ttl"] = spec.default_ttl
+    # Serverless accounts reject offer_throughput; omit RU so local + cloud stay idempotent.
     return kwargs
 
 

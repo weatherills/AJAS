@@ -121,6 +121,31 @@ def _event() -> dict[str, Any]:
     ).model_dump()
 
 
+def _settings() -> dict[str, Any]:
+    return {
+        "id": SEED_USER_ID,
+        "user_id": SEED_USER_ID,
+        "schemaVersion": 1,
+        "theme": "system",
+        "greenhouse_enabled": True,
+        "lever_enabled": True,
+        "auto_apply_enabled": False,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
+def _job_source() -> dict[str, Any]:
+    return {
+        "id": "greenhouse",
+        "name": "Greenhouse",
+        "kind": "board",
+        "is_enabled": True,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
 def seed_documents() -> dict[str, list[dict[str, Any]]]:
     """Map of container id → documents. Safe to upsert repeatedly."""
     return {
@@ -131,6 +156,8 @@ def seed_documents() -> dict[str, list[dict[str, Any]]]:
         "email_threads": [_thread()],
         "matches": [_match()],
         "event_log": [_event()],
+        "user_settings": [_settings()],
+        "job_sources": [_job_source()],
     }
 
 

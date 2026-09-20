@@ -14,6 +14,12 @@ DEFAULT_PAGE_SIZE = 25
 MAX_PAGE_SIZE = 100
 
 
+class ConflictError(RuntimeError):
+    """Optimistic concurrency: If-Match etag did not match the stored document."""
+
+    status_code = 412
+
+
 class ContainerClient(Protocol):
     def create_item(self, body: dict[str, Any], **kwargs: Any) -> Any: ...
 
@@ -119,9 +125,24 @@ class CosmosDAL:
         result = self._run(lambda: client.upsert_item(body=body))
         return dict(result) if result is not None else dict(body)
 
-    def replace(self, container: str, item_id: str, body: dict[str, Any]) -> dict[str, Any]:
+    def replace(
+        self,
+        container: str,
+        item_id: str,
+        body: dict[str, Any],
+        *,
+        etag: str | None = None,
+    ) -> dict[str, Any]:
         client = self.container(container)
-        result = self._run(lambda: client.replace_item(item=item_id, body=body))
+
+        def _go() -> Any:
+            kwargs: dict[str, Any] = {"item": item_id, "body": body}
+            if etag:
+                kwargs["etag"] = etag
+                kwargs["if_match"] = etag
+            return client.replace_item(**kwargs)
+
+        result = self._run(_go)
         return dict(result) if result is not None else dict(body)
 
     def delete(self, container: str, item_id: str, *, partition_key: Any) -> None:

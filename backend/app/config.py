@@ -14,13 +14,18 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(case_sensitive=False, extra="ignore")
 
     # Cosmos DB (JobPosting / Match / Application / resume metadata, etc.)
+    # Prefer COSMOS_ENDPOINT + managed identity in cloud; connection string is local/CI.
     cosmos_connection_string: str = ""
+    cosmos_endpoint: str = ""
+    cosmos_key: str = ""
     cosmos_database: str = "ajas"
 
     # Azure Storage (Blob for resumes/raw payloads, Queues for async pipelines).
-    # Defaults target the local Azurite emulator.
+    # Defaults target the local Azurite emulator. Account URLs enable AAD in prod.
     blob_connection_string: str = "UseDevelopmentStorage=true"
+    blob_account_url: str = ""
     queue_connection_string: str = "UseDevelopmentStorage=true"
+    queue_account_url: str = ""
 
     # Azure OpenAI (embeddings + summaries for matching).
     azure_openai_endpoint: str = ""

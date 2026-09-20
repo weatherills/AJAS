@@ -55,6 +55,14 @@ jobs:
           mkdir -p /tmp/azurite
           azurite --silent --location /tmp/azurite --blobPort 10000 --queuePort 10001 --tablePort 10002 &
           sleep 4
+      - name: Bootstrap storage
+        env:
+          AZURITE: '1'
+          BLOB_CONNECTION_STRING: UseDevelopmentStorage=true
+          QUEUE_CONNECTION_STRING: UseDevelopmentStorage=true
+        run: |
+          python scripts/provision_storage.py --dry-run
+          python scripts/provision_storage.py --blobs --queues
       - name: Storage tests
         env:
           AZURITE: '1'
