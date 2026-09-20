@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     cosmos_endpoint: str = ""
     cosmos_key: str = ""
     cosmos_database: str = "ajas"
+    cosmos_consistency: str = "Session"
+    cosmos_preferred_regions: str = ""
+    cosmos_throughput_mode: str = "serverless"
+    cosmos_autoscale_max_ru: int = 4000
+    cosmos_daily_ru_budget: int = 250_000
+    cosmos_query_strict: bool = True
 
     # Azure Storage (Blob for resumes/raw payloads, Queues for async pipelines).
     # Defaults target the local Azurite emulator. Account URLs enable AAD in prod.

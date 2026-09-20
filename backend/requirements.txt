@@ -2,7 +2,7 @@
 azure-functions
 
 # Azure data services (Cosmos DB, Blob, Queue) and auth
-azure-cosmos
+azure-cosmos==4.17.1
 azure-storage-blob
 azure-storage-queue
 azure-identity

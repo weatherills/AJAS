@@ -625,17 +625,22 @@ def render_cosmos_schema() -> str:
         "Unique-key paths omit the partition key (Cosmos unique keys are per partition).",
         "TTL is reserved for transient scrape/ingest/webhook rows; durable history is purged by job.",
         "",
-        "| Container | Feature | Entity | Partition key | TTL (days) | Unique keys | Composites |",
-        "|---|---|---|---|---|---|---|",
+        "| Container | Feature | Entity | Partition key | TTL (days) | Unique keys | Composites | Consistency | Owner | Retention | PII |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
     ]
+    from app.storage.catalog_map import ops_row
+
     for spec in container_catalog():
         ttl = "" if spec.default_ttl is None else str(spec.default_ttl // 86_400)
         unique = "; ".join("+".join(paths) for paths in spec.unique_keys) or "—"
         composites = len(spec.indexing_policy.get("compositeIndexes") or [])
+        meta = ops_row(spec)
+        pii = ",".join(meta["pii"]) or "—"
+        retention = "—" if meta["retentionDays"] is None else str(meta["retentionDays"])
         lines.append(
-            f"| `{spec.id}` | {spec.feature} | {spec.entity} | `{spec.partition_key}` | {ttl or '—'} | {unique} | {composites} |"
+            f"| `{spec.id}` | {spec.feature} | {spec.entity} | `{spec.partition_key}` | {ttl or '—'} | {unique} | {composites} | {meta['consistency']} | {meta['owner']} | {retention} | {pii} |"
         )
-    lines.extend(["", "## Query patterns and RU notes", ""])
+    lines.extend(["", "## Query patterns, RU notes, and API mapping", ""])
     for spec in container_catalog():
         lines.append(f"### `{spec.id}`")
         lines.append("")
@@ -648,6 +653,11 @@ def render_cosmos_schema() -> str:
         if spec.logical_unique:
             lines.append(f"- Logical unique: `{', '.join(spec.logical_unique)}`")
         lines.append(f"- RU: {spec.ru_note}")
+        api = meta["api"] if (meta := ops_row(spec)) else ()
+        if api:
+            lines.append(f"- API: {'; '.join(api)}")
+        lines.append(f"- DAL: `{meta['dal']}`")
+        lines.append(f"- SLA: {meta['sla']}")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 

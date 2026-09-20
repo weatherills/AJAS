@@ -12,6 +12,7 @@ MAIL_ATTACHMENTS = "mail-attachments"
 AUTO_APPLY = "auto-apply-artifacts"
 COVER_LETTERS = "cover-letters"
 MATCH_EXPLANATIONS = "match-explanations"
+COSMOS_ARCHIVE = "cosmos-archive"
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,14 @@ BLOB_CONTAINERS: tuple[BlobContainer, ...] = (
         key_pattern="{user_id}/{match_id}/explanation.json",
         metadata_tags=("user_id", "match_id", "model_version_id"),
         delete_after_days=547,
+    ),
+    BlobContainer(
+        name=COSMOS_ARCHIVE,
+        purpose="Cold Cosmos JSON for logs and audit past the hot retention window",
+        key_pattern="{container}/{yyyy}/{mm}/{id}.json",
+        metadata_tags=("container", "id", "archived_at"),
+        cool_after_days=30,
+        delete_after_days=2555,
     ),
 )
 

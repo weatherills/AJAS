@@ -29,11 +29,11 @@ CRITICAL_CONTAINERS: tuple[str, ...] = (
 
 
 def export_container(dal: Any, container: str) -> list[dict[str, Any]]:
-    page = dal.query(container, "SELECT * FROM c", max_items=100)
+    page = dal.query(container, "SELECT * FROM c", max_items=100, allow_cross_partition=True)
     rows = list(page.items)
     token = page.continuation
     while token:
-        page = dal.query(container, "SELECT * FROM c", continuation=token, max_items=100)
+        page = dal.query(container, "SELECT * FROM c", continuation=token, max_items=100, allow_cross_partition=True)
         rows.extend(page.items)
         token = page.continuation
     return rows

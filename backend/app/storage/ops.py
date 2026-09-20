@@ -12,6 +12,7 @@ ALERT_THRESHOLDS: dict[str, float] = {
     "cosmos.ru_per_sec": 4000,
     "cosmos.throttles": 5,
     "cosmos.latency_ms": 250,
+    "cosmos.daily_ru": 250_000,
     "queue.depth": 500,
     "queue.dlq_depth": 1,
     "blob.bytes": float(50 * 1024 * 1024 * 1024),
@@ -83,6 +84,9 @@ def evaluate_alerts(snapshot: dict[str, Any] | None = None) -> list[dict[str, An
     blobs = snap.get("blobs") or {}
     if float(blobs.get("totalBytes") or 0) >= ALERT_THRESHOLDS["blob.bytes"]:
         alerts.append(_alert("blob.bytes", blobs.get("totalBytes"), "Blob storage growth"))
+    daily = float((snap.get("cosmos") or {}).get("dailyRu") or 0)
+    if daily and daily >= ALERT_THRESHOLDS["cosmos.daily_ru"]:
+        alerts.append(_alert("cosmos.daily_ru", daily, "Daily RU budget exhausted"))
     return alerts
 
 

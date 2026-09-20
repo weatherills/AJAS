@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from typing import Any, Callable, Protocol
 
 from app.metrics import increment
+from app.storage.chaos import maybe_raise
+from app.storage.query_lint import enforce_lint, lint_query, record_profile
 
 RETRY_STATUSES = frozenset({429, 408, 503})
 DEFAULT_RETRIES = 4
@@ -80,6 +82,7 @@ def with_retry(fn: Callable[[], Any], *, retries: int = DEFAULT_RETRIES, delay: 
     wait = delay
     for attempt in range(max(1, retries)):
         try:
+            maybe_raise()
             return fn()
         except Exception as exc:  # noqa: BLE001 — SDK raises a mix of types
             last = exc
@@ -115,10 +118,15 @@ class CosmosDAL:
         result = self._run(lambda: client.create_item(body=body))
         return dict(result) if result is not None else dict(body)
 
-    def read(self, container: str, item_id: str, *, partition_key: Any) -> dict[str, Any]:
+    def read(self, container: str, item_id: str, *, partition_key: Any, redact: bool = False) -> dict[str, Any]:
         client = self.container(container)
         result = self._run(lambda: client.read_item(item=item_id, partition_key=partition_key))
-        return dict(result)
+        payload = dict(result)
+        if redact:
+            from app.storage.pii import redact as redact_doc
+
+            return redact_doc(container, payload)
+        return payload
 
     def upsert(self, container: str, body: dict[str, Any]) -> dict[str, Any]:
         client = self.container(container)
@@ -158,7 +166,16 @@ class CosmosDAL:
         partition_key: Any | None = None,
         continuation: str | None = None,
         max_items: int = DEFAULT_PAGE_SIZE,
+        allow_cross_partition: bool = False,
+        redact: bool = False,
     ) -> Page:
+        lint = lint_query(
+            container,
+            query,
+            partition_key=partition_key,
+            allow_cross_partition=allow_cross_partition,
+        )
+        enforce_lint(lint)
         size = max(1, min(int(max_items), MAX_PAGE_SIZE))
         client = self.container(container)
 
@@ -181,6 +198,11 @@ class CosmosDAL:
         items, token, charge = _materialize_query(result, size)
         if charge:
             increment("cosmos.ru", charge)
+        record_profile(container, query, ru=charge or 1.0, partition_key=partition_key)
+        if redact:
+            from app.storage.pii import redact as redact_doc
+
+            items = [redact_doc(container, item) for item in items]
         return Page(items=items, continuation=token, request_charge=charge)
 
 

@@ -63,4 +63,4 @@ python scripts/backup_storage.py import --dest var/backup
 - **Stale schemaVersion** — `sp_safeUpsert` / `safe_upsert_document` reject writes with a lower version than the stored document.
 - **Etag mismatch** — replace with `If-Match` failed; re-read and retry.
 
-See `docs/cosmos.schema.md` for containers, partition keys, TTL, unique keys, and RU notes.
+See `docs/cosmos.schema.md` for containers, partition keys, TTL, unique keys, RU notes, API/DAL mapping, consistency, and ownership. Operations (autoscale, lint, keys, backfill, archive): `docs/cosmos-ops.md`.
