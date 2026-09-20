@@ -68,7 +68,7 @@ class MatchRun(BaseModel):
     keyword_norm: float = 0.0
     semantic_raw: float = 0.0
     semantic_norm: float = 0.0
-    overall_score_pct: int = 0
+    overall_score_pct: float = 0.0
     threshold_used: int
     meets_threshold: bool = False
     decision_saved: bool = False

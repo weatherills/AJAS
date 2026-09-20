@@ -694,6 +694,7 @@ class CrawlService:
                     "resumeText": resume_text,
                     "jobIds": job_ids,
                     "jobTexts": job_texts,
+                    "explanation": True,
                 },
             )
             if hasattr(matching, "drain"):

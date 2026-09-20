@@ -185,6 +185,15 @@ def list_match_results(req: func.HttpRequest) -> func.HttpResponse:
         return _handle(exc)
 
 
+@bp.route(route="v1/match-results/{matchId}", methods=["GET"])
+def get_match_result(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = _auth(req)
+        return json_response(get_service().get_match(principal.user_id, req.route_params["matchId"]))
+    except Exception as exc:
+        return _handle(exc)
+
+
 @bp.route(route="v1/operations/{operationId}", methods=["GET"])
 def get_operation(req: func.HttpRequest) -> func.HttpResponse:
     try:
