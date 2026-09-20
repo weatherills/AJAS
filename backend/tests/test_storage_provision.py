@@ -101,7 +101,7 @@ def test_provision_cosmos_blobs_queues_against_fakes():
 def test_provision_script_dry_run_exits_zero(tmp_path, monkeypatch, capsys):
     import runpy
 
-    script = Path("/workspace/backend/scripts/provision_storage.py")
+    script = Path(__file__).resolve().parents[1] / "scripts" / "provision_storage.py"
     monkeypatch.setattr("sys.argv", ["provision_storage.py", "--dry-run", "--seed"])
     try:
         runpy.run_path(str(script), run_name="__main__")

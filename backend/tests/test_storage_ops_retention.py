@@ -132,7 +132,7 @@ def test_retention_and_gdpr_delete_write_audit():
 
 
 def test_ci_workflow_runs_emulator_tests_and_fails_on_coverage_drop():
-    text = Path("/workspace/.github/workflows/ci.yml").read_text()
+    text = Path(__file__).resolve().parents[2].joinpath(".github", "workflows", "ci.yml").read_text()
     assert "storage-emulator" in text
     assert "azurite" in text
     assert "--cov=app/storage" in text
