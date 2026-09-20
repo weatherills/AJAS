@@ -25,6 +25,38 @@ jobs:
       - name: Test
         run: pytest -n auto --cov=app --cov-report=term --cov-fail-under=40
 
+  storage-emulator:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements-dev.txt pytest-cov
+          npm install -g azurite
+      - name: Start Azurite
+        run: |
+          mkdir -p /tmp/azurite
+          azurite --silent --location /tmp/azurite --blobPort 10000 --queuePort 10001 --tablePort 10002 &
+          sleep 4
+      - name: Storage tests
+        env:
+          AZURITE: '1'
+          BLOB_CONNECTION_STRING: UseDevelopmentStorage=true
+          QUEUE_CONNECTION_STRING: UseDevelopmentStorage=true
+        run: pytest tests/test_storage_*.py --cov=app/storage --cov-report=term --cov-fail-under=80
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:

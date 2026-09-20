@@ -14,6 +14,15 @@ resource cosmos 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
   properties: {
     databaseAccountOfferType: 'Standard'
     locations: [{ locationName: resourceGroup().location, failoverPriority: 0 }]
+    capabilities: [{ name: 'EnableServerless' }]
+  }
+}
+
+resource cosmosDb 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-11-15' = {
+  parent: cosmos
+  name: 'ajas'
+  properties: {
+    resource: { id: 'ajas' }
   }
 }
 

@@ -15,6 +15,7 @@ from app.pagination import DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT
 from app.rbac import permissions_payload, require_role
 from app.request_context import bind_request
 from app.tracing import snapshot as trace_snapshot
+from app.storage.seeds import seed_documents
 
 bp = func.Blueprint()
 
@@ -75,8 +76,21 @@ def ops_seed(req: func.HttpRequest) -> func.HttpResponse:
                 "seeded": True,
                 "userId": principal.user_id,
                 "note": "In-memory demo stores populate on first read. Restarting Functions clears them.",
+                "storage": {key: len(rows) for key, rows in seed_documents().items()},
             }
         )
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/ops/storage", methods=["GET"])
+def ops_storage(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = get_principal(req)
+        require_role(principal, "admin")
+        from app.storage.ops import dashboard
+
+        return json_response(dashboard())
     except Exception as exc:
         return _handle(exc)
 
