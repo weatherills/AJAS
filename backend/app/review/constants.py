@@ -74,13 +74,30 @@ MATCHES_INDEXING: Final[dict] = _policy(
         {"path": "/decided_at", "order": "descending"},
     ],
     [{"path": "/latest_decision_id", "order": "ascending"}],
+    [
+        {"path": "/job_id", "order": "ascending"},
+        {"path": "/resume_id", "order": "ascending"},
+    ],
+    [
+        {"path": "/user_id", "order": "ascending"},
+        {"path": "/ai_score", "order": "descending"},
+        {"path": "/saved", "order": "ascending"},
+    ],
 )
 DECISIONS_INDEXING: Final[dict] = _policy(
     [
         {"path": "/user_id", "order": "ascending"},
         {"path": "/match_id", "order": "ascending"},
         {"path": "/decided_at", "order": "descending"},
-    ]
+    ],
+    [
+        {"path": "/user_id", "order": "ascending"},
+        {"path": "/created_at", "order": "descending"},
+    ],
+    [
+        {"path": "/user_id", "order": "ascending"},
+        {"path": "/job_id", "order": "ascending"},
+    ],
 )
 AUDIT_INDEXING: Final[dict] = _policy(
     [
@@ -92,5 +109,9 @@ AUDIT_INDEXING: Final[dict] = _policy(
         {"path": "/user_id", "order": "ascending"},
         {"path": "/event_type", "order": "ascending"},
         {"path": "/occurred_at", "order": "descending"},
+    ],
+    [
+        {"path": "/user_id", "order": "ascending"},
+        {"path": "/created_at", "order": "descending"},
     ],
 )

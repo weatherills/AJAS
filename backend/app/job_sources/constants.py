@@ -96,6 +96,13 @@ CANONICAL_INDEXING: Final[dict] = _policy(
     [{"path": "/canonical_key", "order": "ascending"}],
     [{"path": "/dedupe_hash", "order": "ascending"}],
     [{"path": "/is_active", "order": "ascending"}],
+    [
+        {"path": "/company", "order": "ascending"},
+        {"path": "/posted_at", "order": "descending"},
+    ],
+    [{"path": "/location", "order": "ascending"}],
+    [{"path": "/source", "order": "ascending"}],
+    [{"path": "/apply_url", "order": "ascending"}],
 )
 LINKS_INDEXING: Final[dict] = _policy(
     [{"path": "/canonical_id", "order": "ascending"}],

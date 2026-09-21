@@ -123,6 +123,15 @@ ATTEMPTS_INDEXING: Final[dict] = _policy(
         {"path": "/vendor", "order": "ascending"},
         {"path": "/source_application_id", "order": "ascending"},
     ],
+    [
+        {"path": "/user_id", "order": "ascending"},
+        {"path": "/status", "order": "ascending"},
+        {"path": "/updated_at", "order": "descending"},
+    ],
+    [
+        {"path": "/job_id", "order": "ascending"},
+        {"path": "/resume_id", "order": "ascending"},
+    ],
 )
 PACKAGES_INDEXING: Final[dict] = _policy([{"path": "/auto_apply_id", "order": "ascending"}])
 VARIANTS_INDEXING: Final[dict] = _policy(

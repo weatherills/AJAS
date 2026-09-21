@@ -86,8 +86,12 @@ def ready(req: func.HttpRequest) -> func.HttpResponse:
     bind_request(req)
     if req.method.upper() == "OPTIONS":
         return json_response({"ok": True})
+    from app.storage.bootstrap import bootstrap_on_startup
+
     body = _status_payload()
-    body["ready"] = True
+    boot = bootstrap_on_startup()
+    body["ready"] = boot.get("status") in {"ready", "skipped"}
+    body["cosmosBootstrap"] = boot
     return json_response(body)
 
 

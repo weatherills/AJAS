@@ -10,6 +10,10 @@ hydrate_from_key_vault()
 
 import azure.functions as func
 
+from app.storage.bootstrap import bootstrap_on_startup
+
+bootstrap_on_startup()
+
 from app.features.auth_session import bp as auth_session_bp
 from app.features.auto_apply import bp as auto_apply_bp
 from app.features.email import bp as email_bp
@@ -61,3 +65,9 @@ def retention_purge(timer: func.TimerRequest) -> None:
     from app.storage.jobs import run_retention_job
 
     run_retention_job(None)
+
+
+@app.timer_trigger(schedule="0 15 4 * * *", arg_name="timer", run_on_startup=True)
+def cosmos_auto_bootstrap(timer: func.TimerRequest) -> None:
+    """Create the Cosmos database and catalog if they were missing on host start."""
+    bootstrap_on_startup()

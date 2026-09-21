@@ -26,6 +26,8 @@ from app.resumes.constants import (
     RESUMES_PARTITION_KEY,
     SELECTIONS_CONTAINER,
     SELECTIONS_PARTITION_KEY,
+    VERSIONS_CONTAINER,
+    VERSIONS_PARTITION_KEY,
 )
 from app.resumes.cosmos_store import CosmosResumeStore
 from app.resumes.models import new_id
@@ -161,17 +163,18 @@ def _snapshot(*, skills=None, experiences=None, educations=None, contact=None) -
 
 def test_container_specs_match_prd():
     specs = {spec["id"]: spec for spec in container_specs()}
-    assert set(specs) == {RESUMES_CONTAINER, SELECTIONS_CONTAINER, EVENTS_CONTAINER}
+    assert set(specs) == {RESUMES_CONTAINER, SELECTIONS_CONTAINER, EVENTS_CONTAINER, VERSIONS_CONTAINER}
     assert specs[RESUMES_CONTAINER]["partition_key"] == RESUMES_PARTITION_KEY
     assert specs[SELECTIONS_CONTAINER]["partition_key"] == SELECTIONS_PARTITION_KEY
     assert specs[EVENTS_CONTAINER]["partition_key"] == EVENTS_PARTITION_KEY
+    assert specs[VERSIONS_CONTAINER]["partition_key"] == VERSIONS_PARTITION_KEY
     assert specs[RESUMES_CONTAINER]["indexing_policy"] == RESUMES_INDEXING_POLICY
     composite = specs[RESUMES_CONTAINER]["indexing_policy"]["compositeIndexes"][0]
     paths = [part["path"] for part in composite]
     assert paths == ["/user_id", "/is_deleted", "/updated_at"]
 
 
-def test_ensure_resume_containers_creates_three():
+def test_ensure_resume_containers_creates_four():
     from app.resumes.containers import ensure_resume_containers
 
     db = FakeDatabase()
@@ -180,6 +183,7 @@ def test_ensure_resume_containers_creates_three():
         RESUMES_CONTAINER,
         SELECTIONS_CONTAINER,
         EVENTS_CONTAINER,
+        VERSIONS_CONTAINER,
     }
     resumes = next(item for item in db.created if item["id"] == RESUMES_CONTAINER)
     assert resumes["partition_key"].path == "/user_id"

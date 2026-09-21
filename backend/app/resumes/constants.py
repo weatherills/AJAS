@@ -32,10 +32,12 @@ CHILD_SOURCES: Final[frozenset[str]] = frozenset({"parsed", "manual"})
 RESUMES_CONTAINER: Final[str] = "resumes"
 SELECTIONS_CONTAINER: Final[str] = "run_resume_selections"
 EVENTS_CONTAINER: Final[str] = "resume_parse_events"
+VERSIONS_CONTAINER: Final[str] = "resume_versions"
 
 RESUMES_PARTITION_KEY: Final[str] = "/user_id"
 SELECTIONS_PARTITION_KEY: Final[str] = "/run_id"
 EVENTS_PARTITION_KEY: Final[str] = "/resume_id"
+VERSIONS_PARTITION_KEY: Final[str] = "/resume_id"
 
 # Logical Cosmos indexing from the Database PRD.
 RESUMES_INDEXING_POLICY: Final[dict] = {
@@ -79,6 +81,24 @@ EVENTS_INDEXING_POLICY: Final[dict] = {
             {"path": "/resume_id", "order": "ascending"},
             {"path": "/created_at", "order": "descending"},
         ]
+    ],
+}
+
+VERSIONS_INDEXING_POLICY: Final[dict] = {
+    "indexingMode": "consistent",
+    "automatic": True,
+    "includedPaths": [{"path": "/*"}],
+    "excludedPaths": [{"path": "/\"_etag\"/?"}],
+    "compositeIndexes": [
+        [
+            {"path": "/resume_id", "order": "ascending"},
+            {"path": "/version", "order": "descending"},
+        ],
+        [
+            {"path": "/resume_id", "order": "ascending"},
+            {"path": "/is_deleted", "order": "ascending"},
+            {"path": "/created_at", "order": "descending"},
+        ],
     ],
 }
 

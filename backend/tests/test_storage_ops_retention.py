@@ -25,7 +25,7 @@ def test_seed_documents_are_deterministic():
     assert first["auto_apply_attempts"][0]["job_id"] == first["job_postings_canonical"][0]["id"]
     dal = CosmosDAL(FakeDatabase())
     counts = apply_seed(dal)
-    assert counts["matches"] == 1
+    assert counts["matches"] == 2
     again = apply_seed(dal)
     assert again == counts
 

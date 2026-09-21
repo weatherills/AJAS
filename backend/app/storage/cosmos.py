@@ -61,5 +61,7 @@ def get_cosmos_client() -> "CosmosClient":
 
 
 def get_database() -> "DatabaseProxy":
-    """Return the configured application database proxy."""
-    return get_cosmos_client().get_database_client(get_settings().cosmos_database)
+    """Return the application database, creating it when Cosmos reports it missing."""
+    from app.storage.bootstrap import ensure_cosmos_database
+
+    return ensure_cosmos_database()

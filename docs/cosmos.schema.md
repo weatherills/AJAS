@@ -7,11 +7,11 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | Container | Feature | Entity | Partition key | TTL (days) | Unique keys | Composites | Consistency | Owner | Retention | PII |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `apply_packages` | auto_apply | ApplyPackage | `/auto_apply_id` | — | — | 1 | Session | apply | — | — |
-| `audit_events` | review | AuditEvent | `/user_id` | — | — | 2 | Session | review | — | — |
-| `auto_apply_attempts` | auto_apply | Application | `/user_id` | — | — | 2 | Session | apply | 547 | — |
+| `audit_events` | review | AuditEvent | `/user_id` | — | — | 3 | Session | review | 365 | — |
+| `auto_apply_attempts` | auto_apply | Application | `/user_id` | — | /job_id+/resume_id | 4 | Session | apply | 547 | — |
 | `cover_letters` | auto_apply | CoverLetter | `/user_id` | — | — | 1 | Session | apply | — | — |
 | `crawl_schedules` | job_sources | CrawlSchedule | `/source_tenant_id` | — | — | 1 | Session | ingest | — | — |
-| `decision_events` | review | DecisionEvent | `/user_id` | — | — | 1 | Session | review | — | — |
+| `decision_events` | review | DecisionEvent | `/user_id` | — | — | 3 | Session | review | 365 | — |
 | `decision_log` | learning | DecisionLog | `/user_id` | — | /recommendation_id | 2 | Session | learning | — | — |
 | `email_accounts` | mail | EmailAccount | `/id` | — | — | 0 | Session | mail | — | address,smtp_address |
 | `email_attachments` | mail | EmailAttachment | `/email_account_id` | — | — | 0 | Session | mail | — | — |
@@ -19,7 +19,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `email_drafts` | mail | EmailDraft | `/email_account_id` | — | — | 0 | Session | mail | — | — |
 | `email_ingestion_events` | mail | EmailIngestionEvent | `/email_account_id` | 30 | — | 0 | Session | mail | 30 | — |
 | `email_link_audits` | mail | EmailLinkAudit | `/email_account_id` | — | — | 0 | Session | mail | — | — |
-| `email_messages` | mail | EmailMessage | `/email_account_id` | — | /graph_message_id | 3 | Session | mail | 180 | from_address,to_addresses |
+| `email_messages` | mail | EmailMessage | `/email_account_id` | — | /graph_message_id | 4 | Session | mail | 180 | from_address,to_addresses,body_text,body_html |
 | `email_recipients` | mail | EmailRecipient | `/email_account_id` | — | — | 0 | Session | mail | — | address |
 | `email_templates` | mail | EmailTemplate | `/id` | — | — | 0 | Session | mail | — | — |
 | `email_threads` | mail | MailThread | `/email_account_id` | — | /graph_conversation_id | 3 | Session | mail | 180 | — |
@@ -30,18 +30,19 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `graph_subscriptions` | mail | GraphSubscription | `/email_account_id` | — | — | 0 | Session | mail | — | — |
 | `graph_sync_cursors` | mail | GraphSyncCursor | `/email_account_id` | — | — | 0 | Session | mail | — | — |
 | `job_posting_links` | job_sources | JobPostingLink | `/raw_id` | — | — | 2 | Session | ingest | — | — |
-| `job_postings_canonical` | job_sources | JobPosting | `/id` | — | — | 3 | Session | ingest | 365 | — |
+| `job_postings_canonical` | job_sources | JobPosting | `/id` | — | — | 7 | Session | ingest | 365 | — |
 | `job_postings_raw` | job_sources | JobPostingRaw | `/source_tenant_id` | 90 | — | 4 | Session | ingest | 365 | — |
 | `job_sources` | job_sources | JobSource | `/id` | — | — | 1 | Session | ingest | — | — |
 | `match_explanations` | matching | MatchExplanation | `/match_id` | — | — | 1 | Session | matching | — | — |
 | `match_runs` | matching | MatchRun | `/user_id` | — | /idempotency_key | 5 | Session | matching | 547 | — |
-| `matches` | review | ReviewMatch | `/user_id` | — | /job_id+/resume_id | 7 | Session | review | 365 | — |
+| `matches` | review | ReviewMatch | `/user_id` | — | /job_id+/resume_id | 9 | Session | review | 365 | — |
 | `metrics_snapshot` | learning | MetricsSnapshot | `/scope_ref` | — | — | 2 | Session | learning | — | — |
 | `model_params` | learning | ModelParams | `/user_id` | — | — | 1 | Session | learning | — | — |
 | `model_registry` | matching | ModelRegistry | `/id` | — | — | 1 | Session | matching | — | — |
 | `recommendations` | learning | Recommendation | `/user_id` | — | — | 3 | Session | learning | — | — |
 | `resume_parse_events` | resumes | ResumeParseEvent | `/resume_id` | — | — | 1 | Session | resumes | — | — |
 | `resume_variants` | auto_apply | ResumeVariant | `/user_id` | — | — | 1 | Session | apply | — | — |
+| `resume_versions` | resumes | ResumeVersion | `/resume_id` | — | — | 2 | Session | resumes | 730 | — |
 | `resumes` | resumes | Resume | `/user_id` | — | — | 1 | Session | resumes | 730 | original_filename |
 | `run_resume_selections` | resumes | RunResumeSelection | `/run_id` | — | — | 1 | Session | resumes | — | — |
 | `schema_migrations` | platform | SchemaMigration | `/id` | — | — | 1 | Strong | platform | — | — |
@@ -82,10 +83,11 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 
 ### `auto_apply_attempts`
 
-- Query: user_id + status
+- Query: user_id + status + updated_at
 - Query: vendor + source_application_id
 - Rel: 1—N packages, submits, status_events, webhooks
-- RU: Queue of in-flight attempts is a partitioned status filter ~3 RU.
+- Logical unique: `user_id, job_id, resume_id`
+- RU: Queue of in-flight attempts is a partitioned status filter ~3 RU. Unique (job_id, resume_id) per user.
 - API: GET /api/v1/auto-apply/requests; POST /api/v1/auto-apply/requests
 - DAL: `CatalogRepository(auto_apply_attempts)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
@@ -109,7 +111,117 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 ### `decision_events`
 
 - Query: match_id + decided_at desc
-- Rel: N—1 matches; append-only
+- Query: user_id + created_at desc
+- Query: user_id + job_id
+- Rel: N
+- Rel: —
+- Rel: 1
+- Rel:  
+- Rel: m
+- Rel: a
+- Rel: t
+- Rel: c
+- Rel: h
+- Rel: e
+- Rel: s
+- Rel: ;
+- Rel:  
+- Rel: a
+- Rel: p
+- Rel: p
+- Rel: e
+- Rel: n
+- Rel: d
+- Rel: -
+- Rel: o
+- Rel: n
+- Rel: l
+- Rel: y
+- Rel:  
+- Rel: w
+- Rel: i
+- Rel: t
+- Rel: h
+- Rel:  
+- Rel: s
+- Rel: u
+- Rel: p
+- Rel: e
+- Rel: r
+- Rel: s
+- Rel: e
+- Rel: d
+- Rel: e
+- Rel: s
+- Rel: _
+- Rel: d
+- Rel: e
+- Rel: c
+- Rel: i
+- Rel: s
+- Rel: i
+- Rel: o
+- Rel: n
+- Rel: _
+- Rel: i
+- Rel: d
+- Rel: ;
+- Rel:  
+- Rel: u
+- Rel: n
+- Rel: i
+- Rel: q
+- Rel: u
+- Rel: e
+- Rel:  
+- Rel: (
+- Rel: u
+- Rel: s
+- Rel: e
+- Rel: r
+- Rel: ,
+- Rel:  
+- Rel: j
+- Rel: o
+- Rel: b
+- Rel: )
+- Rel:  
+- Rel: i
+- Rel: s
+- Rel:  
+- Rel: l
+- Rel: o
+- Rel: g
+- Rel: i
+- Rel: c
+- Rel: a
+- Rel: l
+- Rel:  
+- Rel: f
+- Rel: o
+- Rel: r
+- Rel:  
+- Rel: t
+- Rel: h
+- Rel: e
+- Rel:  
+- Rel: c
+- Rel: u
+- Rel: r
+- Rel: r
+- Rel: e
+- Rel: n
+- Rel: t
+- Rel:  
+- Rel: d
+- Rel: e
+- Rel: c
+- Rel: i
+- Rel: s
+- Rel: i
+- Rel: o
+- Rel: n
+- Logical unique: `user_id, job_id`
 - RU: History reads stay in the user partition; cheap in-partition queries.
 - API: GET /api/v1/matches; POST /api/v1/matches/{matchId}/decision
 - DAL: `CatalogRepository(decision_events)`
@@ -185,6 +297,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - Query: thread + received_at desc
 - Query: delivery_status
 - Query: graph_message_id
+- Query: body_hash
 - Logical unique: `email_account_id, graph_message_id`
 - RU: Idempotent Graph ingest relies on unique graph_message_id per account.
 - API: GET /api/v1/email/threads; POST /api/v1/threads/{threadId}/reply
@@ -289,9 +402,12 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - Query: canonical_key
 - Query: dedupe_hash
 - Query: is_active
+- Query: company + posted_at desc
+- Query: location
+- Query: source
 - Rel: 1—N raw via links; 1—N Application/matches
-- Logical unique: `canonical_key, dedupe_hash`
-- RU: PK /id so dedup lookups use indexed fields (~3 RU) not partition scans.
+- Logical unique: `canonical_key, dedupe_hash, company+apply_url`
+- RU: PK /id so dedup lookups use indexed fields (~3 RU) not partition scans. company+url uniqueness is app-enforced via canonical_key.
 - API: GET /api/v1/jobs
 - DAL: `CatalogRepository(job_postings_canonical)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
@@ -405,6 +521,77 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - RU: Reuse across attempts; user partition.
 - API: GET /api/v1/auto-apply/requests; POST /api/v1/auto-apply/requests
 - DAL: `CatalogRepository(resume_variants)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `resume_versions`
+
+- Query: resume_id + version desc
+- Query: resume_id + is_deleted
+- Rel: N
+- Rel: —
+- Rel: 1
+- Rel:  
+- Rel: r
+- Rel: e
+- Rel: s
+- Rel: u
+- Rel: m
+- Rel: e
+- Rel: s
+- Rel: ;
+- Rel:  
+- Rel: b
+- Rel: l
+- Rel: o
+- Rel: b
+- Rel:  
+- Rel: b
+- Rel: y
+- Rel: t
+- Rel: e
+- Rel: s
+- Rel:  
+- Rel: l
+- Rel: i
+- Rel: v
+- Rel: e
+- Rel:  
+- Rel: i
+- Rel: n
+- Rel:  
+- Rel: S
+- Rel: t
+- Rel: o
+- Rel: r
+- Rel: a
+- Rel: g
+- Rel: e
+- Rel: ,
+- Rel:  
+- Rel: t
+- Rel: h
+- Rel: i
+- Rel: s
+- Rel:  
+- Rel: r
+- Rel: o
+- Rel: w
+- Rel:  
+- Rel: i
+- Rel: s
+- Rel:  
+- Rel: m
+- Rel: e
+- Rel: t
+- Rel: a
+- Rel: d
+- Rel: a
+- Rel: t
+- Rel: a
+- Logical unique: `resume_id, version`
+- RU: Soft-deleted versions set document ttl=90d. Library point-in-time restore reads this container.
+- API: GET /api/resumes
+- DAL: `CatalogRepository(resume_versions)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
 ### `resumes`

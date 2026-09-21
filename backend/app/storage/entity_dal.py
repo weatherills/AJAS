@@ -14,7 +14,7 @@ from app.storage.sprocs import apply_timestamps, enqueue_hint_for, safe_upsert_d
 
 T = TypeVar("T", bound=BaseModel)
 
-SOFT_DELETE_CONTAINERS = frozenset({"users", "resumes", "email_accounts", "user_settings"})
+SOFT_DELETE_CONTAINERS = frozenset({"users", "resumes", "resume_versions", "email_accounts", "user_settings"})
 
 
 class StoredDocument(BaseModel):
@@ -109,6 +109,10 @@ class CatalogRepository:
         row = self.get(item_id, partition_key=partition_key)
         row["is_deleted"] = True
         row["deleted_at"] = datetime.now(timezone.utc).isoformat()
+        if self.container == "resume_versions":
+            from app.storage.epic import VERSION_TTL_SECONDS
+
+            row["ttl"] = VERSION_TTL_SECONDS
         return self._dal.replace(self.container, item_id, row, etag=row.get("_etag") or row.get("etag"))
 
     def list_partition(self, partition_key: Any, *, continuation: str | None = None, max_items: int = 25) -> Page:

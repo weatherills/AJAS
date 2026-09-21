@@ -132,6 +132,7 @@ def test_endpoint_contract_paths_exist_in_backend():
 
 def test_retention_timer_is_registered(function_names):
     assert "retention_purge" in function_names
+    assert "cosmos_auto_bootstrap" in function_names
     assert "ops_queues" in function_names
     assert "ops_retention" in function_names
 

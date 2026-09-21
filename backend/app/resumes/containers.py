@@ -14,6 +14,9 @@ from app.resumes.constants import (
     SELECTIONS_CONTAINER,
     SELECTIONS_INDEXING_POLICY,
     SELECTIONS_PARTITION_KEY,
+    VERSIONS_CONTAINER,
+    VERSIONS_INDEXING_POLICY,
+    VERSIONS_PARTITION_KEY,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -21,7 +24,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def container_specs() -> list[dict[str, Any]]:
-    """Return the three Resume Management containers and their Cosmos policies."""
+    """Return Resume Management containers and their Cosmos policies."""
     return [
         {
             "id": RESUMES_CONTAINER,
@@ -39,6 +42,11 @@ def container_specs() -> list[dict[str, Any]]:
             "id": EVENTS_CONTAINER,
             "partition_key": EVENTS_PARTITION_KEY,
             "indexing_policy": EVENTS_INDEXING_POLICY,
+        },
+        {
+            "id": VERSIONS_CONTAINER,
+            "partition_key": VERSIONS_PARTITION_KEY,
+            "indexing_policy": VERSIONS_INDEXING_POLICY,
         },
     ]
 

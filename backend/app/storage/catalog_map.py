@@ -44,6 +44,9 @@ CONTAINER_RETENTION_KEY = {
     "auto_apply_attempts": "applications",
     "webhook_callbacks": "webhooks",
     "status_events": "applications",
+    "resume_versions": "resumes",
+    "decision_events": "matches",
+    "audit_events": "matches",
 }
 
 SLA = "p95 in-partition < 250ms; queue page of 25 ≤ 5 RU"

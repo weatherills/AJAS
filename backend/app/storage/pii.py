@@ -16,7 +16,7 @@ MASK_PATHS: dict[str, tuple[str, ...]] = {
     "users": ("email",),
     "email_accounts": ("address", "smtp_address"),
     "email_connections": ("account_email",),
-    "email_messages": ("from_address", "to_addresses"),
+    "email_messages": ("from_address", "to_addresses", "body_text", "body_html"),
     "email_recipients": ("address",),
     "resumes": ("original_filename",),
 }

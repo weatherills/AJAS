@@ -44,6 +44,8 @@ python scripts/migrate_storage.py                      # containers + sprocs/UDF
 
 Schema version is `ajas.cosmos.v1`, stored in `schema_migrations`. Throughput is **serverless** (no dedicated RU on create). Stored logic lives in `backend/app/storage/scripts/` (`sp_safeUpsert`, `udf_avgScore`, `trg_setTimestamps`, `trg_enqueueHint`).
 
+On Functions start, if Cosmos is configured and the database is missing (404), `app.storage.bootstrap` creates it, applies the catalog, and (when `COSMOS_AUTO_SEED=true`) loads seed documents. Disable with `COSMOS_AUTO_BOOTSTRAP=false`. The `/api/ready` probe reports `cosmosBootstrap`.
+
 ## Backup / restore
 
 Durable containers (applications, matches, decisions, settings) export as JSONL:

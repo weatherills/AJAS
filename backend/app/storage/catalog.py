@@ -116,8 +116,9 @@ _OVERLAYS: dict[str, _Overlay] = {
     "decision_events": _Overlay(
         feature="review",
         entity="DecisionEvent",
-        query_patterns=("match_id + decided_at desc",),
-        relationships=("N—1 matches; append-only",),
+        logical_unique=("user_id", "job_id"),
+        query_patterns=("match_id + decided_at desc", "user_id + created_at desc", "user_id + job_id"),
+        relationships=("N—1 matches; append-only with supersedes_decision_id; unique (user, job) is logical for the current decision"),
         ru_note="History reads stay in the user partition; cheap in-partition queries.",
     ),
     "audit_events": _Overlay(
@@ -211,6 +212,14 @@ _OVERLAYS: dict[str, _Overlay] = {
         relationships=("append-only parse/edit log",),
         ru_note="PK resume_id keeps the timeline in one partition.",
     ),
+    "resume_versions": _Overlay(
+        feature="resumes",
+        entity="ResumeVersion",
+        logical_unique=("resume_id", "version"),
+        query_patterns=("resume_id + version desc", "resume_id + is_deleted"),
+        relationships=("N—1 resumes; blob bytes live in Storage, this row is metadata"),
+        ru_note="Soft-deleted versions set document ttl=90d. Library point-in-time restore reads this container.",
+    ),
     "job_sources": _Overlay(
         feature="job_sources",
         entity="JobSource",
@@ -259,10 +268,10 @@ _OVERLAYS: dict[str, _Overlay] = {
     "job_postings_canonical": _Overlay(
         feature="job_sources",
         entity="JobPosting",
-        logical_unique=("canonical_key", "dedupe_hash"),
-        query_patterns=("canonical_key", "dedupe_hash", "is_active"),
+        logical_unique=("canonical_key", "dedupe_hash", "company+apply_url"),
+        query_patterns=("canonical_key", "dedupe_hash", "is_active", "company + posted_at desc", "location", "source"),
         relationships=("1—N raw via links; 1—N Application/matches",),
-        ru_note="PK /id so dedup lookups use indexed fields (~3 RU) not partition scans.",
+        ru_note="PK /id so dedup lookups use indexed fields (~3 RU) not partition scans. company+url uniqueness is app-enforced via canonical_key.",
     ),
     "job_posting_links": _Overlay(
         feature="job_sources",
@@ -303,7 +312,7 @@ _OVERLAYS: dict[str, _Overlay] = {
         entity="EmailMessage",
         unique_keys=(("/graph_message_id",),),
         logical_unique=("email_account_id", "graph_message_id"),
-        query_patterns=("thread + received_at desc", "delivery_status", "graph_message_id"),
+        query_patterns=("thread + received_at desc", "delivery_status", "graph_message_id", "body_hash"),
         ru_note="Idempotent Graph ingest relies on unique graph_message_id per account.",
     ),
     "email_recipients": _Overlay(
@@ -432,9 +441,11 @@ _OVERLAYS: dict[str, _Overlay] = {
     "auto_apply_attempts": _Overlay(
         feature="auto_apply",
         entity="Application",
-        query_patterns=("user_id + status", "vendor + source_application_id"),
+        unique_keys=(("/job_id", "/resume_id"),),
+        logical_unique=("user_id", "job_id", "resume_id"),
+        query_patterns=("user_id + status + updated_at", "vendor + source_application_id"),
         relationships=("1—N packages, submits, status_events, webhooks",),
-        ru_note="Queue of in-flight attempts is a partitioned status filter ~3 RU.",
+        ru_note="Queue of in-flight attempts is a partitioned status filter ~3 RU. Unique (job_id, resume_id) per user.",
     ),
     "apply_packages": _Overlay(
         feature="auto_apply",

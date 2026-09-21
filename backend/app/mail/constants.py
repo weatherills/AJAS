@@ -90,4 +90,5 @@ MESSAGES_INDEXING: Final[dict] = _policy(
     ],
     [{"path": "/graph_message_id", "order": "ascending"}],
     [{"path": "/delivery_status", "order": "ascending"}],
+    [{"path": "/body_hash", "order": "ascending"}],
 )
