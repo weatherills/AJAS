@@ -180,6 +180,8 @@ class UrllibGraphHttp:
 class HttpGraphClient:
     """Microsoft Graph client used when OAuth client id/secret are configured."""
 
+    MAX_DELTA_PAGES = 50
+
     def __init__(
         self,
         *,
@@ -228,6 +230,16 @@ class HttpGraphClient:
         return _graph_message_from_json(payload)
 
     def delta(self, account_id: str, token: str | None) -> tuple[list[GraphMessage], str]:
+        collected: list[GraphMessage] = []
+        next_token = token
+        for _ in range(self.MAX_DELTA_PAGES):
+            page, next_token, kind = self._delta_page(account_id, next_token)
+            collected.extend(page)
+            if kind != "next":
+                break
+        return collected, next_token or utc_now()
+
+    def _delta_page(self, account_id: str, token: str | None) -> tuple[list[GraphMessage], str, str]:
         if token and str(token).startswith("http"):
             url = str(token)
         elif token:
@@ -236,11 +248,16 @@ class HttpGraphClient:
             url = f"{self._base}/me/mailFolders/inbox/messages/delta"
         status, payload = self._request("GET", url, account_id=account_id)
         if status >= 400:
-            return [], token or utc_now()
+            return [], token or utc_now(), "error"
         rows = payload.get("value") or []
         messages = [_graph_message_from_json(item) for item in rows if isinstance(item, dict)]
-        next_token = payload.get("@odata.deltaLink") or payload.get("@odata.nextLink") or token or utc_now()
-        return messages, str(next_token)
+        delta_link = payload.get("@odata.deltaLink")
+        next_link = payload.get("@odata.nextLink")
+        if delta_link:
+            return messages, str(delta_link), "delta"
+        if next_link:
+            return messages, str(next_link), "next"
+        return messages, token or utc_now(), "done"
 
     def send_reply(
         self,

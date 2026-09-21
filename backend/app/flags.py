@@ -7,6 +7,11 @@ from app.config import get_settings
 FLAG_DEFAULTS: dict[str, bool] = {
     "indeed_adapter": False,
     "linkedin_adapter": False,
+    "linkedin_easy_apply": False,
+    "greenhouse_harvest": False,
+    "gmail_adapter": False,
+    "google_drive": False,
+    "slack_notify": False,
     "glassdoor_adapter": False,
     "wellfound_adapter": False,
     "workday_adapter": False,
@@ -28,6 +33,11 @@ def feature_flags() -> dict[str, bool]:
     return {
         "indeed_adapter": bool(settings.flag_indeed_adapter),
         "linkedin_adapter": bool(settings.flag_linkedin_adapter),
+        "linkedin_easy_apply": bool(settings.flag_linkedin_easy_apply),
+        "greenhouse_harvest": bool(settings.flag_greenhouse_harvest),
+        "gmail_adapter": bool(settings.flag_gmail_adapter),
+        "google_drive": bool(settings.flag_google_drive),
+        "slack_notify": bool(settings.flag_slack_notify),
         "glassdoor_adapter": bool(settings.flag_glassdoor_adapter),
         "wellfound_adapter": bool(settings.flag_wellfound_adapter),
         "workday_adapter": bool(settings.flag_workday_adapter),

@@ -5,6 +5,15 @@ from __future__ import annotations
 DEFAULT_MAP = {
     "greenhouse": {"full_name": "full_name", "email": "email", "phone": "phone", "resume": "resume"},
     "lever": {"full_name": "name", "email": "email", "phone": "phone", "resume": "resume"},
+    "linkedin": {
+        "full_name": "name",
+        "email": "email",
+        "phone": "phone",
+        "location": "location",
+        "resume": "resume",
+        "cover_letter": "coverLetter",
+        "linkedin_url": "linkedinProfile",
+    },
 }
 
 _OVERRIDES: dict[str, dict[str, str]] = {}

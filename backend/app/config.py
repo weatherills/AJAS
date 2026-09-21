@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     auto_apply_live_submit: bool = False
     greenhouse_submit_api_key: str = ""
     lever_submit_api_key: str = ""
+    greenhouse_harvest_api_key: str = ""
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    slack_webhook_url: str = ""
 
     microsoft_tenant: str = "common"
     microsoft_client_id: str = ""
@@ -130,6 +134,11 @@ class Settings(BaseSettings):
 
     flag_indeed_adapter: bool = False
     flag_linkedin_adapter: bool = False
+    flag_linkedin_easy_apply: bool = False
+    flag_greenhouse_harvest: bool = False
+    flag_gmail_adapter: bool = False
+    flag_google_drive: bool = False
+    flag_slack_notify: bool = False
     flag_glassdoor_adapter: bool = False
     flag_wellfound_adapter: bool = False
     flag_workday_adapter: bool = False

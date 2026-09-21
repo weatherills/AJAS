@@ -9,7 +9,13 @@ Operating notes for ingestion, matching, apply, and email workers.
 - **Indeed / LinkedIn** — optional fixture adapters (`FLAG_INDEED_ADAPTER` /
   `FLAG_LINKEDIN_ADAPTER`). Live HTML scraping is out of the Job Source PRD and
   is not implemented. `FLAG_SITE_POLICY_CONSENT` plus robots.txt must pass
-  before any HTTP.
+  before any HTTP. When the flags are on, `POST /api/v1/integrations/ingest/{indeed|linkedin}`
+  normalizes, dedupes, detects Easy Apply vs external, and records ingest
+  metrics. Refresh: timer `integrations_refresh` (no-op while flags are off).
+- **Greenhouse Harvest** — optional application-status reader
+  (`FLAG_GREENHOUSE_HARVEST`). Public board crawl is unchanged.
+- **Gmail / Drive / Slack** — optional (`FLAG_GMAIL_ADAPTER`, `FLAG_GOOGLE_DRIVE`,
+  `FLAG_SLACK_NOTIFY`). Microsoft Graph remains the default mail transport.
 
 Queues: `crawl-runs` → `job-fetch`. Poison after 10 dequeue attempts.
 
@@ -29,7 +35,8 @@ resume. Bulk UI still opens Apply one selected job at a time.
 
 Graph webhook `POST /api/webhooks/graph/mail` enqueues `mail-ingest`. IMAP/SMTP
 health reports `transport: graph` and `imapConfigured: false`. Bounce webhook
-stays on `MAIL_BOUNCE_WEBHOOK_SECRET`.
+stays on `MAIL_BOUNCE_WEBHOOK_SECRET`. Graph delta follows `@odata.nextLink`
+until `@odata.deltaLink` (capped at 50 pages per poll).
 
 ## Flags and audit
 

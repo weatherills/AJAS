@@ -18,6 +18,7 @@ from app.features.auth_session import bp as auth_session_bp
 from app.features.auto_apply import bp as auto_apply_bp
 from app.features.email import bp as email_bp
 from app.features.health import bp as health_bp
+from app.features.integrations import bp as integrations_bp
 from app.features.learning_loop import bp as learning_bp
 from app.features.matching import bp as matching_bp
 from app.features.ops import bp as ops_bp
@@ -38,6 +39,7 @@ from app.features.sprint20 import bp as sprint20_bp
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 app.register_blueprint(health_bp)
+app.register_blueprint(integrations_bp)
 app.register_blueprint(review_bp)
 app.register_blueprint(auto_apply_bp)
 app.register_blueprint(settings_bp)
@@ -65,6 +67,14 @@ def retention_purge(timer: func.TimerRequest) -> None:
     from app.storage.jobs import run_retention_job
 
     run_retention_job(None)
+
+
+@app.timer_trigger(schedule="0 */30 * * * *", arg_name="timer", run_on_startup=False)
+def integrations_refresh(timer: func.TimerRequest) -> None:
+    """Due extra-board ingest when Indeed/LinkedIn flags are on (fixture/no-op otherwise)."""
+    from app.integrations.scheduler import tick
+
+    tick()
 
 
 @app.timer_trigger(schedule="0 15 4 * * *", arg_name="timer", run_on_startup=True)
