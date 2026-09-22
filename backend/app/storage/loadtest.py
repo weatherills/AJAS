@@ -9,7 +9,7 @@ from app.metrics import reset as reset_metrics, snapshot as metrics_snapshot
 from app.storage.dal import CosmosDAL
 from app.storage.testing import FakeDatabase
 
-HOT_PATHS = ("users.point", "matches.list", "resumes.list")
+HOT_PATHS = ("users.point", "matches.list", "resumes.list", "review.queue", "email.thread_messages")
 P95_RU_PER_OP = 5.0
 
 
@@ -33,10 +33,23 @@ def run_load(*, iterations: int = 40, ru_budget: float | None = None) -> dict[st
             "resumes",
             {"id": f"r{index}", "user_id": "u1", "original_filename": "cv.pdf", "created_at": stamp, "updated_at": stamp},
         )
+    dal.upsert(
+        "email_messages",
+        {
+            "id": "msg1",
+            "email_account_id": "acct1",
+            "email_thread_id": "th1",
+            "from_address": "recruiter@acme.test",
+            "body_text": "hello",
+            "created_at": stamp,
+        },
+    )
     for _ in range(iterations):
         dal.read("users", "u1", partition_key="u1")
         dal.query("matches", "SELECT * FROM c", partition_key="u1", max_items=10)
         dal.query("resumes", "SELECT * FROM c", partition_key="u1", max_items=10)
+        dal.query("matches", "SELECT * FROM c WHERE c.status = 'PENDING'", partition_key="u1", max_items=10)
+        dal.query("email_messages", "SELECT * FROM c", partition_key="acct1", max_items=10)
     counters = metrics_snapshot()["counters"]
     ru = float(counters.get("cosmos.ru") or 0)
     ops = float(counters.get("cosmos.ops") or 0)

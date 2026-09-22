@@ -366,6 +366,58 @@ def _metrics_snapshot() -> dict[str, Any]:
     }
 
 
+def _source_toggles() -> dict[str, Any]:
+    return {
+        "id": SEED_USER_ID,
+        "userId": SEED_USER_ID,
+        "greenhouse": True,
+        "lever": True,
+        "autoApply": False,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
+def _apply_run() -> dict[str, Any]:
+    run_id = "seed-apply-run-001"
+    return {
+        "id": run_id,
+        "userId": SEED_USER_ID,
+        "user_id": SEED_USER_ID,
+        "jobId": SEED_JOB_ID,
+        "resumeId": SEED_RESUME_ID,
+        "status": "queued",
+        "startedAt": STAMP,
+        "idempotency_key": run_id,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
+def _weight_config() -> dict[str, Any]:
+    return {
+        "id": "weight-global-v1",
+        "weight_config_id": "weight-global-v1",
+        "weights": {"keyword": 0.4, "semantic": 0.6},
+        "is_active": True,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
+def _privacy_request() -> dict[str, Any]:
+    return {
+        "id": "seed-privacy-001",
+        "userId": SEED_USER_ID,
+        "user_id": SEED_USER_ID,
+        "kind": "export",
+        "status": "open",
+        "note": "seed",
+        "createdAt": STAMP,
+        "created_at": STAMP,
+    }
+
+
 def seed_documents() -> dict[str, list[dict[str, Any]]]:
     """Map of container id → documents. Safe to upsert repeatedly."""
     application = _application()
@@ -393,6 +445,10 @@ def seed_documents() -> dict[str, list[dict[str, Any]]]:
         "source_fetch_runs": [_crawl()],
         "decision_log": [_learning_event()],
         "metrics_snapshot": [_metrics_snapshot()],
+        "source_toggles": [_source_toggles()],
+        "apply_runs": [_apply_run()],
+        "weight_config": [_weight_config()],
+        "privacy_requests": [_privacy_request()],
     }
 
 

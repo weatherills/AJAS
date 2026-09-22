@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from app.storage.blob_layout import blob_container_names, lifecycle_rules
+from app.storage.dal import CosmosDAL
+from app.storage.housekeeping import run_housekeeping
 from app.storage.retention import DocumentStore, apply_retention, retention_plan
 
 
@@ -32,3 +34,9 @@ def run_retention_job(
         "blobLifecycle": lifecycle_rules(),
         "blobContainers": list(blob_container_names()),
     }
+
+
+def run_housekeeping_job(dal: CosmosDAL, user_id: str, **kwargs: Any) -> dict[str, Any]:
+    result = run_housekeeping(dal, user_id, **kwargs)
+    result["blobLifecycle"] = lifecycle_rules()
+    return result

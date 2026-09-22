@@ -7,7 +7,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | Container | Feature | Entity | Partition key | TTL (days) | Unique keys | Composites | Consistency | Owner | Retention | PII |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `apply_packages` | auto_apply | ApplyPackage | `/auto_apply_id` | — | — | 1 | Session | apply | — | — |
-| `apply_runs` | auto_apply | ApplyRun | `/userId` | — | — | 1 | Session | apply | — | — |
+| `apply_runs` | auto_apply | ApplyRun | `/userId` | — | /idempotency_key | 1 | Session | apply | — | — |
 | `audit_events` | review | AuditEvent | `/user_id` | — | — | 3 | Session | review | 365 | — |
 | `auto_apply_attempts` | auto_apply | Application | `/user_id` | 180 | /job_id+/resume_id | 4 | Session | apply | 547 | — |
 | `cover_letters` | auto_apply | CoverLetter | `/user_id` | — | — | 1 | Session | apply | — | — |
@@ -33,7 +33,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `graph_subscriptions` | mail | GraphSubscription | `/email_account_id` | — | — | 0 | Session | mail | — | — |
 | `graph_sync_cursors` | mail | GraphSyncCursor | `/email_account_id` | — | — | 0 | Session | mail | — | — |
 | `job_posting_links` | job_sources | JobPostingLink | `/raw_id` | — | — | 2 | Session | ingest | — | — |
-| `job_postings_canonical` | job_sources | JobPosting | `/id` | — | — | 7 | Session | ingest | 365 | — |
+| `job_postings_canonical` | job_sources | JobPosting | `/id` | — | /canonical_key; /dedupe_hash | 7 | Session | ingest | 365 | — |
 | `job_postings_raw` | job_sources | JobPostingRaw | `/source_tenant_id` | 90 | — | 4 | Session | ingest | 365 | — |
 | `job_sources` | job_sources | JobSource | `/id` | — | — | 1 | Session | ingest | — | — |
 | `legal_holds` | privacy | LegalHold | `/userId` | — | — | 0 | Session | privacy | — | — |
@@ -87,7 +87,8 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 
 - Query: userId + startedAt desc
 - Rel: 1—N auto_apply_attempts
-- RU: Batch of attempts. Composite (userId, startedAt desc).
+- Logical unique: `userId, jobId, resumeId, modelVersion`
+- RU: Batch of attempts. Composite (userId, startedAt desc). Unique idempotency_key is hash(userId|jobId|resumeId|modelVersion).
 - API: GET /api/v1/auto-apply/requests; POST /api/v1/auto-apply/requests
 - DAL: `CatalogRepository(apply_runs)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
@@ -445,7 +446,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - Query: source
 - Rel: 1—N raw via links; 1—N Application/matches
 - Logical unique: `canonical_key, dedupe_hash, company+apply_url`
-- RU: PK /id so dedup lookups use indexed fields (~3 RU) not partition scans. company+url uniqueness is app-enforced via canonical_key.
+- RU: PK /id so dedup lookups use indexed fields (~3 RU) not partition scans. Unique canonical_key + dedupe_hash per account.
 - API: GET /api/v1/jobs
 - DAL: `CatalogRepository(job_postings_canonical)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU

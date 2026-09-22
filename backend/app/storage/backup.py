@@ -25,6 +25,8 @@ CRITICAL_CONTAINERS: tuple[str, ...] = (
     "decision_events",
     "user_settings",
     "settings_audit_log",
+    "match_records",
+    "apply_runs",
 )
 
 

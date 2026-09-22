@@ -301,10 +301,11 @@ _OVERLAYS: dict[str, _Overlay] = {
     "job_postings_canonical": _Overlay(
         feature="job_sources",
         entity="JobPosting",
+        unique_keys=(("/canonical_key",), ("/dedupe_hash",)),
         logical_unique=("canonical_key", "dedupe_hash", "company+apply_url"),
         query_patterns=("canonical_key", "dedupe_hash", "is_active", "company + posted_at desc", "location", "source"),
         relationships=("1—N raw via links; 1—N Application/matches",),
-        ru_note="PK /id so dedup lookups use indexed fields (~3 RU) not partition scans. company+url uniqueness is app-enforced via canonical_key.",
+        ru_note="PK /id so dedup lookups use indexed fields (~3 RU) not partition scans. Unique canonical_key + dedupe_hash per account.",
     ),
     "job_posting_links": _Overlay(
         feature="job_sources",
@@ -540,9 +541,11 @@ _OVERLAYS: dict[str, _Overlay] = {
     "apply_runs": _Overlay(
         feature="auto_apply",
         entity="ApplyRun",
+        unique_keys=(("/idempotency_key",),),
+        logical_unique=("userId", "jobId", "resumeId", "modelVersion"),
         query_patterns=("userId + startedAt desc",),
         relationships=("1—N auto_apply_attempts",),
-        ru_note="Batch of attempts. Composite (userId, startedAt desc).",
+        ru_note="Batch of attempts. Composite (userId, startedAt desc). Unique idempotency_key is hash(userId|jobId|resumeId|modelVersion).",
         indexing_policy=_policy(
             [
                 {"path": "/userId", "order": "ascending"},

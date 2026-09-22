@@ -15,6 +15,12 @@ MIGRATIONS: tuple[dict[str, Any], ...] = (
         "version": 1,
         "description": "Bootstrap containers, indexing, TTL, and stored logic v1.",
     },
+    {
+        "id": "ajas.cosmos.v2-dao",
+        "version": 2,
+        "description": "Named domain DAOs, unique keys on apply_runs and canonical jobs, housekeeping prune.",
+        "backfill": "scripts/cosmos_backfill.py",
+    },
 )
 
 
