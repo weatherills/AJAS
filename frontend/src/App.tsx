@@ -18,6 +18,7 @@ const ResumeEditor = lazy(() => import('./pages/ResumeEditor').then((mod) => ({ 
 const JobFeedPage = lazy(() => import('./pages/JobFeed').then((mod) => ({ default: mod.JobFeedPage })))
 const EmailPage = lazy(() => import('./pages/Email').then((mod) => ({ default: mod.EmailPage })))
 const LearningPage = lazy(() => import('./pages/Learning').then((mod) => ({ default: mod.LearningPage })))
+const MatchesPage = lazy(() => import('./pages/Matches').then((mod) => ({ default: mod.MatchesPage })))
 const OpsPage = lazy(() => import('./pages/Ops').then((mod) => ({ default: mod.OpsPage })))
 const AdminPage = lazy(() => import('./pages/Admin').then((mod) => ({ default: mod.AdminPage })))
 const HelpPage = lazy(() => import('./pages/Help').then((mod) => ({ default: mod.HelpPage })))
@@ -36,7 +37,7 @@ const phases = [
   {
     name: 'AI Matching',
     desc: 'Hybrid keyword + semantic scoring with reasons',
-    href: '#/jobs',
+    href: '#/matches',
     pill: 'Live',
   },
   {
@@ -79,6 +80,7 @@ type Route =
   | { name: 'library' }
   | { name: 'edit'; id: string }
   | { name: 'jobs' }
+  | { name: 'matches' }
   | { name: 'email' }
   | { name: 'learning' }
   | { name: 'ops' }
@@ -95,6 +97,7 @@ function parseRoute(hash: string): Route {
   if (path === '/settings') return { name: 'settings' }
   if (path === '/resumes') return { name: 'library' }
   if (path === '/jobs') return { name: 'jobs' }
+  if (path === '/matches') return { name: 'matches' }
   if (path === '/email') return { name: 'email' }
   if (path === '/learning') return { name: 'learning' }
   if (path === '/ops') return { name: 'ops' }
@@ -269,6 +272,7 @@ function App() {
   else if (route.name === 'settings') page = <SettingsPage />
   else if (route.name === 'library') page = <ResumeLibrary />
   else if (route.name === 'jobs') page = <JobFeedPage />
+  else if (route.name === 'matches') page = <MatchesPage />
   else if (route.name === 'email') page = <EmailPage />
   else if (route.name === 'learning') page = <LearningPage />
   else if (route.name === 'ops') page = <OpsPage />

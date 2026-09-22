@@ -144,6 +144,39 @@ _OVERLAYS: dict[str, _Overlay] = {
         relationships=("1—1 match_runs; overflow in Blob",),
         ru_note="PK is match_id so detail pane is a single-partition point read.",
     ),
+    "match_records": _Overlay(
+        feature="matching",
+        entity="MatchRecord",
+        logical_unique=("userId", "jobId", "resumeId", "modelVersion"),
+        query_patterns=("userId + jobId", "userId + createdAt desc", "latest selector by familyId"),
+        relationships=("1—N match_evidence; current row id = hash(userId,jobId,resumeId,modelVersion)",),
+        ru_note="PK /userId. Composites (userId, jobId) and (userId, createdAt desc). Deterministic id + ETag upsert.",
+        indexing_policy=_policy(
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/jobId", "order": "ascending"},
+            ],
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/createdAt", "order": "descending"},
+            ],
+        ),
+    ),
+    "match_evidence": _Overlay(
+        feature="matching",
+        entity="MatchEvidence",
+        default_ttl=180 * DAY,
+        query_patterns=("userId + matchId + createdAt asc",),
+        relationships=("N—1 match_records",),
+        ru_note="TTL 180d. Composite (userId, matchId, createdAt asc).",
+        indexing_policy=_policy(
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/matchId", "order": "ascending"},
+                {"path": "/createdAt", "order": "ascending"},
+            ]
+        ),
+    ),
     "user_match_prefs": _Overlay(
         feature="matching",
         entity="UserMatchPrefs",
@@ -445,7 +478,8 @@ _OVERLAYS: dict[str, _Overlay] = {
         logical_unique=("user_id", "job_id", "resume_id"),
         query_patterns=("user_id + status + updated_at", "vendor + source_application_id"),
         relationships=("1—N packages, submits, status_events, webhooks",),
-        ru_note="Queue of in-flight attempts is a partitioned status filter ~3 RU. Unique (job_id, resume_id) per user.",
+        default_ttl=180 * DAY,
+        ru_note="TTL 180d on attempts. Queue of in-flight attempts is a partitioned status filter ~3 RU. Unique (job_id, resume_id) per user.",
     ),
     "apply_packages": _Overlay(
         feature="auto_apply",
@@ -503,6 +537,91 @@ _OVERLAYS: dict[str, _Overlay] = {
         query_patterns=("vendor_application_id partition", "dedupe_key"),
         ru_note="TTL 90 days per Auto-Apply PRD. Unique dedupe_key drops duplicate vendor posts.",
     ),
+    "apply_runs": _Overlay(
+        feature="auto_apply",
+        entity="ApplyRun",
+        query_patterns=("userId + startedAt desc",),
+        relationships=("1—N auto_apply_attempts",),
+        ru_note="Batch of attempts. Composite (userId, startedAt desc).",
+        indexing_policy=_policy(
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/startedAt", "order": "descending"},
+            ]
+        ),
+    ),
+    "source_toggles": _Overlay(
+        feature="settings",
+        entity="SourceToggle",
+        logical_unique=("userId",),
+        query_patterns=("point read by userId",),
+        ru_note="Per-user Greenhouse/Lever/auto-apply flags. Seeded from user_settings defaults.",
+        indexing_policy=_policy([{"path": "/userId", "order": "ascending"}]),
+    ),
+    "data_subjects": _Overlay(
+        feature="privacy",
+        entity="DataSubject",
+        logical_unique=("userId",),
+        query_patterns=("point read by userId",),
+        ru_note="GDPR subject record. PK /userId.",
+    ),
+    "privacy_requests": _Overlay(
+        feature="privacy",
+        entity="PrivacyRequest",
+        query_patterns=("userId + createdAt desc",),
+        default_ttl=None,
+        ru_note="Access/export/delete requests. Soft-delete via status.",
+        indexing_policy=_policy(
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/createdAt", "order": "descending"},
+            ]
+        ),
+    ),
+    "export_bundles": _Overlay(
+        feature="privacy",
+        entity="ExportBundle",
+        default_ttl=7 * DAY,
+        query_patterns=("userId + createdAt desc",),
+        ru_note="Transient export zip metadata. Blob holds the bundle. TTL 7d.",
+    ),
+    "retention_policies": _Overlay(
+        feature="privacy",
+        entity="RetentionPolicy",
+        query_patterns=("point read by id",),
+        ru_note="Named retention windows.",
+    ),
+    "retention_jobs": _Overlay(
+        feature="privacy",
+        entity="RetentionJob",
+        default_ttl=90 * DAY,
+        query_patterns=("status + startedAt desc",),
+        ru_note="Transient purge-run receipts.",
+    ),
+    "legal_holds": _Overlay(
+        feature="privacy",
+        entity="LegalHold",
+        query_patterns=("userId + status",),
+        ru_note="Blocks GDPR delete while active.",
+    ),
+    "pii_field_catalog": _Overlay(
+        feature="privacy",
+        entity="PiiFieldCatalog",
+        query_patterns=("container + path",),
+        ru_note="Mirrors app.storage.pii MASK/ENCRYPT paths.",
+    ),
+    "privacy_audit_log": _Overlay(
+        feature="privacy",
+        entity="PrivacyAuditLog",
+        query_patterns=("userId + occurredAt desc",),
+        ru_note="Append-only privacy actions.",
+        indexing_policy=_policy(
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/occurredAt", "order": "descending"},
+            ]
+        ),
+    ),
 }
 
 
@@ -515,6 +634,7 @@ _FEATURE_LOADERS: tuple[tuple[str, Callable[[], list[dict[str, Any]]]], ...] = (
     ("mail", lambda: _load("app.mail.containers", "container_specs")),
     ("learning", lambda: _load("app.learning.containers", "container_specs")),
     ("auto_apply", lambda: _load("app.auto_apply.containers", "container_specs")),
+    ("privacy", lambda: _load("app.privacy", "container_specs")),
 )
 
 
@@ -620,7 +740,7 @@ def ensure_all_containers(database: Any) -> list[str]:
 
 def user_scoped_containers() -> list[ContainerSpec]:
     """Containers whose partition key is ``/user_id`` (GDPR delete affinity)."""
-    return [spec for spec in container_catalog() if spec.partition_key == "/user_id"]
+    return [spec for spec in container_catalog() if spec.partition_key in {"/user_id", "/userId"}]
 
 
 def ttl_containers() -> list[ContainerSpec]:

@@ -196,4 +196,23 @@ describe('mock matching api', () => {
     expect(stored.map((item) => item.jobId)).toEqual(['keep'])
     expect(stored[0].score).toBe(row.score)
   })
+
+  it('lists and rescores persisted match records', async () => {
+    const row = await mockMatchingApi.scoreOne({
+      resumeId: 'seed-ready',
+      resumeText: 'python azure cosmos matching crawlers ingestion kubernetes',
+      threshold: 70,
+      persist: true,
+      job: { id: 'records-ui', text: 'Title: Staff Engineer\nCompany: Acme\nSkills: python azure cosmos matching crawlers kubernetes' },
+    })
+    const listed = await mockMatchingApi.listRecords({ resumeId: 'seed-ready' })
+    expect(listed.some((item) => item.jobId === 'records-ui')).toBe(true)
+    const detail = await mockMatchingApi.getRecord(row.matchId || 'match-records-ui')
+    expect(detail.record.jobId).toBe('records-ui')
+    expect(detail.evidence.length).toBeGreaterThan(0)
+    const rescored = await mockMatchingApi.rescore(detail.record.id, 99)
+    expect(rescored.record.score).toBe(99)
+    const batched = await mockMatchingApi.batchRescore([{ jobId: 'records-ui', resumeId: 'seed-ready', score: 80 }])
+    expect(batched.count).toBe(1)
+  })
 })

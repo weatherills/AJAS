@@ -18,11 +18,17 @@ FEATURE_OWNER = {
     "mail": "mail",
     "learning": "learning",
     "auto_apply": "apply",
+    "privacy": "privacy",
 }
 
 FEATURE_API: dict[str, tuple[str, ...]] = {
     "review": ("GET /api/v1/matches", "POST /api/v1/matches/{matchId}/decision"),
-    "matching": ("POST /api/v1/matches/rank", "GET /api/v1/operations/{operationId}"),
+    "matching": (
+        "POST /api/v1/matches/rank",
+        "GET /api/v1/match-records",
+        "POST /api/v1/matching/prune",
+        "POST /api/v1/matching/batch-rescore",
+    ),
     "auto_apply": ("GET /api/v1/auto-apply/requests", "POST /api/v1/auto-apply/requests"),
     "mail": ("GET /api/v1/email/threads", "POST /api/v1/threads/{threadId}/reply"),
     "resumes": ("GET /api/resumes",),
@@ -30,6 +36,7 @@ FEATURE_API: dict[str, tuple[str, ...]] = {
     "settings": ("GET /api/v1/settings",),
     "learning": ("GET /api/v1/metrics",),
     "platform": ("GET /api/v1/ops/storage",),
+    "privacy": ("GET /api/v1/privacy/requests",),
 }
 
 CONTAINER_RETENTION_KEY = {
@@ -40,6 +47,8 @@ CONTAINER_RETENTION_KEY = {
     "event_log": "logs",
     "matches": "matches",
     "match_runs": "match_runs",
+    "match_records": "matches",
+    "match_evidence": "matches",
     "resumes": "resumes",
     "auto_apply_attempts": "applications",
     "webhook_callbacks": "webhooks",

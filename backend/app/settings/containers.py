@@ -14,6 +14,9 @@ from app.settings.constants import (
     SETTINGS_CONTAINER,
     SETTINGS_INDEXING_POLICY,
     SETTINGS_PARTITION_KEY,
+    SOURCE_TOGGLES_CONTAINER,
+    SOURCE_TOGGLES_INDEXING_POLICY,
+    SOURCE_TOGGLES_PARTITION_KEY,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -36,6 +39,11 @@ def container_specs() -> list[dict[str, Any]]:
             "id": AUDIT_CONTAINER,
             "partition_key": AUDIT_PARTITION_KEY,
             "indexing_policy": AUDIT_INDEXING_POLICY,
+        },
+        {
+            "id": SOURCE_TOGGLES_CONTAINER,
+            "partition_key": SOURCE_TOGGLES_PARTITION_KEY,
+            "indexing_policy": SOURCE_TOGGLES_INDEXING_POLICY,
         },
     ]
 

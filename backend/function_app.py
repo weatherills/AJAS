@@ -22,6 +22,7 @@ from app.features.integrations import bp as integrations_bp
 from app.features.learning_loop import bp as learning_bp
 from app.features.matching import bp as matching_bp
 from app.features.ops import bp as ops_bp
+from app.features.privacy import bp as privacy_bp
 from app.features.resume_management import bp as resume_bp
 from app.features.review_decision import bp as review_bp
 from app.features.settings import bp as settings_bp
@@ -49,6 +50,7 @@ app.register_blueprint(matching_bp)
 app.register_blueprint(email_bp)
 app.register_blueprint(learning_bp)
 app.register_blueprint(ops_bp)
+app.register_blueprint(privacy_bp)
 app.register_blueprint(auth_session_bp)
 app.register_blueprint(sprint12_bp)
 app.register_blueprint(sprint13_bp)

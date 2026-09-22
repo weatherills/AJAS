@@ -116,6 +116,7 @@ def test_container_specs_match_prd() -> None:
         "submit_requests": "/auto_apply_id",
         "status_events": "/auto_apply_id",
         "webhook_callbacks": "/vendor_application_id",
+        "apply_runs": "/userId",
     }
     specs = {item["id"]: item for item in container_specs()}
     assert set(specs) == set(expected)

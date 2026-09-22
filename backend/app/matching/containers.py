@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from app.matching.constants import (
+    EVIDENCE_CONTAINER,
+    EVIDENCE_INDEXING,
+    EVIDENCE_PK,
     EXPLANATIONS_CONTAINER,
     EXPLANATIONS_INDEXING,
     EXPLANATIONS_PK,
@@ -17,6 +20,9 @@ from app.matching.constants import (
     PREFS_CONTAINER,
     PREFS_INDEXING,
     PREFS_PK,
+    RECORDS_CONTAINER,
+    RECORDS_INDEXING,
+    RECORDS_PK,
     RUNS_CONTAINER,
     RUNS_INDEXING,
     RUNS_PK,
@@ -33,6 +39,8 @@ def container_specs() -> list[dict[str, Any]]:
         {"id": PREFS_CONTAINER, "partition_key": PREFS_PK, "indexing_policy": PREFS_INDEXING},
         {"id": HISTORY_CONTAINER, "partition_key": HISTORY_PK, "indexing_policy": HISTORY_INDEXING},
         {"id": MODELS_CONTAINER, "partition_key": MODELS_PK, "indexing_policy": MODELS_INDEXING},
+        {"id": RECORDS_CONTAINER, "partition_key": RECORDS_PK, "indexing_policy": RECORDS_INDEXING},
+        {"id": EVIDENCE_CONTAINER, "partition_key": EVIDENCE_PK, "indexing_policy": EVIDENCE_INDEXING},
     ]
 
 

@@ -59,6 +59,7 @@ def test_container_list_covers_prd_domains_and_schema_doc():
         "settings",
         "learning",
         "matching",
+        "privacy",
     }
     ids = {spec.id for spec in container_catalog()}
     assert {

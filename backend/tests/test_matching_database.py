@@ -104,6 +104,8 @@ def test_container_specs_match_prd():
         PREFS_CONTAINER: PREFS_PK,
         HISTORY_CONTAINER: HISTORY_PK,
         MODELS_CONTAINER: MODELS_PK,
+        "match_records": "/userId",
+        "match_evidence": "/userId",
     }
     assert set(specs) == set(expected)
     for name, pk in expected.items():
@@ -111,11 +113,11 @@ def test_container_specs_match_prd():
         assert specs[name]["indexing_policy"]["compositeIndexes"]
 
 
-def test_ensure_matching_containers_creates_five():
+def test_ensure_matching_containers_creates_seven():
     database = FakeDatabase()
     ensure_matching_containers(database)
     assert {item["id"] for item in database.created} == set(
-        [RUNS_CONTAINER, EXPLANATIONS_CONTAINER, PREFS_CONTAINER, HISTORY_CONTAINER, MODELS_CONTAINER]
+        [RUNS_CONTAINER, EXPLANATIONS_CONTAINER, PREFS_CONTAINER, HISTORY_CONTAINER, MODELS_CONTAINER, "match_records", "match_evidence"]
     )
 
 

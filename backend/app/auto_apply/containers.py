@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from app.auto_apply.constants import (
+    APPLY_RUNS_CONTAINER,
+    APPLY_RUNS_INDEXING,
+    APPLY_RUNS_PK,
     ATTEMPTS_CONTAINER,
     ATTEMPTS_INDEXING,
     ATTEMPTS_PK,
@@ -49,6 +52,7 @@ def container_specs() -> list[dict[str, Any]]:
         {"id": SUBMITS_CONTAINER, "partition_key": SUBMITS_PK, "indexing_policy": SUBMITS_INDEXING},
         {"id": EVENTS_CONTAINER, "partition_key": EVENTS_PK, "indexing_policy": EVENTS_INDEXING},
         {"id": WEBHOOKS_CONTAINER, "partition_key": WEBHOOKS_PK, "indexing_policy": WEBHOOKS_INDEXING},
+        {"id": APPLY_RUNS_CONTAINER, "partition_key": APPLY_RUNS_PK, "indexing_policy": APPLY_RUNS_INDEXING},
     ]
 
 

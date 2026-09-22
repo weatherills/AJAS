@@ -51,6 +51,7 @@ def test_catalog_covers_every_database_prd_feature():
         "mail",
         "learning",
         "auto_apply",
+        "privacy",
     }
     ids = {spec.id for spec in container_catalog()}
     assert "matches" in ids

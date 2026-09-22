@@ -100,6 +100,8 @@ class Settings(BaseSettings):
     match_rank_async_after: int = 10
     match_semantic_timeout_sec: float = 2.0
     match_ab_test: bool = False
+    match_prune_keep: int = 5
+    match_evidence_ttl_days: int = 180
     crawl_max_concurrent_per_tenant: int = 1
 
     mail_ingest_queue: str = "mail-ingest"

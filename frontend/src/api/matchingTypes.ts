@@ -39,9 +39,31 @@ export type MatchScoreQuery = {
   persist?: boolean
 }
 
+export type MatchRecord = {
+  id: string
+  userId?: string
+  jobId: string
+  resumeId: string
+  modelVersion?: string
+  score: number
+  createdAt?: string
+  updatedAt?: string
+  latest?: boolean
+  _etag?: string
+}
+
+export type MatchRecordDetail = {
+  record: MatchRecord
+  evidence: { id: string; sentences: string[]; createdAt?: string }[]
+}
+
 export type MatchingApi = {
   scoreMany(query: MatchScoreQuery): Promise<MatchView[]>
   scoreOne(query: Omit<MatchScoreQuery, 'jobs'> & { job: { id: string; text: string } }): Promise<MatchView>
   listResults(query: { resumeId: string; jobIds?: string[] }): Promise<MatchView[]>
+  listRecords(query?: { jobId?: string; resumeId?: string }): Promise<MatchRecord[]>
+  getRecord(matchId: string): Promise<MatchRecordDetail>
+  rescore(matchId: string, score?: number): Promise<{ record: MatchRecord }>
+  batchRescore(pairs: { jobId: string; resumeId: string; score: number }[]): Promise<{ count: number; items: MatchRecord[] }>
   warmup(): Promise<{ warm: boolean; elapsedMs: number }>
 }

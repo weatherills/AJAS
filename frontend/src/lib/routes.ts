@@ -82,6 +82,22 @@ export function resumeHref(resumeId: string): string {
   return hashHref(`/resumes/${encodeURIComponent(resumeId)}/edit`)
 }
 
+export function matchesHref(
+  opts: {
+    matchId?: string | null
+    jobId?: string | null
+    resumeId?: string | null
+    min?: number | null
+  } = {},
+): string {
+  return hashHref('/matches', {
+    match: opts.matchId,
+    job: opts.jobId,
+    resume: opts.resumeId,
+    min: opts.min != null && opts.min !== 0 ? String(opts.min) : undefined,
+  })
+}
+
 export function useHashSearch(): URLSearchParams {
   const [params, setParams] = useState(() => parseHash(window.location.hash).params)
   useEffect(() => {

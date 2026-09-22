@@ -187,3 +187,11 @@ WEBHOOKS_INDEXING: Final[dict] = _policy(
     ],
     [{"path": "/dedupe_key", "order": "ascending"}],
 )
+APPLY_RUNS_CONTAINER: Final[str] = "apply_runs"
+APPLY_RUNS_PK: Final[str] = "/userId"
+APPLY_RUNS_INDEXING: Final[dict] = _policy(
+    [
+        {"path": "/userId", "order": "ascending"},
+        {"path": "/startedAt", "order": "descending"},
+    ]
+)

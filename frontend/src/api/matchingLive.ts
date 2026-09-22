@@ -157,4 +157,33 @@ export const liveMatchingApi: MatchingApi = {
   async warmup() {
     return json(await request('/api/v1/matches/warmup', { method: 'POST' }))
   },
+  async listRecords(query = {}) {
+    const params = new URLSearchParams()
+    if (query.jobId) params.set('jobId', query.jobId)
+    if (query.resumeId) params.set('resumeId', query.resumeId)
+    const suffix = params.toString() ? `?${params}` : ''
+    const body = await json<{ items: import('./matchingTypes').MatchRecord[] }>(
+      await request(`/api/v1/match-records${suffix}`),
+    )
+    return body.items || []
+  },
+  async getRecord(matchId) {
+    return json(await request(`/api/v1/match-records/${encodeURIComponent(matchId)}`))
+  },
+  async rescore(matchId, score) {
+    return json(
+      await request(`/api/v1/match-records/${encodeURIComponent(matchId)}/rescore`, {
+        method: 'POST',
+        body: JSON.stringify(score == null ? {} : { score }),
+      }),
+    )
+  },
+  async batchRescore(pairs) {
+    return json(
+      await request('/api/v1/matching/batch-rescore', {
+        method: 'POST',
+        body: JSON.stringify({ pairs }),
+      }),
+    )
+  },
 }

@@ -21,6 +21,7 @@ from app.matching.errors import (
     MatchingValidationError,
 )
 from app.matching.keys import idempotency_key, overall_score_pct
+from app.matching.records import match_record_id
 from app.matching.memory import InMemoryMatchingStore
 from app.matching.models import MatchExplanation, MatchRun, ModelRegistry, UserMatchPrefs
 from app.matching.store import MatchingStore, get_matching_store
@@ -45,5 +46,6 @@ __all__ = [
     "ensure_matching_containers",
     "get_matching_store",
     "idempotency_key",
+    "match_record_id",
     "overall_score_pct",
 ]

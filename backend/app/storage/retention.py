@@ -129,7 +129,11 @@ def execute_gdpr_delete(store: DocumentStore, user_id: str, *, now: datetime | N
             item_id = str(row.get("id") or "")
             if not item_id:
                 continue
-            pk = row.get("user_id") or user_id
+            pk_field = next(
+                (item.partition_key.lstrip("/") for item in user_scoped_containers() if item.id == container),
+                "user_id",
+            )
+            pk = row.get(pk_field) or row.get("user_id") or row.get("userId") or user_id
             store.delete_document(container, item_id, pk)
             count += 1
         per_container[container] = count

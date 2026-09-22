@@ -7,10 +7,12 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | Container | Feature | Entity | Partition key | TTL (days) | Unique keys | Composites | Consistency | Owner | Retention | PII |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `apply_packages` | auto_apply | ApplyPackage | `/auto_apply_id` | — | — | 1 | Session | apply | — | — |
+| `apply_runs` | auto_apply | ApplyRun | `/userId` | — | — | 1 | Session | apply | — | — |
 | `audit_events` | review | AuditEvent | `/user_id` | — | — | 3 | Session | review | 365 | — |
-| `auto_apply_attempts` | auto_apply | Application | `/user_id` | — | /job_id+/resume_id | 4 | Session | apply | 547 | — |
+| `auto_apply_attempts` | auto_apply | Application | `/user_id` | 180 | /job_id+/resume_id | 4 | Session | apply | 547 | — |
 | `cover_letters` | auto_apply | CoverLetter | `/user_id` | — | — | 1 | Session | apply | — | — |
 | `crawl_schedules` | job_sources | CrawlSchedule | `/source_tenant_id` | — | — | 1 | Session | ingest | — | — |
+| `data_subjects` | privacy | DataSubject | `/userId` | — | — | 0 | Session | privacy | — | — |
 | `decision_events` | review | DecisionEvent | `/user_id` | — | — | 3 | Session | review | 365 | — |
 | `decision_log` | learning | DecisionLog | `/user_id` | — | /recommendation_id | 2 | Session | learning | — | — |
 | `email_accounts` | mail | EmailAccount | `/id` | — | — | 0 | Session | mail | — | address,smtp_address |
@@ -24,6 +26,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `email_templates` | mail | EmailTemplate | `/id` | — | — | 0 | Session | mail | — | — |
 | `email_threads` | mail | MailThread | `/email_account_id` | — | /graph_conversation_id | 3 | Session | mail | 180 | — |
 | `event_log` | platform | EventLog | `/user_id` | 30 | — | 2 | Session | platform | 30 | — |
+| `export_bundles` | privacy | ExportBundle | `/userId` | 7 | — | 0 | Session | privacy | 7 | — |
 | `fetch_cursors` | job_sources | FetchCursor | `/source_tenant_id` | — | /endpoint | 1 | Session | ingest | — | — |
 | `fetch_requests` | job_sources | FetchRequest | `/source_tenant_id` | 30 | — | 3 | Session | ingest | 30 | — |
 | `form_autofill_values` | auto_apply | FormAutofillValue | `/auto_apply_id` | — | /vendor+/field_key | 1 | Strong | apply | — | — |
@@ -33,23 +36,32 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `job_postings_canonical` | job_sources | JobPosting | `/id` | — | — | 7 | Session | ingest | 365 | — |
 | `job_postings_raw` | job_sources | JobPostingRaw | `/source_tenant_id` | 90 | — | 4 | Session | ingest | 365 | — |
 | `job_sources` | job_sources | JobSource | `/id` | — | — | 1 | Session | ingest | — | — |
+| `legal_holds` | privacy | LegalHold | `/userId` | — | — | 0 | Session | privacy | — | — |
+| `match_evidence` | matching | MatchEvidence | `/userId` | 180 | — | 1 | Session | matching | 365 | — |
 | `match_explanations` | matching | MatchExplanation | `/match_id` | — | — | 1 | Session | matching | — | — |
+| `match_records` | matching | MatchRecord | `/userId` | — | — | 2 | Session | matching | 365 | — |
 | `match_runs` | matching | MatchRun | `/user_id` | — | /idempotency_key | 5 | Session | matching | 547 | — |
 | `matches` | review | ReviewMatch | `/user_id` | — | /job_id+/resume_id | 9 | Session | review | 365 | — |
 | `metrics_snapshot` | learning | MetricsSnapshot | `/scope_ref` | — | — | 2 | Session | learning | — | — |
 | `model_params` | learning | ModelParams | `/user_id` | — | — | 1 | Session | learning | — | — |
 | `model_registry` | matching | ModelRegistry | `/id` | — | — | 1 | Session | matching | — | — |
+| `pii_field_catalog` | privacy | PiiFieldCatalog | `/id` | — | — | 0 | Session | privacy | — | — |
+| `privacy_audit_log` | privacy | PrivacyAuditLog | `/userId` | — | — | 1 | Session | privacy | — | — |
+| `privacy_requests` | privacy | PrivacyRequest | `/userId` | — | — | 1 | Session | privacy | — | — |
 | `recommendations` | learning | Recommendation | `/user_id` | — | — | 3 | Session | learning | — | — |
 | `resume_parse_events` | resumes | ResumeParseEvent | `/resume_id` | — | — | 1 | Session | resumes | — | — |
 | `resume_variants` | auto_apply | ResumeVariant | `/user_id` | — | — | 1 | Session | apply | — | — |
 | `resume_versions` | resumes | ResumeVersion | `/resume_id` | — | — | 2 | Session | resumes | 730 | — |
 | `resumes` | resumes | Resume | `/user_id` | — | — | 1 | Session | resumes | 730 | original_filename |
+| `retention_jobs` | privacy | RetentionJob | `/id` | 90 | — | 0 | Session | privacy | 90 | — |
+| `retention_policies` | privacy | RetentionPolicy | `/id` | — | — | 0 | Session | privacy | — | — |
 | `run_resume_selections` | resumes | RunResumeSelection | `/run_id` | — | — | 1 | Session | resumes | — | — |
 | `schema_migrations` | platform | SchemaMigration | `/id` | — | — | 1 | Strong | platform | — | — |
 | `settings_audit_log` | settings | SettingsAudit | `/user_id` | — | — | 2 | Session | settings | — | — |
 | `source_fetch_runs` | job_sources | SourceFetchRun | `/source_tenant_id` | — | — | 1 | Session | ingest | — | — |
 | `source_rate_limits` | job_sources | SourceRateLimit | `/source_tenant_id` | — | — | 2 | Session | ingest | — | — |
 | `source_tenants` | job_sources | SourceTenant | `/source_id` | — | /tenant_key | 1 | Session | ingest | — | — |
+| `source_toggles` | settings | SourceToggle | `/userId` | — | — | 1 | Session | settings | — | — |
 | `status_events` | auto_apply | StatusEvent | `/auto_apply_id` | — | — | 1 | Session | apply | 547 | — |
 | `submit_requests` | auto_apply | SubmitRequest | `/auto_apply_id` | — | /idempotency_key | 4 | Strong | apply | — | — |
 | `user_match_pref_history` | matching | UserMatchPrefHistory | `/user_id` | — | — | 1 | Session | matching | — | — |
@@ -71,6 +83,15 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - DAL: `CatalogRepository(apply_packages)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
+### `apply_runs`
+
+- Query: userId + startedAt desc
+- Rel: 1—N auto_apply_attempts
+- RU: Batch of attempts. Composite (userId, startedAt desc).
+- API: GET /api/v1/auto-apply/requests; POST /api/v1/auto-apply/requests
+- DAL: `CatalogRepository(apply_runs)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
 ### `audit_events`
 
 - Query: match_id + occurred_at
@@ -87,7 +108,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - Query: vendor + source_application_id
 - Rel: 1—N packages, submits, status_events, webhooks
 - Logical unique: `user_id, job_id, resume_id`
-- RU: Queue of in-flight attempts is a partitioned status filter ~3 RU. Unique (job_id, resume_id) per user.
+- RU: TTL 180d on attempts. Queue of in-flight attempts is a partitioned status filter ~3 RU. Unique (job_id, resume_id) per user.
 - API: GET /api/v1/auto-apply/requests; POST /api/v1/auto-apply/requests
 - DAL: `CatalogRepository(auto_apply_attempts)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
@@ -106,6 +127,15 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - RU: Scheduler polls; composite next_run_after + is_paused avoids a full scan.
 - API: GET /api/v1/jobs
 - DAL: `CatalogRepository(crawl_schedules)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `data_subjects`
+
+- Query: point read by userId
+- Logical unique: `userId`
+- RU: GDPR subject record. PK /userId.
+- API: GET /api/v1/privacy/requests
+- DAL: `CatalogRepository(data_subjects)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
 ### `decision_events`
@@ -341,6 +371,14 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - DAL: `CatalogRepository(event_log)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
+### `export_bundles`
+
+- Query: userId + createdAt desc
+- RU: Transient export zip metadata. Blob holds the bundle. TTL 7d.
+- API: GET /api/v1/privacy/requests
+- DAL: `CatalogRepository(export_bundles)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
 ### `fetch_cursors`
 
 - Query: tenant + endpoint point read
@@ -434,13 +472,42 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - DAL: `CatalogRepository(job_sources)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
+### `legal_holds`
+
+- Query: userId + status
+- RU: Blocks GDPR delete while active.
+- API: GET /api/v1/privacy/requests
+- DAL: `CatalogRepository(legal_holds)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `match_evidence`
+
+- Query: userId + matchId + createdAt asc
+- Rel: N—1 match_records
+- RU: TTL 180d. Composite (userId, matchId, createdAt asc).
+- API: POST /api/v1/matches/rank; GET /api/v1/match-records; POST /api/v1/matching/prune; POST /api/v1/matching/batch-rescore
+- DAL: `CatalogRepository(match_evidence)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
 ### `match_explanations`
 
 - Query: point read by match_id partition
 - Rel: 1—1 match_runs; overflow in Blob
 - RU: PK is match_id so detail pane is a single-partition point read.
-- API: POST /api/v1/matches/rank; GET /api/v1/operations/{operationId}
+- API: POST /api/v1/matches/rank; GET /api/v1/match-records; POST /api/v1/matching/prune; POST /api/v1/matching/batch-rescore
 - DAL: `CatalogRepository(match_explanations)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `match_records`
+
+- Query: userId + jobId
+- Query: userId + createdAt desc
+- Query: latest selector by familyId
+- Rel: 1—N match_evidence; current row id = hash(userId,jobId,resumeId,modelVersion)
+- Logical unique: `userId, jobId, resumeId, modelVersion`
+- RU: PK /userId. Composites (userId, jobId) and (userId, createdAt desc). Deterministic id + ETag upsert.
+- API: POST /api/v1/matches/rank; GET /api/v1/match-records; POST /api/v1/matching/prune; POST /api/v1/matching/batch-rescore
+- DAL: `CatalogRepository(match_records)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
 ### `match_runs`
@@ -451,7 +518,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - Rel: 1—1 match_explanations; N—1 model_registry
 - Logical unique: `user_id, resume_id, job_id, idempotency_key`
 - RU: Idempotency unique key is a 1-RU conflict check on retry. Retain 18 months via purge, not TTL.
-- API: POST /api/v1/matches/rank; GET /api/v1/operations/{operationId}
+- API: POST /api/v1/matches/rank; GET /api/v1/match-records; POST /api/v1/matching/prune; POST /api/v1/matching/batch-rescore
 - DAL: `CatalogRepository(match_runs)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
@@ -490,8 +557,32 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - Query: composite scorer identity
 - Logical unique: `id, ai_service+scorer_model+version+formula`
 - RU: Tiny catalog; full scan is acceptable (<10 docs).
-- API: POST /api/v1/matches/rank; GET /api/v1/operations/{operationId}
+- API: POST /api/v1/matches/rank; GET /api/v1/match-records; POST /api/v1/matching/prune; POST /api/v1/matching/batch-rescore
 - DAL: `CatalogRepository(model_registry)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `pii_field_catalog`
+
+- Query: container + path
+- RU: Mirrors app.storage.pii MASK/ENCRYPT paths.
+- API: GET /api/v1/privacy/requests
+- DAL: `CatalogRepository(pii_field_catalog)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `privacy_audit_log`
+
+- Query: userId + occurredAt desc
+- RU: Append-only privacy actions.
+- API: GET /api/v1/privacy/requests
+- DAL: `CatalogRepository(privacy_audit_log)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `privacy_requests`
+
+- Query: userId + createdAt desc
+- RU: Access/export/delete requests. Soft-delete via status.
+- API: GET /api/v1/privacy/requests
+- DAL: `CatalogRepository(privacy_requests)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
 ### `recommendations`
@@ -606,6 +697,22 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - DAL: `CatalogRepository(resumes)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
+### `retention_jobs`
+
+- Query: status + startedAt desc
+- RU: Transient purge-run receipts.
+- API: GET /api/v1/privacy/requests
+- DAL: `CatalogRepository(retention_jobs)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `retention_policies`
+
+- Query: point read by id
+- RU: Named retention windows.
+- API: GET /api/v1/privacy/requests
+- DAL: `CatalogRepository(retention_policies)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
 ### `run_resume_selections`
 
 - Query: point read by run_id
@@ -662,6 +769,15 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - DAL: `CatalogRepository(source_tenants)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
+### `source_toggles`
+
+- Query: point read by userId
+- Logical unique: `userId`
+- RU: Per-user Greenhouse/Lever/auto-apply flags. Seeded from user_settings defaults.
+- API: GET /api/v1/settings
+- DAL: `CatalogRepository(source_toggles)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
 ### `status_events`
 
 - Query: auto_apply_id + created_ts desc
@@ -685,7 +801,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - Query: user_id + created_at desc
 - Rel: append-only audit of prefs
 - RU: Append-only; cheap in-partition history.
-- API: POST /api/v1/matches/rank; GET /api/v1/operations/{operationId}
+- API: POST /api/v1/matches/rank; GET /api/v1/match-records; POST /api/v1/matching/prune; POST /api/v1/matching/batch-rescore
 - DAL: `CatalogRepository(user_match_pref_history)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
@@ -695,7 +811,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - Rel: 1—N user_match_pref_history
 - Logical unique: `user_id`
 - RU: One document per user; always a point read (~1 RU).
-- API: POST /api/v1/matches/rank; GET /api/v1/operations/{operationId}
+- API: POST /api/v1/matches/rank; GET /api/v1/match-records; POST /api/v1/matching/prune; POST /api/v1/matching/batch-rescore
 - DAL: `CatalogRepository(user_match_prefs)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 

@@ -214,3 +214,46 @@ def auth_config(req: func.HttpRequest) -> func.HttpResponse:
             "sessionCookies": bool(settings.auth_session_cookies),
         }
     )
+
+
+@bp.route(route="v1/ops/compliance", methods=["GET"])
+def ops_compliance(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = get_principal(req)
+        require_role(principal, "admin")
+        from app.compliance import dpa_bundle, evidence_map, soc2_inventory, subprocessors, verify_audit_chain
+
+        inventory = soc2_inventory()
+        return json_response(
+            {
+                "soc2": inventory,
+                "gaps": inventory["gaps"],
+                "evidence": evidence_map(),
+                "subprocessors": subprocessors(),
+                "dpa": dpa_bundle(),
+                "audit": verify_audit_chain(),
+            }
+        )
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/ops/compliance/audit", methods=["GET", "POST"])
+def ops_compliance_audit(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        principal = get_principal(req)
+        require_role(principal, "admin")
+        from app.compliance import append_audit, verify_audit_chain
+
+        if req.method.upper() == "POST":
+            try:
+                body = req.get_json() or {}
+            except ValueError:
+                body = {}
+            if not isinstance(body, dict):
+                body = {}
+            row = append_audit(str(body.get("action") or "ops"), dict(body.get("payload") or {}))
+            return json_response({"item": row, "chain": verify_audit_chain()}, status_code=201)
+        return json_response(verify_audit_chain())
+    except Exception as exc:
+        return _handle(exc)

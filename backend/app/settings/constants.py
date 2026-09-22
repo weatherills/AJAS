@@ -58,6 +58,16 @@ CONNECTIONS_INDEXING_POLICY: Final[dict] = {
     ],
 }
 
+SOURCE_TOGGLES_CONTAINER: Final[str] = "source_toggles"
+SOURCE_TOGGLES_PARTITION_KEY: Final[str] = "/userId"
+SOURCE_TOGGLES_INDEXING_POLICY: Final[dict] = {
+    "indexingMode": "consistent",
+    "automatic": True,
+    "includedPaths": [{"path": "/*"}],
+    "excludedPaths": [{"path": "/\"_etag\"/?"}],
+    "compositeIndexes": [[{"path": "/userId", "order": "ascending"}]],
+}
+
 AUDIT_INDEXING_POLICY: Final[dict] = {
     "indexingMode": "consistent",
     "automatic": True,

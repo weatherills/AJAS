@@ -1,8 +1,9 @@
-"""GDPR export bundle and right-to-be-forgotten purge planner."""
+"""GDPR export bundle, privacy Cosmos containers, and request tickets."""
 
 from __future__ import annotations
 
 from typing import Any
+from uuid import uuid4
 
 from app.matching.keys import utc_now
 
@@ -63,3 +64,43 @@ def apply_purge(plan: dict[str, Any], store: Any | None = None) -> dict[str, Any
         result["deleted"] = deleted + int(gdpr.get("deletedDocs") or 0)
         result["gdpr"] = gdpr
     return result
+
+
+def container_specs() -> list[dict[str, Any]]:
+    user = "/userId"
+    by_id = "/id"
+    return [
+        {"id": "data_subjects", "partition_key": user},
+        {"id": "privacy_requests", "partition_key": user},
+        {"id": "export_bundles", "partition_key": user},
+        {"id": "retention_policies", "partition_key": by_id},
+        {"id": "retention_jobs", "partition_key": by_id},
+        {"id": "legal_holds", "partition_key": user},
+        {"id": "pii_field_catalog", "partition_key": by_id},
+        {"id": "privacy_audit_log", "partition_key": user},
+    ]
+
+
+_REQUESTS: list[dict[str, Any]] = []
+
+
+def reset_privacy_requests() -> None:
+    _REQUESTS.clear()
+
+
+def list_privacy_requests(user_id: str) -> list[dict[str, Any]]:
+    return [dict(row) for row in _REQUESTS if row.get("userId") == user_id]
+
+
+def create_privacy_request(user_id: str, *, kind: str = "export", note: str = "") -> dict[str, Any]:
+    row = {
+        "id": str(uuid4()),
+        "userId": user_id,
+        "user_id": user_id,
+        "kind": kind,
+        "status": "open",
+        "note": note,
+        "createdAt": utc_now(),
+    }
+    _REQUESTS.append(row)
+    return dict(row)

@@ -21,12 +21,21 @@ EXPLANATIONS_CONTAINER: Final[str] = "match_explanations"
 PREFS_CONTAINER: Final[str] = "user_match_prefs"
 HISTORY_CONTAINER: Final[str] = "user_match_pref_history"
 MODELS_CONTAINER: Final[str] = "model_registry"
+RECORDS_CONTAINER: Final[str] = "match_records"
+EVIDENCE_CONTAINER: Final[str] = "match_evidence"
 
 RUNS_PK: Final[str] = "/user_id"
 EXPLANATIONS_PK: Final[str] = "/match_id"
 PREFS_PK: Final[str] = "/user_id"
 HISTORY_PK: Final[str] = "/user_id"
 MODELS_PK: Final[str] = "/id"
+RECORDS_PK: Final[str] = "/userId"
+EVIDENCE_PK: Final[str] = "/userId"
+
+EVIDENCE_TTL_DAYS: Final[int] = 180
+EVIDENCE_TTL_SECONDS: Final[int] = EVIDENCE_TTL_DAYS * 86_400
+DEFAULT_PRUNE_KEEP: Final[int] = 5
+SCHEMA_VERSION: Final[int] = 1
 
 
 def _policy(*composites: list[dict]) -> dict:
@@ -69,5 +78,22 @@ MODELS_INDEXING: Final[dict] = _policy(
         {"path": "/scorer_model", "order": "ascending"},
         {"path": "/scorer_model_version", "order": "ascending"},
         {"path": "/formula_version", "order": "ascending"},
+    ]
+)
+RECORDS_INDEXING: Final[dict] = _policy(
+    [
+        {"path": "/userId", "order": "ascending"},
+        {"path": "/jobId", "order": "ascending"},
+    ],
+    [
+        {"path": "/userId", "order": "ascending"},
+        {"path": "/createdAt", "order": "descending"},
+    ],
+)
+EVIDENCE_INDEXING: Final[dict] = _policy(
+    [
+        {"path": "/userId", "order": "ascending"},
+        {"path": "/matchId", "order": "ascending"},
+        {"path": "/createdAt", "order": "ascending"},
     ]
 )

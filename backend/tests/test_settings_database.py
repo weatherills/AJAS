@@ -144,7 +144,7 @@ def test_container_specs_match_prd():
     assert specs[SETTINGS_CONTAINER]["indexing_policy"] == SETTINGS_INDEXING_POLICY
 
 
-def test_ensure_settings_containers_creates_three():
+def test_ensure_settings_containers_creates_four():
     from app.settings.containers import ensure_settings_containers
 
     database = FakeDatabase()
@@ -153,6 +153,7 @@ def test_ensure_settings_containers_creates_three():
         SETTINGS_CONTAINER,
         CONNECTIONS_CONTAINER,
         AUDIT_CONTAINER,
+        "source_toggles",
     }
 
 

@@ -11,7 +11,8 @@ describe('app nav', () => {
   it('matches nested resume editor under Resumes', () => {
     expect(navIsActive('#/resumes', '#/resumes/abc/edit')).toBe(true)
     expect(navIsActive('#/apply', '#/apply/req-1')).toBe(true)
-    expect(navIsActive('#/jobs', '#/review')).toBe(false)
+    expect(navIsActive('#/matches', '#/matches')).toBe(true)
+    expect(navIsActive('#/jobs', '#/matches')).toBe(false)
   })
 
   it('does not treat /review as home', () => {

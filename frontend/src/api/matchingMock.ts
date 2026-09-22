@@ -140,4 +140,56 @@ export const mockMatchingApi: MatchingApi = {
   async warmup() {
     return { warm: true, elapsedMs: 1 }
   },
+  async listRecords(query = {}) {
+    return Object.values(persisted)
+      .filter((row) => row.matchId && row.score != null)
+      .filter((row) => (query.jobId ? row.jobId === query.jobId : true))
+      .filter((row) => (query.resumeId ? row.resumeId === query.resumeId : true))
+      .map((row) => ({
+        id: row.matchId || `match-${row.jobId}`,
+        jobId: row.jobId,
+        resumeId: row.resumeId || '',
+        modelVersion: row.versions?.algorithm || 'matching-v1',
+        score: row.score || 0,
+        createdAt: row.computedAt || now(),
+        latest: true,
+      }))
+  },
+  async getRecord(matchId) {
+    const row = Object.values(persisted).find((item) => item.matchId === matchId)
+    if (!row) throw new Error('match record not found')
+    return {
+      record: {
+        id: matchId,
+        jobId: row.jobId,
+        resumeId: row.resumeId || '',
+        modelVersion: row.versions?.algorithm || 'matching-v1',
+        score: row.score || 0,
+        createdAt: row.computedAt || now(),
+        latest: true,
+      },
+      evidence: (row.evidence || []).map((sentence, index) => ({
+        id: `${matchId}:${index}`,
+        sentences: [sentence],
+        createdAt: row.computedAt || now(),
+      })),
+    }
+  },
+  async rescore(matchId, score) {
+    const detail = await mockMatchingApi.getRecord(matchId)
+    const next = { ...detail.record, score: score ?? detail.record.score, updatedAt: now() }
+    const key = Object.keys(persisted).find((item) => persisted[item].matchId === matchId)
+    if (key && persisted[key].score != null) persisted[key] = { ...persisted[key], score: next.score }
+    return { record: next }
+  },
+  async batchRescore(pairs) {
+    const items = pairs.map((pair) => ({
+      id: `match-${pair.jobId}`,
+      jobId: pair.jobId,
+      resumeId: pair.resumeId,
+      score: pair.score,
+      latest: true,
+    }))
+    return { count: items.length, items }
+  },
 }

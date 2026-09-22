@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyHref, emailHref, hashHref, jobHref, parseHash, parseReviewTab, resumeHref, reviewHref } from './routes'
+import { applyHref, emailHref, hashHref, jobHref, matchesHref, parseHash, parseReviewTab, resumeHref, reviewHref } from './routes'
 
 describe('hash routes', () => {
   it('parses path and query from the hash', () => {
@@ -17,6 +17,7 @@ describe('hash routes', () => {
     expect(emailHref({ jobId: 'job-1', threadId: 't-staff' })).toBe('#/email?job=job-1&thread=t-staff')
     expect(applyHref('req-1', 'job-1')).toBe('#/apply/req-1?job=job-1')
     expect(resumeHref('seed-ready')).toBe('#/resumes/seed-ready/edit')
+    expect(matchesHref({ matchId: 'abc', min: 70 })).toBe('#/matches?match=abc&min=70')
     expect(hashHref('/settings')).toBe('#/settings')
   })
 
