@@ -68,7 +68,7 @@ jobs:
           AZURITE: '1'
           BLOB_CONNECTION_STRING: UseDevelopmentStorage=true
           QUEUE_CONNECTION_STRING: UseDevelopmentStorage=true
-        run: pytest tests/test_storage_*.py --cov=app/storage --cov-report=term --cov-report=xml --junitxml=storage-junit.xml --cov-fail-under=80
+        run: pytest tests/test_storage_*.py tests/test_cosmos_dao_kanban.py tests/test_prd_containers_kanban.py --cov=app/storage --cov-report=term --cov-report=xml --junitxml=storage-junit.xml --cov-fail-under=80
       - uses: actions/upload-artifact@v4
         if: always()
         with:

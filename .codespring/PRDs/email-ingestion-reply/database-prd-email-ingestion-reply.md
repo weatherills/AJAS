@@ -15,7 +15,7 @@ Supports pulling Microsoft Graph mail, linking to job/application context, compo
 
 ### Key Relationships
 - email_accounts 1—N email_threads, email_messages, email_drafts, graph_sync_cursors, graph_subscriptions, email_ingestion_events.
-- email_threads 1—N email_messages, email_drafts; optional link to job_posting_id or application_id (external tables).
+- email_threads 1—N email_messages, email_drafts; optional link to job_posting_id or application_id (external containers).
 - email_messages 1—N email_recipients, email_attachments.
 - email_drafts 1—N email_attachments (for unsent files).
 

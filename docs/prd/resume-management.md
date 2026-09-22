@@ -146,7 +146,7 @@ Database schema for Resume Management in AJAS: store uploaded resume files, pars
   - On success, create/update child rows (contacts/skills/experiences/educations) with source='parsed' and set parsing_confidence (0–100).
   - Maintain order_index for deterministic UI ordering.
 - Edit & Validate
-  - Edits write to child tables with source='manual'; update resumes.validated and validated_at when all required fields pass client/server validation.
+  - Edits write to child containers with source='manual'; update resumes.validated and validated_at when all required fields pass client/server validation.
   - last_edited_by and updated_at reflect latest change on parent; child rows carry updated_at.
 - Set Active Resume (per run)
   - Insert run_resume_selections with unique(run_id) ensuring only one active resume per run.
@@ -166,7 +166,7 @@ Database schema for Resume Management in AJAS: store uploaded resume files, pars
 
 #### Indexing (Cosmos DB logical guidance)
 - resumes: compound on (user_id, is_deleted, updated_at desc); filter on processing_status; unique on (user_id, id).
-- Child tables: index resume_id; order by order_index.
+- Child containers: index resume_id; order by order_index.
 - run_resume_selections: unique on run_id; index (user_id, created_at desc).
 - resume_parse_events: index resume_id, created_at desc.
 

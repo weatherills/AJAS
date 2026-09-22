@@ -59,9 +59,16 @@ def container_specs() -> list[dict[str, Any]]:
 def ensure_auto_apply_containers(database: "DatabaseProxy") -> None:
     from azure.cosmos import PartitionKey
 
+    from app.auto_apply.constants import APPLY_RUNS_CONTAINER, APPLY_RUNS_TTL_SECONDS, ATTEMPTS_CONTAINER
+
     for spec in container_specs():
-        database.create_container_if_not_exists(
-            id=spec["id"],
-            partition_key=PartitionKey(path=spec["partition_key"]),
-            indexing_policy=spec["indexing_policy"],
-        )
+        kwargs: dict[str, Any] = {
+            "id": spec["id"],
+            "partition_key": PartitionKey(path=spec["partition_key"]),
+            "indexing_policy": spec["indexing_policy"],
+        }
+        if spec["id"] == APPLY_RUNS_CONTAINER:
+            kwargs["default_ttl"] = APPLY_RUNS_TTL_SECONDS
+        if spec["id"] == ATTEMPTS_CONTAINER:
+            kwargs["default_ttl"] = 180 * 86_400
+        database.create_container_if_not_exists(**kwargs)

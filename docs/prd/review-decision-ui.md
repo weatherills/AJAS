@@ -141,7 +141,7 @@ Relationships:
 - AI fields are snapshots at match creation; decision_events also capture AI snapshot at decision time for auditability.
 
 #### Indexing & Partitioning (Cosmos DB-aligned)
-- Partition key: user_id on all tables to co-locate a user’s queue, decisions, and audits.
+- Partition key: user_id on all containers to co-locate a user’s queue, decisions, and audits.
 - matches indexes: status, queued_at, ai_score, job_title/company/location (for filters), decided_at, latest_decision_id.
 - decision_events indexes: match_id, decided_at.
 - audit_events indexes: match_id, event_type, occurred_at.

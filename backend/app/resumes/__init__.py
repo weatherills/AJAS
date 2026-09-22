@@ -12,7 +12,7 @@ from app.resumes.constants import (
     RESUMES_CONTAINER,
     SELECTIONS_CONTAINER,
 )
-from app.resumes.containers import container_specs, ensure_resume_containers
+from app.resumes.containers import container_specs, ensure_resume_containers, ensure_resumes_containers
 from app.resumes.errors import (
     ResumeNotFoundError,
     ResumeSelectionRejectedError,
@@ -57,6 +57,7 @@ __all__ = [
     "StructuredResume",
     "container_specs",
     "ensure_resume_containers",
+    "ensure_resumes_containers",
     "get_resume_store",
     "library_preview",
 ]

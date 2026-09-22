@@ -8,6 +8,7 @@ housekeeping, and smoke tests.
 from __future__ import annotations
 
 import hashlib
+import json
 from typing import Any
 from uuid import uuid4
 
@@ -19,7 +20,7 @@ from app.storage.catalog import cosmos_create_kwargs, container_by_id, ensure_al
 from app.storage.dal import CosmosDAL
 from app.storage.entity_dal import CatalogRepository, repository_for
 from app.storage.epic import SETTINGS_DEFAULTS, settings_document
-from app.storage.pii import redact as redact_doc
+from app.storage.pii import hash_text, redact as redact_doc
 from app.storage.schema_validate import validate_item
 from app.storage.sprocs import apply_timestamps
 
@@ -106,7 +107,14 @@ class DomainDAO:
 
 
 class AutoApplyDAO(DomainDAO):
-    containers = ("apply_runs", "auto_apply_attempts", "status_events")
+    containers = ("apply_runs", "auto_apply_attempts", "status_events", "cover_letters", "vendor_field_mappings")
+
+    def ensure_auto_apply_containers(self, database: Any) -> list[str]:
+        from app.auto_apply.containers import container_specs, ensure_auto_apply_containers as ensure_feature
+
+        ensure_feature(database)
+        created = [spec["id"] for spec in container_specs()]
+        return created + ["apply_attempts", "form_field_mappings"]
 
     def create_apply_run(
         self,
@@ -115,11 +123,13 @@ class AutoApplyDAO(DomainDAO):
         job_id: str = "",
         resume_id: str = "",
         model_version: str = "",
+        method: str = "api",
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         run_id = idempotency_key or apply_run_id(
             user_id=user_id, job_id=job_id, resume_id=resume_id, model_version=model_version
         )
+        now = utc_now()
         row = {
             "id": run_id,
             "userId": user_id,
@@ -127,8 +137,12 @@ class AutoApplyDAO(DomainDAO):
             "jobId": job_id,
             "resumeId": resume_id,
             "modelVersion": model_version,
-            "status": "queued",
-            "startedAt": utc_now(),
+            "method": method,
+            "status": "pending",
+            "startedAt": now,
+            "finishedAt": None,
+            "errorCode": None,
+            "errorMessage": None,
             "idempotency_key": run_id,
         }
         try:
@@ -146,13 +160,21 @@ class AutoApplyDAO(DomainDAO):
         job_id = str(kwargs.get("job_id") or kwargs.get("jobId") or "")
         resume_id = str(kwargs.get("resume_id") or kwargs.get("resumeId") or "")
         attempt_id = str(kwargs.get("id") or deterministic_id(user_id, run_id, job_id, resume_id))
+        now = utc_now()
         row = {
             "id": attempt_id,
             "user_id": user_id,
+            "userId": user_id,
             "run_id": run_id,
+            "runId": run_id,
             "job_id": job_id,
+            "jobId": job_id,
             "resume_id": resume_id,
+            "step": kwargs.get("step") or "submit",
             "status": kwargs.get("status") or "draft",
+            "details": kwargs.get("details") or {},
+            "startedAt": now,
+            "finishedAt": kwargs.get("finishedAt"),
             "vendor": kwargs.get("vendor") or "greenhouse",
         }
         try:
@@ -165,7 +187,72 @@ class AutoApplyDAO(DomainDAO):
         current = self._get("apply_runs", run_id, user_id)
         current["status"] = status
         current["updatedAt"] = utc_now()
+        if status in {"succeeded", "failed", "needs_manual"}:
+            current["finishedAt"] = current["updatedAt"]
         return self._upsert("apply_runs", current, etag=etag or current.get("_etag"))
+
+    def transition_run(
+        self,
+        user_id: str,
+        run_id: str,
+        status: str,
+        *,
+        etag: str | None = None,
+        error_code: str | None = None,
+        error_message: str | None = None,
+    ) -> dict[str, Any]:
+        from app.auto_apply.constants import APPLY_RUN_TRANSITIONS
+
+        current = self._get("apply_runs", run_id, user_id)
+        current_status = str(current.get("status") or "pending")
+        allowed = APPLY_RUN_TRANSITIONS.get(current_status, frozenset())
+        if status not in allowed:
+            raise ValueError(f"invalid apply-run transition {current_status!r} -> {status!r}")
+        current["status"] = status
+        current["updatedAt"] = utc_now()
+        if error_code:
+            current["errorCode"] = error_code
+        if error_message:
+            current["errorMessage"] = error_message
+        if status in {"succeeded", "failed", "needs_manual"}:
+            current["finishedAt"] = current["updatedAt"]
+        return self._upsert("apply_runs", current, etag=etag or current.get("_etag"))
+
+    def upsert_form_field_mapping(self, site_key: str, field: str, **kwargs: Any) -> dict[str, Any]:
+        mapping_id = str(kwargs.get("id") or deterministic_id(site_key, field))
+        row = {
+            "id": mapping_id,
+            "vendor": site_key,
+            "siteKey": site_key,
+            "selector": kwargs.get("selector") or f"[name={field}]",
+            "field": field,
+            "normalized_key": field,
+            "required": bool(kwargs.get("required", True)),
+            "transform": kwargs.get("transform") or "identity",
+            "updatedAt": utc_now(),
+        }
+        if not row["selector"] or not row["field"]:
+            raise ValueError("form_field_mappings require selector and field")
+        return self._upsert("vendor_field_mappings", row, etag=kwargs.get("etag"))
+
+    def list_form_field_mappings(self, site_key: str) -> list[dict[str, Any]]:
+        page = self.repo("vendor_field_mappings").list_partition(site_key, max_items=100)
+        return [row for row in page.items if str(row.get("siteKey") or row.get("vendor")) == site_key]
+
+    def save_cover_letter(self, user_id: str, **kwargs: Any) -> dict[str, Any]:
+        letter_id = str(kwargs.get("id") or uuid4())
+        row = {
+            "id": letter_id,
+            "user_id": user_id,
+            "userId": user_id,
+            "jobId": kwargs.get("jobId") or kwargs.get("job_id") or "",
+            "resumeId": kwargs.get("resumeId") or kwargs.get("resume_id") or "",
+            "body": kwargs.get("body") or "",
+            "model": kwargs.get("model") or "none",
+            "source": kwargs.get("source") or "ai",
+            "createdAt": utc_now(),
+        }
+        return self._create("cover_letters", row)
 
     def list_runs(self, user_id: str, *, cursor: str | None = None, limit: int | None = None) -> dict[str, Any]:
         return self._page("apply_runs", user_id, cursor=cursor, limit=limit)
@@ -174,12 +261,24 @@ class AutoApplyDAO(DomainDAO):
 class ResumesDAO(DomainDAO):
     containers = ("resumes", "resume_versions", "resume_parse_events")
 
+    def ensure_resumes_containers(self, database: Any) -> list[str]:
+        from app.resumes.containers import ensure_resumes_containers as ensure_feature
+
+        return ensure_feature(database)
+
     def create_resume(self, user_id: str, **kwargs: Any) -> dict[str, Any]:
+        title = str(kwargs.get("title") or kwargs.get("original_filename") or "resume.pdf")
         resume_id = str(kwargs.get("id") or uuid4())
+        now = utc_now()
         row = {
             "id": resume_id,
             "user_id": user_id,
-            "original_filename": kwargs.get("original_filename") or "resume.pdf",
+            "userId": user_id,
+            "title": title,
+            "primaryFileId": kwargs.get("primaryFileId"),
+            "parsedVersion": kwargs.get("parsedVersion"),
+            "tags": list(kwargs.get("tags") or []),
+            "original_filename": kwargs.get("original_filename") or title,
             "mime_type": kwargs.get("mime_type") or "application/pdf",
             "file_size": int(kwargs.get("file_size") or 0),
             "blob_uri": kwargs.get("blob_uri") or f"{user_id}/{resume_id}/resume.pdf",
@@ -187,37 +286,83 @@ class ResumesDAO(DomainDAO):
             "processing_status": "uploaded",
             "is_active": False,
             "is_deleted": False,
+            "createdAt": now,
+            "updatedAt": now,
         }
-        return self._create("resumes", row)
+        try:
+            existing = self._get("resumes", resume_id, user_id)
+            return existing
+        except KeyError:
+            return self._create("resumes", row)
+
+    def list_user_resumes(self, user_id: str, *, cursor: str | None = None, limit: int | None = None) -> dict[str, Any]:
+        page = self._page("resumes", user_id, cursor=cursor, limit=limit)
+        items = [row for row in page["items"] if not row.get("is_deleted")]
+        items.sort(key=lambda row: str(row.get("updatedAt") or row.get("updated_at") or ""), reverse=True)
+        page["items"] = items
+        return page
 
     def attach_file(self, user_id: str, resume_id: str, **kwargs: Any) -> dict[str, Any]:
+        return self.link_file(user_id, resume_id, **kwargs)
+
+    def link_file(self, user_id: str, resume_id: str, **kwargs: Any) -> dict[str, Any]:
         version_id = str(kwargs.get("id") or uuid4())
+        storage_path = str(kwargs.get("storagePath") or kwargs.get("blob_uri") or f"{user_id}/{resume_id}/{version_id}")
         row = {
             "id": version_id,
             "resume_id": resume_id,
+            "resumeId": resume_id,
             "user_id": user_id,
-            "blob_uri": kwargs.get("blob_uri") or f"{user_id}/{resume_id}/{version_id}",
+            "userId": user_id,
+            "blob_uri": storage_path,
+            "storagePath": storage_path,
             "original_filename": kwargs.get("original_filename") or "resume.pdf",
-            "mime_type": kwargs.get("mime_type") or "application/pdf",
-            "file_size": int(kwargs.get("file_size") or 0),
-            "checksum_sha256": kwargs.get("checksum_sha256") or "",
+            "mime_type": kwargs.get("mime_type") or kwargs.get("mimeType") or "application/pdf",
+            "mimeType": kwargs.get("mimeType") or kwargs.get("mime_type") or "application/pdf",
+            "file_size": int(kwargs.get("file_size") or kwargs.get("size") or 0),
+            "size": int(kwargs.get("size") or kwargs.get("file_size") or 0),
+            "checksum_sha256": kwargs.get("checksum_sha256") or kwargs.get("hash") or "",
+            "hash": kwargs.get("hash") or kwargs.get("checksum_sha256") or "",
             "version": int(kwargs.get("version") or 1),
+            "createdAt": utc_now(),
         }
-        return self._create("resume_versions", row)
+        written = self._create("resume_versions", row)
+        current = self._get("resumes", resume_id, user_id)
+        current["primaryFileId"] = written["id"]
+        current["updatedAt"] = utc_now()
+        self._upsert("resumes", current, etag=kwargs.get("etag") or current.get("_etag"))
+        return written
 
     def save_parsed_version(self, user_id: str, resume_id: str, snapshot: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self.save_version(user_id, resume_id, raw_json=snapshot or {})
+
+    def save_version(self, user_id: str, resume_id: str, **kwargs: Any) -> dict[str, Any]:
+        snapshot = dict(kwargs.get("raw_json") or kwargs.get("rawJson") or kwargs.get("snapshot") or {})
+        version = int(kwargs.get("version") or 1)
+        raw_json = kwargs.get("rawJson")
+        hashed = raw_json if raw_json is not None else snapshot
         event = {
             "id": str(uuid4()),
             "resume_id": resume_id,
+            "resumeId": resume_id,
             "user_id": user_id,
+            "userId": user_id,
             "event_type": "succeeded",
-            "snapshot": snapshot or {},
+            "version": version,
+            "rawJsonHash": hash_text(json.dumps(hashed, sort_keys=True, default=str)) if hashed else "",
+            "skills": list(kwargs.get("skills") or snapshot.get("skills") or []),
+            "experience": list(kwargs.get("experience") or snapshot.get("experience") or []),
+            "education": list(kwargs.get("education") or snapshot.get("education") or []),
+            "snapshot": {key: snapshot[key] for key in ("skills", "experience", "education") if key in snapshot},
+            "createdAt": utc_now(),
         }
         written = self.repo("resume_parse_events").create(apply_timestamps(event))
         current = self._get("resumes", resume_id, user_id)
         current["processing_status"] = "parsed"
-        current["structured"] = snapshot or {}
-        updated = self._upsert("resumes", current, etag=current.get("_etag"))
+        current["parsedVersion"] = version
+        current["structured"] = event["snapshot"]
+        current["updatedAt"] = utc_now()
+        updated = self._upsert("resumes", current, etag=kwargs.get("etag") or current.get("_etag"))
         return {"resume": updated, "event": written}
 
     def set_active(self, user_id: str, resume_id: str) -> dict[str, Any]:
@@ -236,9 +381,7 @@ class ResumesDAO(DomainDAO):
         return active or self._get("resumes", resume_id, user_id)
 
     def list(self, user_id: str, *, cursor: str | None = None, limit: int | None = None) -> dict[str, Any]:
-        page = self._page("resumes", user_id, cursor=cursor, limit=limit)
-        page["items"] = [row for row in page["items"] if not row.get("is_deleted")]
-        return page
+        return self.list_user_resumes(user_id, cursor=cursor, limit=limit)
 
 
 class JobIngestDAO(DomainDAO):
@@ -326,29 +469,55 @@ class JobIngestDAO(DomainDAO):
 class EmailDAO(DomainDAO):
     containers = ("email_threads", "email_messages", "email_attachments")
 
+    def ensure_email_containers(self, database: Any) -> list[str]:
+        from app.mail.containers import ensure_email_containers as ensure_feature
+
+        return ensure_feature(database)
+
     def upsert_thread(self, account_id: str, user_id: str, **kwargs: Any) -> dict[str, Any]:
         thread_id = str(kwargs.get("id") or uuid4())
+        now = utc_now()
+        external = str(kwargs.get("externalThreadId") or kwargs.get("graph_conversation_id") or thread_id)
         row = {
             "id": thread_id,
             "email_account_id": account_id,
             "user_id": user_id,
+            "userId": user_id,
             "subject": kwargs.get("subject") or "",
-            "graph_conversation_id": kwargs.get("graph_conversation_id") or thread_id,
-            "job_posting_id": kwargs.get("job_posting_id"),
+            "graph_conversation_id": external,
+            "externalThreadId": external,
+            "job_posting_id": kwargs.get("job_posting_id") or kwargs.get("jobId"),
+            "application_id": kwargs.get("application_id") or kwargs.get("applicationId"),
+            "firstSeenAt": kwargs.get("firstSeenAt") or now,
+            "lastSeenAt": now,
         }
         return self._upsert("email_threads", row)
 
     def upsert_message(self, account_id: str, thread_id: str, **kwargs: Any) -> dict[str, Any]:
         message_id = str(kwargs.get("id") or uuid4())
+        raw_body = str(kwargs.get("body_text") or kwargs.get("body") or "")
+        from_addr = str(kwargs.get("from_address") or kwargs.get("from") or "")
+        to_addrs = list(kwargs.get("to_addresses") or kwargs.get("to") or [])
+        now = utc_now()
         row = {
             "id": message_id,
             "email_account_id": account_id,
             "email_thread_id": thread_id,
-            "from_address": kwargs.get("from_address") or "",
-            "to_addresses": list(kwargs.get("to_addresses") or []),
+            "threadId": thread_id,
+            "userId": kwargs.get("userId") or "",
+            "from_address": from_addr,
+            "from": from_addr,
+            "to_addresses": to_addrs,
+            "to": to_addrs,
             "subject": kwargs.get("subject") or "",
-            "body_text": kwargs.get("body_text") or "",
-            "graph_message_id": kwargs.get("graph_message_id") or message_id,
+            "body_text": "",
+            "bodyHash": hash_text(raw_body),
+            "body_hash": hash_text(raw_body),
+            "graph_message_id": kwargs.get("graph_message_id") or kwargs.get("externalMessageId") or message_id,
+            "externalMessageId": kwargs.get("externalMessageId") or kwargs.get("graph_message_id") or message_id,
+            "receivedAt": kwargs.get("receivedAt") or now,
+            "isOutbound": bool(kwargs.get("isOutbound", False)),
+            "createdAt": now,
         }
         return self._upsert("email_messages", row)
 
@@ -356,11 +525,16 @@ class EmailDAO(DomainDAO):
         row = {
             "id": str(kwargs.get("id") or uuid4()),
             "email_account_id": account_id,
+            "userId": kwargs.get("userId") or "",
             "message_id": message_id,
+            "messageId": message_id,
             "filename": kwargs.get("filename") or "file.bin",
-            "mime_type": kwargs.get("mime_type") or "application/octet-stream",
-            "size_bytes": int(kwargs.get("size_bytes") or 0),
-            "blob_uri": kwargs.get("blob_uri") or "",
+            "mime_type": kwargs.get("mime_type") or kwargs.get("contentType") or "application/octet-stream",
+            "contentType": kwargs.get("contentType") or kwargs.get("mime_type") or "application/octet-stream",
+            "size_bytes": int(kwargs.get("size_bytes") or kwargs.get("size") or 0),
+            "size": int(kwargs.get("size") or kwargs.get("size_bytes") or 0),
+            "blob_uri": kwargs.get("blob_uri") or kwargs.get("storagePath") or "",
+            "storagePath": kwargs.get("storagePath") or kwargs.get("blob_uri") or "",
         }
         return self._create("email_attachments", row)
 
@@ -384,6 +558,12 @@ class EmailDAO(DomainDAO):
 class SettingsDAO(DomainDAO):
     containers = ("user_settings", "source_toggles")
 
+    def ensure_settings_containers(self, database: Any) -> list[str]:
+        from app.settings.containers import container_specs, ensure_settings_containers as ensure_feature
+
+        ensure_feature(database)
+        return [spec["id"] for spec in container_specs()]
+
     def get_settings(self, user_id: str) -> dict[str, Any]:
         try:
             return self._get("user_settings", user_id, user_id)
@@ -395,6 +575,21 @@ class SettingsDAO(DomainDAO):
         current.update(patch)
         current["id"] = user_id
         current["user_id"] = user_id
+        current["userId"] = user_id
+        if "matchThreshold" in patch:
+            current["match_threshold"] = int(patch["matchThreshold"])
+        if "match_threshold" in patch:
+            current["matchThreshold"] = int(patch["match_threshold"])
+        current.setdefault("matchThreshold", current.get("match_threshold"))
+        current.setdefault("timezone", patch.get("timezone") or current.get("timezone") or "UTC")
+        if "quietHoursStart" in patch or "quietHoursEnd" in patch or "quiet_hours" in patch:
+            current["quietHoursStart"] = patch.get("quietHoursStart") or current.get("quietHoursStart")
+            current["quietHoursEnd"] = patch.get("quietHoursEnd") or current.get("quietHoursEnd")
+            current["quiet_hours"] = patch.get("quiet_hours") or {
+                "start": current.get("quietHoursStart"),
+                "end": current.get("quietHoursEnd"),
+            }
+        current["updatedAt"] = utc_now()
         return self._upsert("user_settings", current, etag=etag or current.get("_etag"))
 
     def get_source_toggles(self, user_id: str) -> dict[str, Any]:
@@ -402,6 +597,7 @@ class SettingsDAO(DomainDAO):
             return self._get("source_toggles", user_id, user_id)
         except KeyError:
             defaults = SETTINGS_DEFAULTS["sourceToggles"]
+            now = utc_now()
             return self._create(
                 "source_toggles",
                 {
@@ -410,6 +606,12 @@ class SettingsDAO(DomainDAO):
                     "greenhouse": defaults["greenhouse"],
                     "lever": defaults["lever"],
                     "autoApply": defaults["autoApply"],
+                    "sources": [
+                        {"source": "greenhouse", "isEnabled": defaults["greenhouse"]},
+                        {"source": "lever", "isEnabled": defaults["lever"]},
+                    ],
+                    "createdAt": now,
+                    "updatedAt": now,
                 },
             )
 
@@ -418,6 +620,19 @@ class SettingsDAO(DomainDAO):
         for key in ("greenhouse", "lever", "autoApply"):
             if key in patch:
                 current[key] = bool(patch[key])
+        if "source" in patch:
+            current["source"] = patch["source"]
+            current["isEnabled"] = bool(patch.get("isEnabled", True))
+            sources = list(current.get("sources") or [])
+            updated = False
+            for row in sources:
+                if row.get("source") == patch["source"]:
+                    row["isEnabled"] = current["isEnabled"]
+                    updated = True
+            if not updated:
+                sources.append({"source": patch["source"], "isEnabled": current["isEnabled"]})
+            current["sources"] = sources
+        current["updatedAt"] = utc_now()
         return self._upsert("source_toggles", current, etag=etag or current.get("_etag"))
 
 
@@ -589,7 +804,7 @@ class ReviewDAO(DomainDAO):
         ensure_feature(database)
         from app.review.containers import container_specs
 
-        return [spec["id"] for spec in container_specs()]
+        return [spec["id"] for spec in container_specs()] + ["review_queue", "review_decisions"]
 
     def enqueue(self, user_id: str, **kwargs: Any) -> dict[str, Any]:
         return self.enqueue_review_item(user_id, **kwargs)
@@ -607,18 +822,23 @@ class ReviewDAO(DomainDAO):
             return {"item": dup, "status": "existing"}
         ttl = int(kwargs.get("ttl_seconds") or QUEUE_TTL_SECONDS)
         expires = datetime.now(timezone.utc) + timedelta(seconds=ttl)
+        now = utc_now()
         row = {
             "id": match_id,
             "user_id": user_id,
             "userId": user_id,
             "job_id": job_id,
+            "jobId": job_id,
             "resume_id": resume_id,
+            "resumeId": resume_id,
             "status": "PENDING",
+            "queueStatus": "queued",
             "source": kwargs.get("source") or "ai",
             "job_title": kwargs.get("job_title") or "",
             "company": kwargs.get("company") or "",
             "ai_score": float(kwargs.get("ai_score") or 0),
-            "queued_at": utc_now(),
+            "queued_at": now,
+            "queuedAt": now,
             "expiresAt": expires.isoformat().replace("+00:00", "Z"),
             "ttl": ttl,
         }
@@ -667,12 +887,16 @@ class ReviewDAO(DomainDAO):
         event = {
             "id": str(uuid4()),
             "user_id": user_id,
+            "userId": user_id,
             "match_id": match_id,
             "job_id": match.get("job_id") or job_id,
+            "jobId": match.get("jobId") or match.get("job_id") or job_id,
             "resume_id": match.get("resume_id") or resume_id,
+            "resumeId": match.get("resumeId") or match.get("resume_id") or resume_id,
             "decision": decision,
             "reason": reason,
             "decided_at": utc_now(),
+            "createdAt": utc_now(),
         }
         written = self._create("decision_events", event)
         audit = self.repo("audit_events").create(
@@ -700,6 +924,22 @@ class ReviewDAO(DomainDAO):
             feedback = None
         return {"match": saved, "decision": written, "audit": audit, "feedback": feedback}
 
+    def list_review_history(
+        self,
+        user_id: str,
+        *,
+        job_id: str | None = None,
+        cursor: str | None = None,
+        limit: int | None = None,
+    ) -> dict[str, Any]:
+        page = self._page("decision_events", user_id, cursor=cursor, limit=limit)
+        items = list(page["items"])
+        if job_id:
+            items = [row for row in items if str(row.get("job_id") or row.get("jobId")) == job_id]
+        items.sort(key=lambda row: str(row.get("createdAt") or row.get("created_at") or row.get("decided_at") or ""), reverse=True)
+        page["items"] = items
+        return page
+
     def expire_queue(self, user_id: str, *, now: str | None = None) -> dict[str, Any]:
         clock = now or utc_now()
         page = self.repo("matches").list_partition(user_id, max_items=100)
@@ -712,15 +952,16 @@ class ReviewDAO(DomainDAO):
                 continue
             row["status"] = "REJECTED"
             row["expired"] = True
+            row["queueStatus"] = "expired"
             row["latest_decision"] = "expired"
             self._upsert("matches", row, etag=row.get("_etag"))
             expired_ids.append(str(row["id"]))
         return {"expired": expired_ids, "count": len(expired_ids)}
 
-    def dedupe(self, user_id: str, *, job_id: str, resume_id: str) -> dict[str, Any] | None:
+    def dedupe(self, user_id: str, *, job_id: str, resume_id: str = "") -> dict[str, Any] | None:
         page = self.repo("matches").list_partition(user_id, max_items=100)
         for row in page.items:
-            if str(row.get("job_id")) == job_id and str(row.get("resume_id")) == resume_id:
+            if str(row.get("job_id") or row.get("jobId")) == job_id:
                 return row
         return None
 

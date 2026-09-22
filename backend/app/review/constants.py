@@ -55,6 +55,15 @@ MATCHES_INDEXING: Final[dict] = _policy(
         {"path": "/queued_at", "order": "descending"},
     ],
     [
+        {"path": "/userId", "order": "ascending"},
+        {"path": "/status", "order": "ascending"},
+    ],
+    [{"path": "/queuedAt", "order": "ascending"}],
+    [
+        {"path": "/userId", "order": "ascending"},
+        {"path": "/jobId", "order": "ascending"},
+    ],
+    [
         {"path": "/user_id", "order": "ascending"},
         {"path": "/job_id", "order": "ascending"},
     ],
@@ -106,6 +115,11 @@ DECISIONS_INDEXING: Final[dict] = _policy(
     [
         {"path": "/user_id", "order": "ascending"},
         {"path": "/job_id", "order": "ascending"},
+    ],
+    [
+        {"path": "/userId", "order": "ascending"},
+        {"path": "/jobId", "order": "ascending"},
+        {"path": "/createdAt", "order": "descending"},
     ],
 )
 AUDIT_INDEXING: Final[dict] = _policy(
