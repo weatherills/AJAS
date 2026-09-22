@@ -193,3 +193,14 @@ export const mockMatchingApi: MatchingApi = {
     return { count: items.length, items }
   },
 }
+
+scoreOne(
+  'Staff Engineer Python Azure Cosmos APIs matching crawlers kubernetes',
+  'seed-ready',
+  {
+    id: 'job-staff',
+    text: 'Title: Staff Engineer\nCompany: Acme\nSkills: python azure cosmos matching crawlers ingestion kubernetes terraform',
+  },
+  70,
+  true,
+)
