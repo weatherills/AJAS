@@ -214,3 +214,57 @@ def integrations_receipts(req: func.HttpRequest) -> func.HttpResponse:
         return json_response(get_service().audit())
     except Exception as exc:
         return _handle(exc)
+
+
+@bp.route(route="v1/integrations/linkedin/spec", methods=["GET"])
+def integrations_linkedin_spec(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    try:
+        _auth(req)
+        return json_response(get_service().linkedin_spec())
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/integrations/linkedin/session", methods=["GET", "POST"])
+def integrations_linkedin_session(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    try:
+        _auth(req)
+        if req.method.upper() == "GET":
+            return json_response(get_service().session_list())
+        body = _json_body(req)
+        account_id = str(body.get("accountId") or body.get("account_id") or "").strip()
+        token = str(body.get("token") or "")
+        if not account_id or not token:
+            return error_response("VALIDATION_ERROR", "accountId and token are required", 400)
+        ttl = body.get("ttlSeconds")
+        return json_response(get_service().session_put(account_id, token, ttl_seconds=int(ttl) if ttl else None))
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/integrations/linkedin/session/refresh", methods=["POST"])
+def integrations_linkedin_session_refresh(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    try:
+        _auth(req)
+        body = _json_body(req)
+        return json_response(
+            get_service().session_refresh(str(body.get("accountId") or ""), body.get("token"))
+        )
+    except ValueError as exc:
+        return error_response("VALIDATION_ERROR", str(exc), 400)
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/integrations/linkedin/session/revoke", methods=["POST"])
+def integrations_linkedin_session_revoke(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    try:
+        _auth(req)
+        body = _json_body(req)
+        return json_response(get_service().session_revoke(str(body.get("accountId") or "")))
+    except Exception as exc:
+        return _handle(exc)

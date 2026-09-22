@@ -1,0 +1,64 @@
+{
+  "pages": [
+    {
+      "cursor": "c1",
+      "nextCursor": "c2",
+      "jobs": [
+        {
+          "id": "li-page-a",
+          "jobTitle": "Staff Platform Engineer",
+          "companyName": "Initech",
+          "formattedLocation": "Remote",
+          "jobDescription": "Python azure kubernetes.",
+          "url": "https://fixtures.ajas.local/linkedin/li-page-a",
+          "postedAt": "2026-09-01T12:00:00Z",
+          "easyApply": true
+        },
+        {
+          "id": "li-private",
+          "title": "Secret Staff Role",
+          "company": "Initech",
+          "location": "Remote",
+          "description": "Hidden.",
+          "apply_url": "https://fixtures.ajas.local/linkedin/private",
+          "postedAt": "2026-09-01T12:00:00Z",
+          "private": true
+        }
+      ]
+    },
+    {
+      "cursor": "c2",
+      "nextCursor": null,
+      "jobs": [
+        {
+          "id": "li-page-b",
+          "title": "Staff Platform Engineer",
+          "company": "Initech",
+          "location": "Remote",
+          "description": "Python azure kubernetes.",
+          "apply_url": "https://fixtures.ajas.local/linkedin/li-page-b?trk=spam",
+          "postedAt": "2026-09-01T12:00:00Z"
+        },
+        {
+          "id": "li-expired",
+          "title": "Expired Backend Role",
+          "company": "Initech",
+          "location": "Austin, TX",
+          "description": "Closed.",
+          "apply_url": "https://fixtures.ajas.local/linkedin/expired",
+          "postedAt": "2025-01-01T00:00:00Z",
+          "expired": true
+        },
+        {
+          "id": "li-page-c",
+          "title": "Senior Backend Engineer",
+          "company": "Globex",
+          "location": "Austin, TX",
+          "description": "Onsite python apis.",
+          "apply_url": "https://fixtures.ajas.local/linkedin/li-page-c",
+          "datePosted": "2026-08-15T00:00:00Z"
+        }
+      ]
+    }
+  ]
+}
