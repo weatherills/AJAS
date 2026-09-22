@@ -99,7 +99,7 @@ def test_ttl_retention_on_time_bound_containers():
     assert ttl["webhook_callbacks"] == 90 * 86_400
     assert ttl["event_log"] == 30 * 86_400
     assert container_by_id("matches").default_ttl is None
-    assert container_by_id("apply_runs").default_ttl is None
+    assert container_by_id("apply_runs").default_ttl == 365 * 86_400
     assert container_by_id("user_settings").default_ttl is None
 
 

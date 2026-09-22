@@ -42,6 +42,12 @@ def container_specs() -> list[dict[str, Any]]:
     ]
 
 
+def ensure_email_containers(database: "DatabaseProxy") -> list[str]:
+    """Kanban alias for email_threads / email_messages / email_attachments provisioning."""
+    ensure_mail_containers(database)
+    return ["email_threads", "email_messages", "email_attachments"]
+
+
 def ensure_mail_containers(database: "DatabaseProxy") -> None:
     from azure.cosmos import PartitionKey
 

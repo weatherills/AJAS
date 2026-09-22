@@ -120,6 +120,11 @@ ATTEMPTS_INDEXING: Final[dict] = _policy(
         {"path": "/status", "order": "ascending"},
     ],
     [
+        {"path": "/userId", "order": "ascending"},
+        {"path": "/jobId", "order": "descending"},
+    ],
+    [{"path": "/runId", "order": "ascending"}],
+    [
         {"path": "/vendor", "order": "ascending"},
         {"path": "/source_application_id", "order": "ascending"},
     ],
@@ -157,7 +162,11 @@ MAPPINGS_INDEXING: Final[dict] = _policy(
     [
         {"path": "/vendor", "order": "ascending"},
         {"path": "/normalized_key", "order": "ascending"},
-    ]
+    ],
+    [
+        {"path": "/siteKey", "order": "ascending"},
+        {"path": "/field", "order": "ascending"},
+    ],
 )
 SUBMITS_INDEXING: Final[dict] = _policy(
     [
@@ -189,9 +198,26 @@ WEBHOOKS_INDEXING: Final[dict] = _policy(
 )
 APPLY_RUNS_CONTAINER: Final[str] = "apply_runs"
 APPLY_RUNS_PK: Final[str] = "/userId"
+APPLY_RUNS_TTL_SECONDS: Final[int] = 365 * 86_400
+APPLY_RUN_STATUSES: Final[frozenset[str]] = frozenset(
+    {"pending", "running", "succeeded", "failed", "needs_manual", "queued", "submitted"}
+)
+APPLY_RUN_TRANSITIONS: Final[dict[str, frozenset[str]]] = {
+    "pending": frozenset({"running", "failed"}),
+    "queued": frozenset({"pending", "running", "failed", "submitted"}),
+    "running": frozenset({"succeeded", "failed", "needs_manual"}),
+    "submitted": frozenset({"succeeded", "failed", "needs_manual"}),
+    "needs_manual": frozenset({"running", "failed"}),
+    "succeeded": frozenset(),
+    "failed": frozenset(),
+}
 APPLY_RUNS_INDEXING: Final[dict] = _policy(
     [
         {"path": "/userId", "order": "ascending"},
         {"path": "/startedAt", "order": "descending"},
-    ]
+    ],
+    [
+        {"path": "/userId", "order": "ascending"},
+        {"path": "/jobId", "order": "descending"},
+    ],
 )

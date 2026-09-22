@@ -54,9 +54,16 @@ RESUMES_INDEXING_POLICY: Final[dict] = {
             {"path": "/user_id", "order": "ascending"},
             {"path": "/is_deleted", "order": "ascending"},
             {"path": "/updated_at", "order": "descending"},
-        ]
+        ],
+        [
+            {"path": "/userId", "order": "ascending"},
+            {"path": "/updatedAt", "order": "descending"},
+        ],
+        [{"path": "/createdAt", "order": "ascending"}],
     ],
 }
+
+PARSED_TTL_SECONDS: Final[int] = 90 * 86_400
 
 SELECTIONS_INDEXING_POLICY: Final[dict] = {
     "indexingMode": "consistent",

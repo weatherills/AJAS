@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Protocol
 
 from app.metrics import increment
+from app.storage.audit import emit as emit_db_event
 from app.storage.chaos import maybe_raise
 from app.storage.query_lint import enforce_lint, lint_query, record_profile
 
@@ -105,22 +106,43 @@ class CosmosDAL:
     def container(self, name: str) -> ContainerClient:
         return self._database.get_container_client(name)
 
-    def _run(self, fn: Callable[[], Any]) -> Any:
-        result = with_retry(fn, retries=self._retries)
+    def _run(self, fn: Callable[[], Any], *, container: str = "", op: str = "") -> Any:
+        started = time.perf_counter()
+        try:
+            result = with_retry(fn, retries=self._retries)
+        except Exception as exc:  # noqa: BLE001 — surface Cosmos errors as audit events
+            emit_db_event(
+                container=container,
+                op=op or "op",
+                latency_ms=(time.perf_counter() - started) * 1000,
+                error_code=type(exc).__name__,
+                status="error",
+            )
+            raise
         charge = _charge_of(result)
         if charge:
             increment("cosmos.ru", charge)
         increment("cosmos.ops")
+        emit_db_event(
+            container=container,
+            op=op or "op",
+            latency_ms=(time.perf_counter() - started) * 1000,
+            status="ok",
+        )
         return result
 
     def create(self, container: str, body: dict[str, Any]) -> dict[str, Any]:
         client = self.container(container)
-        result = self._run(lambda: client.create_item(body=body))
+        result = self._run(lambda: client.create_item(body=body), container=container, op="create")
         return dict(result) if result is not None else dict(body)
 
     def read(self, container: str, item_id: str, *, partition_key: Any, redact: bool = False) -> dict[str, Any]:
         client = self.container(container)
-        result = self._run(lambda: client.read_item(item=item_id, partition_key=partition_key))
+        result = self._run(
+            lambda: client.read_item(item=item_id, partition_key=partition_key),
+            container=container,
+            op="read",
+        )
         payload = dict(result)
         if redact:
             from app.storage.pii import redact as redact_doc
@@ -130,7 +152,7 @@ class CosmosDAL:
 
     def upsert(self, container: str, body: dict[str, Any]) -> dict[str, Any]:
         client = self.container(container)
-        result = self._run(lambda: client.upsert_item(body=body))
+        result = self._run(lambda: client.upsert_item(body=body), container=container, op="upsert")
         return dict(result) if result is not None else dict(body)
 
     def replace(
@@ -150,12 +172,16 @@ class CosmosDAL:
                 kwargs["if_match"] = etag
             return client.replace_item(**kwargs)
 
-        result = self._run(_go)
+        result = self._run(_go, container=container, op="replace")
         return dict(result) if result is not None else dict(body)
 
     def delete(self, container: str, item_id: str, *, partition_key: Any) -> None:
         client = self.container(container)
-        self._run(lambda: client.delete_item(item=item_id, partition_key=partition_key))
+        self._run(
+            lambda: client.delete_item(item=item_id, partition_key=partition_key),
+            container=container,
+            op="delete",
+        )
 
     def query(
         self,
@@ -194,7 +220,7 @@ class CosmosDAL:
                 kwargs["continuation"] = continuation
             return client.query_items(**kwargs)
 
-        result = self._run(_go)
+        result = self._run(_go, container=container, op="query")
         items, token, charge = _materialize_query(result, size)
         if charge:
             increment("cosmos.ru", charge)

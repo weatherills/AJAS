@@ -7,7 +7,7 @@ and persists the same documents.
 """
 
 from app.mail.constants import THREADS_CONTAINER
-from app.mail.containers import container_specs, ensure_mail_containers
+from app.mail.containers import container_specs, ensure_email_containers, ensure_mail_containers
 from app.mail.errors import (
     MailConflictError,
     MailNotFoundError,
@@ -30,6 +30,7 @@ __all__ = [
     "MailStoreError",
     "MailValidationError",
     "container_specs",
+    "ensure_email_containers",
     "ensure_mail_containers",
     "get_email_store",
 ]

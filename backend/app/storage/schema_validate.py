@@ -19,6 +19,8 @@ REQUIRED: dict[str, tuple[str, ...]] = {
     "email_attachments": ("id", "email_account_id", "message_id", "filename"),
     "apply_runs": ("id", "userId"),
     "auto_apply_attempts": ("id", "user_id"),
+    "cover_letters": ("id", "user_id"),
+    "vendor_field_mappings": ("id", "vendor", "field"),
     "user_settings": ("id", "user_id"),
     "source_toggles": ("id", "userId"),
     "decision_log": ("id", "user_id", "decision"),

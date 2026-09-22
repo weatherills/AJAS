@@ -222,9 +222,9 @@ _OVERLAYS: dict[str, _Overlay] = {
         feature="settings",
         entity="UserSettings",
         logical_unique=("user_id",),
-        query_patterns=("point read by user_id", "admin list updated_at desc"),
+        query_patterns=("point read by user_id", "admin list updated_at desc", "userId equality", "updatedAt range"),
         relationships=("1—N email_connections; 1—N settings_audit_log",),
-        ru_note="Point read ~1 RU. Version field is optimistic concurrency, not an index.",
+        ru_note="Point read ~1 RU. Version field is optimistic concurrency. Dual-write matchThreshold/timezone/quietHours.",
     ),
     "email_connections": _Overlay(
         feature="settings",
@@ -245,9 +245,15 @@ _OVERLAYS: dict[str, _Overlay] = {
         feature="resumes",
         entity="Resume",
         logical_unique=("user_id", "id"),
-        query_patterns=("user_id + is_deleted + updated_at desc", "processing_status", "checksum_sha256"),
-        relationships=("1—N children embedded; 1—N resume_parse_events",),
-        ru_note="Library list of ~20 resumes is a single partitioned query (~5 RU).",
+        query_patterns=(
+            "user_id + is_deleted + updated_at desc",
+            "userId + updatedAt desc",
+            "createdAt range",
+            "processing_status",
+            "checksum_sha256",
+        ),
+        relationships=("1—N children embedded; 1—N resume_parse_events; primaryFileId + parsedVersion FKs",),
+        ru_note="Library list of ~20 resumes is a single partitioned query (~5 RU). Dual-write userId/updatedAt for PRD lists.",
     ),
     "run_resume_selections": _Overlay(
         feature="resumes",
@@ -260,9 +266,10 @@ _OVERLAYS: dict[str, _Overlay] = {
     "resume_parse_events": _Overlay(
         feature="resumes",
         entity="ResumeParseEvent",
-        query_patterns=("resume_id + created_at desc",),
-        relationships=("append-only parse/edit log",),
-        ru_note="PK resume_id keeps the timeline in one partition.",
+        default_ttl=90 * DAY,
+        query_patterns=("resume_id + created_at desc", "userId + resumeId latest version"),
+        relationships=("append-only parse/edit log; Kanban alias resume_parsed",),
+        ru_note="TTL 90d prunes stale parsed versions. PK resume_id keeps the timeline in one partition.",
     ),
     "resume_versions": _Overlay(
         feature="resumes",
@@ -357,16 +364,16 @@ _OVERLAYS: dict[str, _Overlay] = {
         entity="MailThread",
         unique_keys=(("/graph_conversation_id",),),
         logical_unique=("email_account_id", "graph_conversation_id"),
-        query_patterns=("account + last_message_at desc", "job_posting_id", "application_id"),
-        ru_note="Inbox pages of 25 ~5 RU with last_message_at composite.",
+        query_patterns=("account + last_message_at desc", "userId + externalThreadId", "job_posting_id", "application_id"),
+        ru_note="Inbox pages of 25 ~5 RU with last_message_at composite. (userId, externalThreadId) lookup.",
     ),
     "email_messages": _Overlay(
         feature="mail",
         entity="EmailMessage",
         unique_keys=(("/graph_message_id",),),
         logical_unique=("email_account_id", "graph_message_id"),
-        query_patterns=("thread + received_at desc", "delivery_status", "graph_message_id", "body_hash"),
-        ru_note="Idempotent Graph ingest relies on unique graph_message_id per account.",
+        query_patterns=("thread + received_at desc", "receivedAt timeline", "delivery_status", "graph_message_id", "bodyHash"),
+        ru_note="Store bodyHash only — never persist raw body text. Unique graph_message_id per account.",
     ),
     "email_recipients": _Overlay(
         feature="mail",
@@ -517,8 +524,8 @@ _OVERLAYS: dict[str, _Overlay] = {
     "cover_letters": _Overlay(
         feature="auto_apply",
         entity="CoverLetter",
-        query_patterns=("user_id list",),
-        ru_note="Metadata + blob uri.",
+        query_patterns=("user_id list", "userId + jobId + resumeId"),
+        ru_note="Metadata + optional body. PK /user_id.",
     ),
     "form_autofill_values": _Overlay(
         feature="auto_apply",
@@ -531,8 +538,9 @@ _OVERLAYS: dict[str, _Overlay] = {
     "vendor_field_mappings": _Overlay(
         feature="auto_apply",
         entity="VendorFieldMapping",
-        query_patterns=("vendor partition list",),
-        ru_note="Small mapping catalog per vendor.",
+        logical_unique=("siteKey", "field"),
+        query_patterns=("vendor partition list", "siteKey + field"),
+        ru_note="Kanban alias form_field_mappings. PK /vendor (siteKey). Upsert by siteKey+field.",
     ),
     "submit_requests": _Overlay(
         feature="auto_apply",
@@ -561,24 +569,39 @@ _OVERLAYS: dict[str, _Overlay] = {
         feature="auto_apply",
         entity="ApplyRun",
         unique_keys=(("/idempotency_key",),),
+        default_ttl=365 * DAY,
         logical_unique=("userId", "jobId", "resumeId", "modelVersion"),
-        query_patterns=("userId + startedAt desc",),
+        query_patterns=("userId + startedAt desc", "userId + jobId desc"),
         relationships=("1—N auto_apply_attempts",),
-        ru_note="Batch of attempts. Composite (userId, startedAt desc). Unique idempotency_key is hash(userId|jobId|resumeId|modelVersion).",
+        ru_note="TTL ~365d. Composites (userId, startedAt desc) and (userId, jobId desc). Unique idempotency_key.",
         indexing_policy=_policy(
             [
                 {"path": "/userId", "order": "ascending"},
                 {"path": "/startedAt", "order": "descending"},
-            ]
+            ],
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/jobId", "order": "descending"},
+            ],
         ),
     ),
     "source_toggles": _Overlay(
         feature="settings",
         entity="SourceToggle",
-        logical_unique=("userId",),
-        query_patterns=("point read by userId",),
-        ru_note="Per-user Greenhouse/Lever/auto-apply flags. Seeded from user_settings defaults.",
-        indexing_policy=_policy([{"path": "/userId", "order": "ascending"}]),
+        logical_unique=("userId", "source"),
+        query_patterns=("point read by userId", "userId + source"),
+        ru_note="Per-user Greenhouse/Lever/auto-apply flags. Composite (userId, source) lookup.",
+        indexing_policy=_policy(
+            [{"path": "/userId", "order": "ascending"}],
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/source", "order": "ascending"},
+            ],
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/updatedAt", "order": "descending"},
+            ],
+        ),
     ),
     "data_subjects": _Overlay(
         feature="privacy",
@@ -722,8 +745,11 @@ def container_catalog() -> list[ContainerSpec]:
 
 
 def container_by_id(container_id: str) -> ContainerSpec:
+    from app.storage.epic import KANBAN_CONTAINERS
+
+    lookup = KANBAN_CONTAINERS.get(container_id, container_id)
     for spec in container_catalog():
-        if spec.id == container_id:
+        if spec.id == lookup:
             return spec
     raise KeyError(container_id)
 

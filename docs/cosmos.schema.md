@@ -7,13 +7,13 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | Container | Feature | Entity | Partition key | TTL (days) | Unique keys | Composites | Consistency | Owner | Retention | PII |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `apply_packages` | auto_apply | ApplyPackage | `/auto_apply_id` | — | — | 1 | Session | apply | — | — |
-| `apply_runs` | auto_apply | ApplyRun | `/userId` | — | /idempotency_key | 1 | Session | apply | — | — |
+| `apply_runs` | auto_apply | ApplyRun | `/userId` | 365 | /idempotency_key | 2 | Session | apply | 365 | — |
 | `audit_events` | review | AuditEvent | `/user_id` | — | — | 3 | Session | review | 365 | — |
-| `auto_apply_attempts` | auto_apply | Application | `/user_id` | 180 | /job_id+/resume_id | 4 | Session | apply | 547 | — |
-| `cover_letters` | auto_apply | CoverLetter | `/user_id` | — | — | 1 | Session | apply | — | — |
+| `auto_apply_attempts` | auto_apply | Application | `/user_id` | 180 | /job_id+/resume_id | 6 | Session | apply | 547 | — |
+| `cover_letters` | auto_apply | CoverLetter | `/user_id` | — | — | 1 | Session | apply | — | body |
 | `crawl_schedules` | job_sources | CrawlSchedule | `/source_tenant_id` | — | — | 1 | Session | ingest | — | — |
 | `data_subjects` | privacy | DataSubject | `/userId` | — | — | 0 | Session | privacy | — | — |
-| `decision_events` | review | DecisionEvent | `/user_id` | — | — | 3 | Session | review | 365 | — |
+| `decision_events` | review | DecisionEvent | `/user_id` | — | — | 4 | Session | review | 365 | — |
 | `decision_log` | learning | DecisionLog | `/user_id` | — | /recommendation_id | 2 | Session | learning | — | — |
 | `email_accounts` | mail | EmailAccount | `/id` | — | — | 0 | Session | mail | — | address,smtp_address |
 | `email_attachments` | mail | EmailAttachment | `/email_account_id` | — | — | 0 | Session | mail | — | — |
@@ -21,10 +21,10 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `email_drafts` | mail | EmailDraft | `/email_account_id` | — | — | 0 | Session | mail | — | — |
 | `email_ingestion_events` | mail | EmailIngestionEvent | `/email_account_id` | 30 | — | 0 | Session | mail | 30 | — |
 | `email_link_audits` | mail | EmailLinkAudit | `/email_account_id` | — | — | 0 | Session | mail | — | — |
-| `email_messages` | mail | EmailMessage | `/email_account_id` | — | /graph_message_id | 4 | Session | mail | 180 | from_address,to_addresses,body_text,body_html |
+| `email_messages` | mail | EmailMessage | `/email_account_id` | — | /graph_message_id | 6 | Session | mail | 180 | from_address,to_addresses,body_text,body_html,body,from,to |
 | `email_recipients` | mail | EmailRecipient | `/email_account_id` | — | — | 0 | Session | mail | — | address |
 | `email_templates` | mail | EmailTemplate | `/id` | — | — | 0 | Session | mail | — | — |
-| `email_threads` | mail | MailThread | `/email_account_id` | — | /graph_conversation_id | 3 | Session | mail | 180 | — |
+| `email_threads` | mail | MailThread | `/email_account_id` | — | /graph_conversation_id | 4 | Session | mail | 180 | — |
 | `event_log` | platform | EventLog | `/user_id` | 30 | — | 2 | Session | platform | 30 | — |
 | `export_bundles` | privacy | ExportBundle | `/userId` | 7 | — | 0 | Session | privacy | 7 | — |
 | `fetch_cursors` | job_sources | FetchCursor | `/source_tenant_id` | — | /endpoint | 1 | Session | ingest | — | — |
@@ -34,14 +34,14 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `graph_sync_cursors` | mail | GraphSyncCursor | `/email_account_id` | — | — | 0 | Session | mail | — | — |
 | `job_posting_links` | job_sources | JobPostingLink | `/raw_id` | — | — | 2 | Session | ingest | — | — |
 | `job_postings_canonical` | job_sources | JobPosting | `/id` | — | /canonical_key; /dedupe_hash | 7 | Session | ingest | 365 | — |
-| `job_postings_raw` | job_sources | JobPostingRaw | `/source_tenant_id` | 90 | — | 4 | Session | ingest | 365 | — |
+| `job_postings_raw` | job_sources | JobPostingRaw | `/source_tenant_id` | 90 | — | 4 | Session | ingest | 365 | payload,text,body |
 | `job_sources` | job_sources | JobSource | `/id` | — | — | 1 | Session | ingest | — | — |
 | `legal_holds` | privacy | LegalHold | `/userId` | — | — | 0 | Session | privacy | — | — |
 | `match_evidence` | matching | MatchEvidence | `/userId` | 180 | — | 1 | Session | matching | 365 | sentences,snippet,text |
 | `match_explanations` | matching | MatchExplanation | `/match_id` | — | — | 1 | Session | matching | — | — |
 | `match_records` | matching | MatchRecord | `/userId` | — | — | 2 | Session | matching | 365 | — |
 | `match_runs` | matching | MatchRun | `/user_id` | — | /idempotency_key | 5 | Session | matching | 547 | — |
-| `matches` | review | ReviewMatch | `/user_id` | — | /job_id+/resume_id | 11 | Session | review | 365 | — |
+| `matches` | review | ReviewMatch | `/user_id` | — | /job_id+/resume_id | 14 | Session | review | 365 | — |
 | `metrics_snapshot` | learning | MetricsSnapshot | `/scope_ref` | — | — | 2 | Session | learning | — | — |
 | `model_params` | learning | ModelParams | `/user_id` | — | — | 1 | Session | learning | — | — |
 | `model_registry` | matching | ModelRegistry | `/id` | — | — | 1 | Session | matching | — | — |
@@ -49,10 +49,10 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `privacy_audit_log` | privacy | PrivacyAuditLog | `/userId` | — | — | 1 | Session | privacy | — | — |
 | `privacy_requests` | privacy | PrivacyRequest | `/userId` | — | — | 1 | Session | privacy | — | — |
 | `recommendations` | learning | Recommendation | `/user_id` | — | — | 3 | Session | learning | — | — |
-| `resume_parse_events` | resumes | ResumeParseEvent | `/resume_id` | — | — | 1 | Session | resumes | — | — |
+| `resume_parse_events` | resumes | ResumeParseEvent | `/resume_id` | 90 | — | 1 | Session | resumes | 90 | snapshot,rawJson,text |
 | `resume_variants` | auto_apply | ResumeVariant | `/user_id` | — | — | 1 | Session | apply | — | — |
-| `resume_versions` | resumes | ResumeVersion | `/resume_id` | — | — | 2 | Session | resumes | 730 | — |
-| `resumes` | resumes | Resume | `/user_id` | — | — | 1 | Session | resumes | 730 | original_filename |
+| `resume_versions` | resumes | ResumeVersion | `/resume_id` | — | — | 2 | Session | resumes | 730 | rawJson,text |
+| `resumes` | resumes | Resume | `/user_id` | — | — | 3 | Session | resumes | 730 | original_filename,rawJson,text,text_preview |
 | `retention_jobs` | privacy | RetentionJob | `/id` | 90 | — | 0 | Session | privacy | 90 | — |
 | `retention_policies` | privacy | RetentionPolicy | `/id` | — | — | 0 | Session | privacy | — | — |
 | `run_resume_selections` | resumes | RunResumeSelection | `/run_id` | — | — | 1 | Session | resumes | — | — |
@@ -62,14 +62,14 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `source_fetch_runs` | job_sources | SourceFetchRun | `/source_tenant_id` | — | — | 1 | Session | ingest | — | — |
 | `source_rate_limits` | job_sources | SourceRateLimit | `/source_tenant_id` | — | — | 2 | Session | ingest | — | — |
 | `source_tenants` | job_sources | SourceTenant | `/source_id` | — | /tenant_key | 1 | Session | ingest | — | — |
-| `source_toggles` | settings | SourceToggle | `/userId` | — | — | 1 | Session | settings | — | — |
+| `source_toggles` | settings | SourceToggle | `/userId` | — | — | 3 | Session | settings | — | — |
 | `status_events` | auto_apply | StatusEvent | `/auto_apply_id` | — | — | 1 | Session | apply | 547 | — |
 | `submit_requests` | auto_apply | SubmitRequest | `/auto_apply_id` | — | /idempotency_key | 4 | Strong | apply | — | — |
 | `user_match_pref_history` | matching | UserMatchPrefHistory | `/user_id` | — | — | 1 | Session | matching | — | — |
 | `user_match_prefs` | matching | UserMatchPrefs | `/user_id` | — | — | 1 | Session | matching | — | — |
-| `user_settings` | settings | UserSettings | `/user_id` | — | — | 1 | Strong | settings | — | token_blob |
+| `user_settings` | settings | UserSettings | `/user_id` | — | — | 2 | Strong | settings | — | token_blob |
 | `users` | platform | User | `/id` | — | — | 1 | Session | platform | — | email |
-| `vendor_field_mappings` | auto_apply | VendorFieldMapping | `/vendor` | — | — | 1 | Session | apply | — | — |
+| `vendor_field_mappings` | auto_apply | VendorFieldMapping | `/vendor` | — | — | 2 | Session | apply | — | — |
 | `webhook_callbacks` | auto_apply | WebhookCallback | `/vendor_application_id` | 90 | /dedupe_key | 2 | Session | apply | 90 | — |
 | `weight_config` | learning | WeightConfig | `/weight_config_id` | — | — | 1 | Session | learning | — | — |
 | `weight_tuning_event` | learning | WeightTuningEvent | `/tuning_event_id` | — | — | 1 | Session | learning | — | — |
@@ -87,9 +87,10 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 ### `apply_runs`
 
 - Query: userId + startedAt desc
+- Query: userId + jobId desc
 - Rel: 1—N auto_apply_attempts
 - Logical unique: `userId, jobId, resumeId, modelVersion`
-- RU: Batch of attempts. Composite (userId, startedAt desc). Unique idempotency_key is hash(userId|jobId|resumeId|modelVersion).
+- RU: TTL ~365d. Composites (userId, startedAt desc) and (userId, jobId desc). Unique idempotency_key.
 - API: GET /api/v1/auto-apply/requests; POST /api/v1/auto-apply/requests
 - DAL: `CatalogRepository(apply_runs)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
@@ -118,7 +119,8 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 ### `cover_letters`
 
 - Query: user_id list
-- RU: Metadata + blob uri.
+- Query: userId + jobId + resumeId
+- RU: Metadata + optional body. PK /user_id.
 - API: GET /api/v1/auto-apply/requests; POST /api/v1/auto-apply/requests
 - DAL: `CatalogRepository(cover_letters)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
@@ -327,11 +329,12 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 ### `email_messages`
 
 - Query: thread + received_at desc
+- Query: receivedAt timeline
 - Query: delivery_status
 - Query: graph_message_id
-- Query: body_hash
+- Query: bodyHash
 - Logical unique: `email_account_id, graph_message_id`
-- RU: Idempotent Graph ingest relies on unique graph_message_id per account.
+- RU: Store bodyHash only — never persist raw body text. Unique graph_message_id per account.
 - API: GET /api/v1/email/threads; POST /api/v1/threads/{threadId}/reply
 - DAL: `CatalogRepository(email_messages)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
@@ -355,10 +358,11 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 ### `email_threads`
 
 - Query: account + last_message_at desc
+- Query: userId + externalThreadId
 - Query: job_posting_id
 - Query: application_id
 - Logical unique: `email_account_id, graph_conversation_id`
-- RU: Inbox pages of 25 ~5 RU with last_message_at composite.
+- RU: Inbox pages of 25 ~5 RU with last_message_at composite. (userId, externalThreadId) lookup.
 - API: GET /api/v1/email/threads; POST /api/v1/threads/{threadId}/reply
 - DAL: `CatalogRepository(email_threads)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
@@ -601,8 +605,9 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 ### `resume_parse_events`
 
 - Query: resume_id + created_at desc
-- Rel: append-only parse/edit log
-- RU: PK resume_id keeps the timeline in one partition.
+- Query: userId + resumeId latest version
+- Rel: append-only parse/edit log; Kanban alias resume_parsed
+- RU: TTL 90d prunes stale parsed versions. PK resume_id keeps the timeline in one partition.
 - API: GET /api/resumes
 - DAL: `CatalogRepository(resume_parse_events)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
@@ -690,11 +695,13 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 ### `resumes`
 
 - Query: user_id + is_deleted + updated_at desc
+- Query: userId + updatedAt desc
+- Query: createdAt range
 - Query: processing_status
 - Query: checksum_sha256
-- Rel: 1—N children embedded; 1—N resume_parse_events
+- Rel: 1—N children embedded; 1—N resume_parse_events; primaryFileId + parsedVersion FKs
 - Logical unique: `user_id, id`
-- RU: Library list of ~20 resumes is a single partitioned query (~5 RU).
+- RU: Library list of ~20 resumes is a single partitioned query (~5 RU). Dual-write userId/updatedAt for PRD lists.
 - API: GET /api/resumes
 - DAL: `CatalogRepository(resumes)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
@@ -785,8 +792,9 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 ### `source_toggles`
 
 - Query: point read by userId
-- Logical unique: `userId`
-- RU: Per-user Greenhouse/Lever/auto-apply flags. Seeded from user_settings defaults.
+- Query: userId + source
+- Logical unique: `userId, source`
+- RU: Per-user Greenhouse/Lever/auto-apply flags. Composite (userId, source) lookup.
 - API: GET /api/v1/settings
 - DAL: `CatalogRepository(source_toggles)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
@@ -832,9 +840,11 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 
 - Query: point read by user_id
 - Query: admin list updated_at desc
+- Query: userId equality
+- Query: updatedAt range
 - Rel: 1—N email_connections; 1—N settings_audit_log
 - Logical unique: `user_id`
-- RU: Point read ~1 RU. Version field is optimistic concurrency, not an index.
+- RU: Point read ~1 RU. Version field is optimistic concurrency. Dual-write matchThreshold/timezone/quietHours.
 - API: GET /api/v1/settings
 - DAL: `CatalogRepository(user_settings)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
@@ -852,7 +862,9 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 ### `vendor_field_mappings`
 
 - Query: vendor partition list
-- RU: Small mapping catalog per vendor.
+- Query: siteKey + field
+- Logical unique: `siteKey, field`
+- RU: Kanban alias form_field_mappings. PK /vendor (siteKey). Upsert by siteKey+field.
 - API: GET /api/v1/auto-apply/requests; POST /api/v1/auto-apply/requests
 - DAL: `CatalogRepository(vendor_field_mappings)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU

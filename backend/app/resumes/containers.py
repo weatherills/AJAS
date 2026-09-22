@@ -63,4 +63,14 @@ def ensure_resume_containers(database: "DatabaseProxy") -> None:
         }
         if "unique_key_policy" in spec:
             kwargs["unique_key_policy"] = spec["unique_key_policy"]
+        if spec["id"] == EVENTS_CONTAINER:
+            from app.resumes.constants import PARSED_TTL_SECONDS
+
+            kwargs["default_ttl"] = PARSED_TTL_SECONDS
         database.create_container_if_not_exists(**kwargs)
+
+
+def ensure_resumes_containers(database: "DatabaseProxy") -> list[str]:
+    """Kanban alias: provision resumes, resume_files, resume_parsed (physical + aliases)."""
+    ensure_resume_containers(database)
+    return ["resumes", "resume_files", "resume_parsed"]

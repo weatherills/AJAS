@@ -34,7 +34,11 @@ SETTINGS_INDEXING_POLICY: Final[dict] = {
         [
             {"path": "/user_id", "order": "ascending"},
             {"path": "/updated_at", "order": "descending"},
-        ]
+        ],
+        [
+            {"path": "/userId", "order": "ascending"},
+            {"path": "/updatedAt", "order": "descending"},
+        ],
     ],
 }
 
@@ -65,7 +69,17 @@ SOURCE_TOGGLES_INDEXING_POLICY: Final[dict] = {
     "automatic": True,
     "includedPaths": [{"path": "/*"}],
     "excludedPaths": [{"path": "/\"_etag\"/?"}],
-    "compositeIndexes": [[{"path": "/userId", "order": "ascending"}]],
+    "compositeIndexes": [
+        [{"path": "/userId", "order": "ascending"}],
+        [
+            {"path": "/userId", "order": "ascending"},
+            {"path": "/source", "order": "ascending"},
+        ],
+        [
+            {"path": "/userId", "order": "ascending"},
+            {"path": "/updatedAt", "order": "descending"},
+        ],
+    ],
 }
 
 AUDIT_INDEXING_POLICY: Final[dict] = {

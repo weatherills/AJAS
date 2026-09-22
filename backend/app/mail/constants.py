@@ -82,6 +82,10 @@ THREADS_INDEXING: Final[dict] = _policy(
     ],
     [{"path": "/graph_conversation_id", "order": "ascending"}],
     [{"path": "/job_posting_id", "order": "ascending"}],
+    [
+        {"path": "/userId", "order": "ascending"},
+        {"path": "/externalThreadId", "order": "ascending"},
+    ],
 )
 MESSAGES_INDEXING: Final[dict] = _policy(
     [
@@ -91,4 +95,9 @@ MESSAGES_INDEXING: Final[dict] = _policy(
     [{"path": "/graph_message_id", "order": "ascending"}],
     [{"path": "/delivery_status", "order": "ascending"}],
     [{"path": "/body_hash", "order": "ascending"}],
+    [{"path": "/receivedAt", "order": "descending"}],
+    [
+        {"path": "/userId", "order": "ascending"},
+        {"path": "/receivedAt", "order": "descending"},
+    ],
 )
