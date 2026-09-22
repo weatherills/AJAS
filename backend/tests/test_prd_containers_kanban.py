@@ -30,6 +30,7 @@ from app.storage.epic import resolve_container
 from app.storage.pii import hash_text, redact
 from app.storage.testing import FakeDatabase
 
+REPO = Path(__file__).resolve().parents[2]
 USER = "prd-user"
 
 
@@ -241,6 +242,6 @@ def test_db_ops_audit_events_and_pii_minimization():
     assert masked["from_address"].startswith("a***@")
     assert "***" in str(masked["body_text"])
     assert hash_text("x") != hash_text("y")
-    prd = Path("/workspace/.codespring/PRDs/resume-management/database-prd-resume-management.md").read_text()
+    prd = (REPO / ".codespring/PRDs/resume-management/database-prd-resume-management.md").read_text()
     assert "Child containers" in prd
     assert "child tables" not in prd.lower()
