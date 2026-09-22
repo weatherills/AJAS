@@ -8,6 +8,16 @@ from typing import Any
 
 from app.auto_apply.captcha import detect as detect_captcha
 from app.flags import feature_enabled
+from app.integrations import linkedin_audit
+from app.integrations.linkedin_spec import (
+    RATE_PLAN,
+    bump,
+    detect_challenge,
+    listing_dedupe_key,
+    listing_visibility,
+    map_linkedin_job,
+    walk_pages,
+)
 from app.integrations.search import SearchSpec, matches_search, parse_search
 from app.job_sources.boards import SOURCE_FLAGS, backoff_seconds, iter_pages
 from app.job_sources.circuit import allow as circuit_allow, record_status
@@ -46,7 +56,10 @@ LIMITER = RateLimiter()
 
 
 def reset_limiter() -> None:
+    from app.integrations.linkedin_spec import reset_counters
+
     LIMITER.reset()
+    reset_counters()
 
 
 def throttle(source: str, *, cost: int = 1, cap: int = 20, jitter: float = 0.0) -> dict[str, Any]:
@@ -56,19 +69,52 @@ def throttle(source: str, *, cost: int = 1, cap: int = 20, jitter: float = 0.0) 
         delay = random.uniform(0.05, jitter)
     row["delaySeconds"] = round(delay, 4)
     row["backoffSeconds"] = backoff_seconds(max(0, int(row["used"]) - 1))
+    if not row["allowed"]:
+        bump("rate_limited")
     return row
 
 
 def classify_error(status: int | None, payload: Any = None) -> dict[str, Any]:
+    challenge = detect_challenge(payload, status=status)
+    if challenge["kind"] == "captcha":
+        bump("captcha")
+        return {
+            "class": "captcha",
+            "retryable": False,
+            "action": "needs_manual",
+            "bypass": False,
+            "userPrompt": challenge["userPrompt"],
+        }
+    if challenge["kind"] == "challenge":
+        return {
+            "class": "challenge",
+            "retryable": False,
+            "action": "needs_manual",
+            "bypass": False,
+            "userPrompt": challenge["userPrompt"],
+        }
+    if challenge["kind"] == "timeout":
+        bump("timeout")
+        return {
+            "class": "timeout",
+            "retryable": True,
+            "action": "retry",
+            "bypass": False,
+            "userPrompt": challenge["userPrompt"],
+        }
     captcha = detect_captcha(payload)
     if captcha["captcha"]:
+        bump("captcha")
         return {"class": "captcha", "retryable": False, "action": "needs_manual", "bypass": False}
     code = int(status or 0)
     if code == 429:
+        bump("rate_limited")
         return {"class": "rate_limited", "retryable": True, "action": "backoff"}
     if code in {408, 503, 504} or code >= 500:
+        bump("transient")
         return {"class": "transient", "retryable": True, "action": "retry"}
     if 400 <= code < 500:
+        bump("permanent")
         return {"class": "permanent", "retryable": False, "action": "fail"}
     return {"class": "ok", "retryable": False, "action": "continue"}
 
@@ -79,14 +125,17 @@ def retry_with_backoff(
     max_attempts: int = 4,
     sleeper=None,
     jitter: float = 0.0,
+    payload: Any = None,
 ) -> dict[str, Any]:
     """Walk a sequence of HTTP statuses (tests inject the sequence)."""
     attempts: list[dict[str, Any]] = []
-    final = classify_error(statuses[-1] if statuses else 500)
+    final = classify_error(statuses[-1] if statuses else 500, payload)
     for index, status in enumerate(statuses[:max_attempts]):
-        info = classify_error(status)
+        info = classify_error(status, payload)
         delay = jittered_backoff(index, jitter=jitter) if info["retryable"] else 0.0
         attempts.append({"status": status, **info, "delaySeconds": delay})
+        if info["retryable"]:
+            bump("retries")
         if sleeper and delay:
             sleeper(delay)
         if not info["retryable"]:
@@ -128,14 +177,34 @@ def _first(*values: Any) -> str:
 
 
 def normalize_job(source: str, job: dict[str, Any]) -> dict[str, Any]:
-    title = _first(job.get("title"), job.get("jobTitle"))
-    company = _first(job.get("company"), job.get("companyName"), job.get("employer"))
-    location = _first(job.get("location"), job.get("jobLocation"))
-    if isinstance(job.get("location"), dict):
-        location = _first(job["location"].get("display"), job["location"].get("name"), location)
-    body = _first(job.get("description"), job.get("body"), job.get("content"))
-    apply_url = _first(job.get("apply_url"), job.get("url"), job.get("postingUrl"), job.get("link"))
-    employment = _first(job.get("employment_type"), job.get("type"), job.get("jobType"))
+    linkedin = map_linkedin_job(job) if source == "linkedin" else None
+    if linkedin:
+        title = str(linkedin.get("title") or "")
+        company = str(linkedin.get("company") or "")
+        location = str(linkedin.get("location") or "")
+        body = str(linkedin.get("description") or "")
+        apply_url = str(linkedin.get("postingUrl") or "")
+        employment = str(linkedin.get("employmentType") or "")
+        posted_at = str(linkedin.get("postedAt") or "")
+        posting_id = str(linkedin.get("sourcePostingId") or "")
+        listing_key = str(linkedin.get("listingKey") or "")
+        visibility = str(linkedin.get("visibility") or "public")
+        visible = bool(linkedin.get("visible"))
+    else:
+        title = _first(job.get("title"), job.get("jobTitle"))
+        company = _first(job.get("company"), job.get("companyName"), job.get("employer"))
+        location = _first(job.get("location"), job.get("jobLocation"))
+        if isinstance(job.get("location"), dict):
+            location = _first(job["location"].get("display"), job["location"].get("name"), location)
+        body = _first(job.get("description"), job.get("body"), job.get("content"))
+        apply_url = _first(job.get("apply_url"), job.get("url"), job.get("postingUrl"), job.get("link"))
+        employment = _first(job.get("employment_type"), job.get("type"), job.get("jobType"))
+        posted_at = _first(job.get("postedAt"), job.get("posted_at"), job.get("listedAt"), job.get("datePosted"))
+        vis = listing_visibility(job)
+        visibility = vis["reason"]
+        visible = vis["visible"]
+        listing_key = listing_dedupe_key(title=title, company=company, location=location, posted_at=posted_at)
+        posting_id = str(job.get("id") or job.get("source_posting_id") or canonical_id_for(listing_key)[:12])
     extra = enrich_posting(title=title, company=company, location=location, body=body)
     salary = parse_salary(body)
     apply = detect_apply_method({**job, "apply_url": apply_url, "url": apply_url, "source": source})
@@ -149,7 +218,6 @@ def normalize_job(source: str, job: dict[str, Any]) -> dict[str, Any]:
         apply_url=apply_url,
         description_text=str(extra.get("description") or body),
     )
-    posting_id = str(job.get("id") or job.get("source_posting_id") or canonical_id_for(key)[:12])
     return {
         "id": canonical_id_for(f"{source}:{posting_id}:{digest[:12]}"),
         "source": source,
@@ -168,6 +236,10 @@ def normalize_job(source: str, job: dict[str, Any]) -> dict[str, Any]:
         "applyUrl": apply["applyUrl"],
         "applyMethod": apply["applyMethod"],
         "externalApplyUrl": apply["externalApplyUrl"],
+        "postedAt": posted_at,
+        "listingKey": listing_key,
+        "visibility": visibility,
+        "visible": visible,
         "canonicalKey": key,
         "contentHash": digest,
         "page": int(job.get("page") or 1),
@@ -175,12 +247,23 @@ def normalize_job(source: str, job: dict[str, Any]) -> dict[str, Any]:
             "source": source,
             "rawId": posting_id,
             "fetchedAt": utc_now(),
+            "postedAt": posted_at,
         },
     }
 
 
 def _pages_from(payload: Any) -> list[list[Any]]:
     return iter_pages(payload)
+
+
+def _linkedin_pages(payload: Any) -> tuple[list[list[Any]], dict[str, Any]]:
+    walked = walk_pages(payload)
+    return [list(page.get("jobs") or []) for page in walked["pages"]], {
+        "stop": walked["stop"],
+        "cursors": walked["cursors"],
+        "windowSize": walked["windowSize"],
+        "mode": "cursor",
+    }
 
 
 def _flag_for(source: str) -> str | None:
@@ -195,7 +278,7 @@ def ingest_jobs(
     search: SearchSpec | dict[str, Any] | None = None,
     seen: dict[str, dict[str, Any]] | None = None,
     store: dict[str, dict[str, Any]] | None = None,
-    rate_cap: int = 50,
+    rate_cap: int | None = None,
 ) -> dict[str, Any]:
     """Normalize fixture pages into canonical postings with idempotent upserts.
 
@@ -204,6 +287,7 @@ def ingest_jobs(
     """
     spec = search if isinstance(search, SearchSpec) else parse_search(search)
     flag = _flag_for(source)
+    cap = int(rate_cap if rate_cap is not None else RATE_PLAN["ingest"]["capPerWindow"] if source == "linkedin" else 50)
     metrics = {
         "source": source,
         "ingested": 0,
@@ -212,30 +296,45 @@ def ingest_jobs(
         "failed": 0,
         "pages": 0,
         "enabled": bool(flag and feature_enabled(flag)),
+        "privateSkipped": 0,
+        "expiredSkipped": 0,
+        "deduped": 0,
     }
+    pagination = {"stop": "ok", "cursors": [], "windowSize": 25, "mode": "offset"}
     if not flag or not feature_enabled(flag):
-        return {"jobs": [], "metrics": metrics, "search": spec.as_dict(), "reason": "flag_off"}
+        return {"jobs": [], "metrics": metrics, "search": spec.as_dict(), "reason": "flag_off", "pagination": pagination}
     if not circuit_allow(source):
         metrics["failed"] += 1
-        return {"jobs": [], "metrics": metrics, "search": spec.as_dict(), "reason": "circuit_open"}
+        bump("circuit_open")
+        linkedin_audit.record("circuit_open", reason="circuit_open")
+        return {"jobs": [], "metrics": metrics, "search": spec.as_dict(), "reason": "circuit_open", "pagination": pagination}
     if listing_url and not can_fetch(listing_url):
         metrics["failed"] += 1
-        return {"jobs": [], "metrics": metrics, "search": spec.as_dict(), "reason": "robots_or_consent"}
+        return {"jobs": [], "metrics": metrics, "search": spec.as_dict(), "reason": "robots_or_consent", "pagination": pagination}
 
     bucket = store if store is not None else {}
     known = seen if seen is not None else {}
     out: list[dict[str, Any]] = []
-    pages = _pages_from(payload)
+    if source == "linkedin":
+        pages, pagination = _linkedin_pages(payload)
+    else:
+        pages = _pages_from(payload)
+        pagination = {"stop": "no_next_cursor", "cursors": [], "windowSize": 25, "mode": "offset"}
     for index, rows in enumerate(pages, start=1):
         metrics["pages"] += 1
         _ = backoff_seconds(index - 1)
-        gate = throttle(source, cap=rate_cap, jitter=0.0)
+        bump("requests")
+        gate = throttle(source, cap=cap, jitter=0.0)
         if not gate["allowed"]:
             metrics["skipped"] += max(0, len(rows) if isinstance(rows, list) else 0)
             record_status(source, 429)
+            pagination["stop"] = "rate_cap"
+            linkedin_audit.record("rate_limited", source=source, used=gate["used"], cap=gate["cap"])
             break
         if not isinstance(rows, list):
             continue
+        if source == "linkedin":
+            linkedin_audit.record("fetch_page", page=index, count=len(rows))
         for job in rows:
             if not isinstance(job, dict):
                 metrics["failed"] += 1
@@ -245,6 +344,17 @@ def ingest_jobs(
             except Exception:
                 metrics["failed"] += 1
                 continue
+            if source == "linkedin" and not row.get("visible", True):
+                metrics["skipped"] += 1
+                if row.get("visibility") == "private":
+                    metrics["privateSkipped"] += 1
+                    bump("private_skipped")
+                    linkedin_audit.record("skipped_private", listingKey=row.get("listingKey"))
+                else:
+                    metrics["expiredSkipped"] += 1
+                    bump("expired_skipped")
+                    linkedin_audit.record("skipped_expired", listingKey=row.get("listingKey"))
+                continue
             if not row["title"] or not row["company"] or not row["postingUrl"]:
                 metrics["failed"] += 1
                 continue
@@ -252,28 +362,56 @@ def ingest_jobs(
                 metrics["skipped"] += 1
                 continue
             fingerprint = f"{row['contentHash']}|{row['postingUrl']}"
-            previous = known.get(fingerprint) or bucket.get(row["id"])
-            if previous and previous.get("contentHash") == row["contentHash"]:
+            listing_key = str(row.get("listingKey") or "")
+            posted_at = str(row.get("postedAt") or "")
+            previous = None
+            if source == "linkedin" and listing_key and posted_at:
+                previous = known.get(listing_key)
+            if previous is None:
+                previous = known.get(fingerprint) or bucket.get(row["id"])
+            listing_hit = bool(
+                source == "linkedin" and listing_key and posted_at and previous and previous.get("listingKey") == listing_key
+            )
+            if previous and (listing_hit or previous.get("contentHash") == row["contentHash"]):
                 metrics["skipped"] += 1
-                out.append(previous)
+                metrics["deduped"] += 1
+                bump("deduped")
+                if source == "linkedin":
+                    linkedin_audit.record("deduped", listingKey=listing_key)
+                if not any(item.get("id") == previous.get("id") for item in out):
+                    out.append(previous)
                 continue
             if previous:
                 metrics["updated"] += 1
             else:
                 metrics["ingested"] += 1
             known[fingerprint] = row
+            if listing_key and posted_at:
+                known[listing_key] = row
             bucket[row["id"]] = row
             out.append(row)
             if len(out) >= spec.limit:
+                pagination["stop"] = "limit_reached"
                 break
         if len(out) >= spec.limit:
+            pagination["stop"] = "limit_reached"
             break
     record_status(source, 200)
+    if source == "linkedin":
+        linkedin_audit.record(
+            "fetch",
+            ingested=metrics["ingested"],
+            skipped=metrics["skipped"],
+            failed=metrics["failed"],
+            pages=metrics["pages"],
+            stop=pagination.get("stop"),
+        )
     return {
         "jobs": out[: spec.limit],
         "metrics": metrics,
         "search": spec.as_dict(),
         "reason": "ok",
+        "pagination": pagination,
     }
 
 

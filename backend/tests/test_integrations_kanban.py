@@ -459,6 +459,9 @@ def test_http_routes_flag_gated(monkeypatch):
             body={
                 "job": {"id": "x", "title": "Staff", "company": "Acme", "postingUrl": "https://fixtures.ajas.local/x"},
                 "profile": {"full_name": "Alex Jobseeker", "email": "alex@ajas.dev"},
+                "attachments": [
+                    {"kind": "resume", "name": "resume.pdf", "contentType": "application/pdf", "data": "%PDF-1.4 cv"}
+                ],
             },
         )
     )

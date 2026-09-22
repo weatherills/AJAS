@@ -11,6 +11,9 @@ from app.integrations.easy_apply import audit_log, receipts, reset as reset_easy
 from app.integrations.gmail import LocalGmailClient, send_mail, sync_inbox
 from app.integrations.harvest import list_applications
 from app.integrations.ingest import indeed_ingest, linkedin_ingest, reset_limiter
+from app.integrations.linkedin_audit import events as linkedin_events
+from app.integrations.linkedin_spec import spec_bundle
+from app.integrations.linkedin_session import STORE as SESSION_STORE, reset as reset_sessions
 from app.integrations.pipeline import run_linkedin_e2e
 from app.integrations.scheduler import reset as reset_scheduler, snapshot as schedule_snapshot, tick
 from app.integrations.search import SUPPORTED_INPUTS, parse_search
@@ -68,6 +71,23 @@ class IntegrationService:
     def search_spec(self, payload: dict[str, Any] | None) -> dict[str, Any]:
         return parse_search(payload).as_dict()
 
+    def linkedin_spec(self) -> dict[str, Any]:
+        bundle = spec_bundle()
+        bundle["session"] = {"accounts": SESSION_STORE.list_accounts(), "policy": bundle.get("sessionPolicy")}
+        return bundle
+
+    def session_put(self, account_id: str, token: str, *, ttl_seconds: int | None = None) -> dict[str, Any]:
+        return SESSION_STORE.put(account_id, token, ttl_seconds=ttl_seconds)
+
+    def session_list(self) -> dict[str, Any]:
+        return {"accounts": SESSION_STORE.list_accounts()}
+
+    def session_refresh(self, account_id: str, token: str | None = None) -> dict[str, Any]:
+        return SESSION_STORE.refresh(account_id, token)
+
+    def session_revoke(self, account_id: str) -> dict[str, Any]:
+        return SESSION_STORE.revoke(account_id)
+
     def easy_apply(self, body: dict[str, Any]) -> dict[str, Any]:
         job = body.get("job") if isinstance(body.get("job"), dict) else {}
         job_id = body.get("jobId")
@@ -81,6 +101,7 @@ class IntegrationService:
             page=body.get("page"),
             statuses=body.get("statuses"),
             approved_answers=body.get("approvedAnswers"),
+            account_id=body.get("accountId") or body.get("account_id"),
         )
 
     def harvest(self, *, email: str | None = None, page: int = 1, pages: list[dict[str, Any]] | None = None) -> dict[str, Any]:
@@ -162,7 +183,7 @@ class IntegrationService:
         return tick(payloads=payloads)
 
     def audit(self) -> dict[str, Any]:
-        return {"receipts": receipts(), "events": audit_log()}
+        return {"receipts": receipts(), "events": audit_log(), "telemetry": linkedin_events()}
 
 
 def get_service() -> IntegrationService:
@@ -178,3 +199,7 @@ def reset_service() -> None:
     reset_easy_apply()
     reset_scheduler()
     reset_limiter()
+    reset_sessions()
+    from app.integrations.linkedin_audit import reset as reset_audit
+
+    reset_audit()
