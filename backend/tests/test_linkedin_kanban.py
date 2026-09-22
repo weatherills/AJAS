@@ -381,8 +381,9 @@ def test_prd_gap_pass_contracts_encoded():
     assert bundle["liveScrape"] is False
     assert bundle["prdGaps"]["jobsIngestion"] == list(PRD_GAPS_INGEST)
     assert bundle["prdGaps"]["easyApply"] == list(PRD_GAPS_EASY_APPLY)
-    ingest_prd = Path("/workspace/prds/connectors/linkedin/jobs-ingestion-backend-prd.md").read_text()
-    easy_prd = Path("/workspace/prds/connectors/linkedin/easy-apply-backend-prd.md").read_text()
+    repo = Path(__file__).resolve().parents[2]
+    ingest_prd = (repo / "prds/connectors/linkedin/jobs-ingestion-backend-prd.md").read_text()
+    easy_prd = (repo / "prds/connectors/linkedin/easy-apply-backend-prd.md").read_text()
     for needle in ("private", "expired", "rate", "pagination", "retry", "telemetry", "success"):
         assert needle.lower() in ingest_prd.lower()
     for needle in ("required", "validation", "resume", "cover", "timeout", "captcha", "autofill"):
