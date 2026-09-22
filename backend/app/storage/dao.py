@@ -37,6 +37,7 @@ MVP_CONTAINERS: tuple[str, ...] = (
     "match_records",
     "match_evidence",
     "match_runs",
+    "scoring_runs",
     "decision_events",
     "email_threads",
     "email_messages",
@@ -493,11 +494,17 @@ class PrivacyDAO(DomainDAO):
 
 
 class MatchingDAO(DomainDAO):
-    containers = ("match_records", "match_evidence", "match_runs")
+    containers = ("match_records", "match_evidence", "match_runs", "scoring_runs")
 
     def __init__(self, dal: CosmosDAL) -> None:
         super().__init__(dal)
         self.records = MatchRecordStore(dal)
+
+    def ensure_matching_containers(self, database: Any) -> list[str]:
+        from app.matching.containers import container_specs, ensure_matching_containers as ensure_feature
+
+        ensure_feature(database)
+        return [spec["id"] for spec in container_specs()]
 
     def create_match_record(
         self,
@@ -510,7 +517,7 @@ class MatchingDAO(DomainDAO):
         evidence: list[str] | None = None,
         etag: str | None = None,
     ) -> dict[str, Any]:
-        return self.records.upsert_score(
+        saved = self.records.upsert_score(
             user_id=user_id,
             job_id=job_id,
             resume_id=resume_id,
@@ -519,15 +526,26 @@ class MatchingDAO(DomainDAO):
             evidence=evidence,
             etag=etag,
         )
+        saved["record"]["schemaVersion"] = saved["record"].get("schemaVersion") or 1
+        return saved
 
     def get(self, user_id: str, match_id: str) -> dict[str, Any]:
         return self.records.get(user_id, match_id)
 
+    def get_match_with_evidence(self, user_id: str, match_id: str) -> dict[str, Any]:
+        return self.records.get_match_with_evidence(user_id, match_id)
+
     def list_records(self, user_id: str, **kwargs: Any) -> list[dict[str, Any]]:
         return self.records.list_records(user_id, **kwargs)
 
+    def list_matches(self, user_id: str, **kwargs: Any) -> dict[str, Any]:
+        return self.records.list_matches(user_id, **kwargs)
+
     def put_evidence_batch(self, user_id: str, match_id: str, sentences: list[str]) -> dict[str, Any]:
         return self.records.put_evidence(user_id=user_id, match_id=match_id, sentences=sentences)
+
+    def upsert_evidence_batch(self, user_id: str, match_id: str, items: list[dict[str, Any]], *, ttl_seconds: int | None = None) -> dict[str, Any]:
+        return self.records.upsert_evidence_batch(user_id, match_id, items, ttl_seconds=ttl_seconds)
 
     def create_scoring_run(self, user_id: str, *, resume_id: str, job_id: str, model_version: str = "matching-v1") -> dict[str, Any]:
         key = deterministic_id(user_id, resume_id, job_id, model_version)
@@ -546,20 +564,53 @@ class MatchingDAO(DomainDAO):
         except KeyError:
             return {"item": self.repo("match_runs").create(apply_timestamps(row)), "status": "created"}
 
+    def begin_scoring_run(self, user_id: str, **kwargs: Any) -> dict[str, Any]:
+        return self.records.begin_scoring_run(user_id, **kwargs)
+
+    def end_scoring_run(self, user_id: str, correlation_id: str, **kwargs: Any) -> dict[str, Any]:
+        return self.records.end_scoring_run(user_id, correlation_id, **kwargs)
+
+    def prune_retention(self, user_id: str, **kwargs: Any) -> dict[str, Any]:
+        return self.records.prune(user_id, **kwargs)
+
+    def backfill_rescore(self, user_id: str, pairs: list[dict[str, Any]], *, model_version: str = "matching-v1") -> dict[str, Any]:
+        return self.records.batch_rescore(user_id, pairs, model_version=model_version)
+
+    def scoring_metrics(self) -> list[dict[str, Any]]:
+        return list(self.records.telemetry)
+
 
 class ReviewDAO(DomainDAO):
     containers = ("matches", "decision_events", "audit_events")
 
+    def ensure_review_containers(self, database: Any) -> list[str]:
+        from app.review.containers import ensure_review_containers as ensure_feature
+
+        ensure_feature(database)
+        from app.review.containers import container_specs
+
+        return [spec["id"] for spec in container_specs()]
+
     def enqueue(self, user_id: str, **kwargs: Any) -> dict[str, Any]:
-        job_id = str(kwargs.get("job_id") or "")
-        resume_id = str(kwargs.get("resume_id") or "")
+        return self.enqueue_review_item(user_id, **kwargs)
+
+    def enqueue_review_item(self, user_id: str, **kwargs: Any) -> dict[str, Any]:
+        from datetime import datetime, timedelta, timezone
+
+        from app.review.constants import QUEUE_TTL_SECONDS
+
+        job_id = str(kwargs.get("job_id") or kwargs.get("jobId") or "")
+        resume_id = str(kwargs.get("resume_id") or kwargs.get("resumeId") or "")
         match_id = str(kwargs.get("id") or deterministic_id(user_id, job_id, resume_id, str(kwargs.get("source") or "ai")))
         dup = self.dedupe(user_id, job_id=job_id, resume_id=resume_id)
         if dup:
             return {"item": dup, "status": "existing"}
+        ttl = int(kwargs.get("ttl_seconds") or QUEUE_TTL_SECONDS)
+        expires = datetime.now(timezone.utc) + timedelta(seconds=ttl)
         row = {
             "id": match_id,
             "user_id": user_id,
+            "userId": user_id,
             "job_id": job_id,
             "resume_id": resume_id,
             "status": "PENDING",
@@ -568,29 +619,103 @@ class ReviewDAO(DomainDAO):
             "company": kwargs.get("company") or "",
             "ai_score": float(kwargs.get("ai_score") or 0),
             "queued_at": utc_now(),
+            "expiresAt": expires.isoformat().replace("+00:00", "Z"),
+            "ttl": ttl,
         }
         return {"item": self._create("matches", row), "status": "created"}
 
-    def list_queue(self, user_id: str, *, cursor: str | None = None, limit: int | None = None) -> dict[str, Any]:
+    def list_queue(
+        self,
+        user_id: str,
+        status: str | None = "PENDING",
+        *,
+        cursor: str | None = None,
+        limit: int | None = None,
+    ) -> dict[str, Any]:
         page = self._page("matches", user_id, cursor=cursor, limit=limit)
-        page["items"] = [row for row in page["items"] if str(row.get("status")) == "PENDING"]
+        items = list(page["items"])
+        items.sort(key=lambda row: str(row.get("queued_at") or row.get("queuedAt") or ""), reverse=True)
+        if status:
+            items = [row for row in items if str(row.get("status")) == status]
+        page["items"] = items
         return page
 
-    def save_decision(self, user_id: str, match_id: str, decision: str, *, etag: str | None = None) -> dict[str, Any]:
+    def save_decision(
+        self,
+        user_id: str,
+        match_id: str | None = None,
+        decision: str = "approve",
+        *,
+        job_id: str | None = None,
+        resume_id: str | None = None,
+        reason: str = "",
+        etag: str | None = None,
+    ) -> dict[str, Any]:
+        if not match_id and job_id and resume_id:
+            found = self.dedupe(user_id, job_id=job_id, resume_id=resume_id)
+            if not found:
+                raise KeyError("queue item not found")
+            match_id = str(found["id"])
+            etag = etag or found.get("_etag")
+        if not match_id:
+            raise KeyError("match_id or job_id+resume_id required")
         match = self._get("matches", match_id, user_id)
         match["status"] = "APPROVED" if decision == "approve" else "REJECTED"
         match["latest_decision"] = decision
+        match["reason"] = reason
         saved = self._upsert("matches", match, etag=etag or match.get("_etag"))
         event = {
             "id": str(uuid4()),
             "user_id": user_id,
             "match_id": match_id,
-            "job_id": match.get("job_id"),
+            "job_id": match.get("job_id") or job_id,
+            "resume_id": match.get("resume_id") or resume_id,
             "decision": decision,
+            "reason": reason,
             "decided_at": utc_now(),
         }
         written = self._create("decision_events", event)
-        return {"match": saved, "decision": written}
+        audit = self.repo("audit_events").create(
+            apply_timestamps(
+                {
+                    "id": str(uuid4()),
+                    "user_id": user_id,
+                    "match_id": match_id,
+                    "event_type": "DECISION_RECORDED",
+                    "occurred_at": utc_now(),
+                    "payload": {"decision": decision, "reasonHash": deterministic_id(reason) if reason else ""},
+                }
+            )
+        )
+        feedback = None
+        try:
+            feedback = LearningDAO(self._dal).log_decision_feedback(
+                user_id,
+                match_id=match_id,
+                recommendation_id=match_id,
+                decision=decision,
+                score=float(match.get("ai_score") or 0),
+            )
+        except Exception:  # noqa: BLE001
+            feedback = None
+        return {"match": saved, "decision": written, "audit": audit, "feedback": feedback}
+
+    def expire_queue(self, user_id: str, *, now: str | None = None) -> dict[str, Any]:
+        clock = now or utc_now()
+        page = self.repo("matches").list_partition(user_id, max_items=100)
+        expired_ids: list[str] = []
+        for row in page.items:
+            if str(row.get("status")) != "PENDING":
+                continue
+            expires = str(row.get("expiresAt") or row.get("expires_at") or "")
+            if not expires or expires > clock:
+                continue
+            row["status"] = "REJECTED"
+            row["expired"] = True
+            row["latest_decision"] = "expired"
+            self._upsert("matches", row, etag=row.get("_etag"))
+            expired_ids.append(str(row["id"]))
+        return {"expired": expired_ids, "count": len(expired_ids)}
 
     def dedupe(self, user_id: str, *, job_id: str, resume_id: str) -> dict[str, Any] | None:
         page = self.repo("matches").list_partition(user_id, max_items=100)

@@ -80,6 +80,7 @@ def test_mvp_containers_and_partition_keys(dal):
         "privacy_audit_log": "/userId",
         "match_records": "/userId",
         "match_evidence": "/userId",
+        "scoring_runs": "/userId",
         "match_runs": "/user_id",
         "matches": "/user_id",
         "decision_events": "/user_id",

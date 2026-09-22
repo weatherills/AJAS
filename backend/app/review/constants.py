@@ -15,6 +15,7 @@ DECISIONS: Final[frozenset[str]] = frozenset({"approve", "reject"})
 DECISION_SOURCES: Final[frozenset[str]] = frozenset({"manual", "system"})
 
 MAX_COMMENT_CHARS: Final[int] = 2000
+QUEUE_TTL_SECONDS: Final[int] = 7 * 86_400
 DEFAULT_LOCK_SECONDS: Final[int] = 120
 OVERWRITE_WINDOW_HOURS: Final[int] = 24
 IDEMPOTENCY_TTL_HOURS: Final[int] = 24
@@ -52,6 +53,14 @@ MATCHES_INDEXING: Final[dict] = _policy(
         {"path": "/user_id", "order": "ascending"},
         {"path": "/status", "order": "ascending"},
         {"path": "/queued_at", "order": "descending"},
+    ],
+    [
+        {"path": "/user_id", "order": "ascending"},
+        {"path": "/job_id", "order": "ascending"},
+    ],
+    [
+        {"path": "/user_id", "order": "ascending"},
+        {"path": "/created_at", "order": "descending"},
     ],
     [
         {"path": "/user_id", "order": "ascending"},

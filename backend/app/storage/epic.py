@@ -33,6 +33,7 @@ KANBAN_CONTAINERS: dict[str, str] = {
     "matches": "matches",
     "match_records": "match_records",
     "match_evidence": "match_evidence",
+    "scoring_runs": "scoring_runs",
     "review_queue": "matches",
     "review_decisions": "decision_events",
     "email_threads": "email_threads",

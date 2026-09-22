@@ -37,11 +37,11 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `job_postings_raw` | job_sources | JobPostingRaw | `/source_tenant_id` | 90 | — | 4 | Session | ingest | 365 | — |
 | `job_sources` | job_sources | JobSource | `/id` | — | — | 1 | Session | ingest | — | — |
 | `legal_holds` | privacy | LegalHold | `/userId` | — | — | 0 | Session | privacy | — | — |
-| `match_evidence` | matching | MatchEvidence | `/userId` | 180 | — | 1 | Session | matching | 365 | — |
+| `match_evidence` | matching | MatchEvidence | `/userId` | 180 | — | 1 | Session | matching | 365 | sentences,snippet,text |
 | `match_explanations` | matching | MatchExplanation | `/match_id` | — | — | 1 | Session | matching | — | — |
 | `match_records` | matching | MatchRecord | `/userId` | — | — | 2 | Session | matching | 365 | — |
 | `match_runs` | matching | MatchRun | `/user_id` | — | /idempotency_key | 5 | Session | matching | 547 | — |
-| `matches` | review | ReviewMatch | `/user_id` | — | /job_id+/resume_id | 9 | Session | review | 365 | — |
+| `matches` | review | ReviewMatch | `/user_id` | — | /job_id+/resume_id | 11 | Session | review | 365 | — |
 | `metrics_snapshot` | learning | MetricsSnapshot | `/scope_ref` | — | — | 2 | Session | learning | — | — |
 | `model_params` | learning | ModelParams | `/user_id` | — | — | 1 | Session | learning | — | — |
 | `model_registry` | matching | ModelRegistry | `/id` | — | — | 1 | Session | matching | — | — |
@@ -57,6 +57,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `retention_policies` | privacy | RetentionPolicy | `/id` | — | — | 0 | Session | privacy | — | — |
 | `run_resume_selections` | resumes | RunResumeSelection | `/run_id` | — | — | 1 | Session | resumes | — | — |
 | `schema_migrations` | platform | SchemaMigration | `/id` | — | — | 1 | Strong | platform | — | — |
+| `scoring_runs` | matching | ScoringRun | `/userId` | — | /correlationId | 2 | Session | matching | — | — |
 | `settings_audit_log` | settings | SettingsAudit | `/user_id` | — | — | 2 | Session | settings | — | — |
 | `source_fetch_runs` | job_sources | SourceFetchRun | `/source_tenant_id` | — | — | 1 | Session | ingest | — | — |
 | `source_rate_limits` | job_sources | SourceRateLimit | `/source_tenant_id` | — | — | 2 | Session | ingest | — | — |
@@ -732,6 +733,17 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - RU: Tiny catalog of applied schema versions; one row per version.
 - API: GET /api/v1/ops/storage
 - DAL: `CatalogRepository(schema_migrations)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `scoring_runs`
+
+- Query: userId + startedAt desc
+- Query: correlationId point read
+- Rel: N—1 match_records; begin/end scoring telemetry
+- Logical unique: `userId, jobId, resumeId, modelVersion, correlationId`
+- RU: PK /userId. Composite (userId, startedAt desc). Unique correlationId per user.
+- API: POST /api/v1/matches/rank; GET /api/v1/match-records; POST /api/v1/matching/prune; POST /api/v1/matching/batch-rescore
+- DAL: `CatalogRepository(scoring_runs)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
 ### `settings_audit_log`

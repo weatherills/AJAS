@@ -23,6 +23,7 @@ HISTORY_CONTAINER: Final[str] = "user_match_pref_history"
 MODELS_CONTAINER: Final[str] = "model_registry"
 RECORDS_CONTAINER: Final[str] = "match_records"
 EVIDENCE_CONTAINER: Final[str] = "match_evidence"
+SCORING_RUNS_CONTAINER: Final[str] = "scoring_runs"
 
 RUNS_PK: Final[str] = "/user_id"
 EXPLANATIONS_PK: Final[str] = "/match_id"
@@ -31,6 +32,7 @@ HISTORY_PK: Final[str] = "/user_id"
 MODELS_PK: Final[str] = "/id"
 RECORDS_PK: Final[str] = "/userId"
 EVIDENCE_PK: Final[str] = "/userId"
+SCORING_RUNS_PK: Final[str] = "/userId"
 
 EVIDENCE_TTL_DAYS: Final[int] = 180
 EVIDENCE_TTL_SECONDS: Final[int] = EVIDENCE_TTL_DAYS * 86_400
@@ -96,4 +98,14 @@ EVIDENCE_INDEXING: Final[dict] = _policy(
         {"path": "/matchId", "order": "ascending"},
         {"path": "/createdAt", "order": "ascending"},
     ]
+)
+SCORING_RUNS_INDEXING: Final[dict] = _policy(
+    [
+        {"path": "/userId", "order": "ascending"},
+        {"path": "/startedAt", "order": "descending"},
+    ],
+    [
+        {"path": "/userId", "order": "ascending"},
+        {"path": "/correlationId", "order": "ascending"},
+    ],
 )

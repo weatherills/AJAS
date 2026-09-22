@@ -26,6 +26,9 @@ from app.matching.constants import (
     RUNS_CONTAINER,
     RUNS_INDEXING,
     RUNS_PK,
+    SCORING_RUNS_CONTAINER,
+    SCORING_RUNS_INDEXING,
+    SCORING_RUNS_PK,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -41,6 +44,7 @@ def container_specs() -> list[dict[str, Any]]:
         {"id": MODELS_CONTAINER, "partition_key": MODELS_PK, "indexing_policy": MODELS_INDEXING},
         {"id": RECORDS_CONTAINER, "partition_key": RECORDS_PK, "indexing_policy": RECORDS_INDEXING},
         {"id": EVIDENCE_CONTAINER, "partition_key": EVIDENCE_PK, "indexing_policy": EVIDENCE_INDEXING},
+        {"id": SCORING_RUNS_CONTAINER, "partition_key": SCORING_RUNS_PK, "indexing_policy": SCORING_RUNS_INDEXING},
     ]
 
 

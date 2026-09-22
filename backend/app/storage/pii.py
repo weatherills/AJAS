@@ -19,6 +19,7 @@ MASK_PATHS: dict[str, tuple[str, ...]] = {
     "email_messages": ("from_address", "to_addresses", "body_text", "body_html"),
     "email_recipients": ("address",),
     "resumes": ("original_filename",),
+    "match_evidence": ("sentences", "snippet", "text"),
 }
 
 REDACT_ALWAYS: tuple[str, ...] = ("access_token", "refresh_token", "password", "cosmos_key")

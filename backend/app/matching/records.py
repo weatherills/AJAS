@@ -324,6 +324,161 @@ class MatchRecordStore:
             self._emit("rescore", correlationId=saved["record"]["id"], status="ok", latencyMs=0)
         return {"count": len(results), "items": results}
 
+    def get_match_with_evidence(self, user_id: str, match_id: str) -> dict[str, Any]:
+        from app.storage.pii import redact
+
+        record = self.get(user_id, match_id)
+        if str(record.get("userId") or record.get("user_id")) != user_id:
+            raise MatchingNotFoundError("match record not found")
+        evidence = [redact("match_evidence", row) for row in self.list_evidence(user_id, match_id)]
+        evidence.sort(key=lambda row: (int(row.get("orderIndex") or 0), _created_at(row)))
+        return {"record": record, "evidence": evidence, "schemaVersion": record.get("schemaVersion") or SCHEMA_VERSION}
+
+    def list_matches(
+        self,
+        user_id: str,
+        *,
+        job_id: str | None = None,
+        resume_id: str | None = None,
+        min_score: float | None = None,
+        cursor: str | None = None,
+        limit: int | None = None,
+    ) -> dict[str, Any]:
+        from app.pagination import normalize_limit, page_body
+
+        rows = self.list_records(user_id, job_id=job_id, resume_id=resume_id, latest_only=True)
+        if min_score is not None:
+            rows = [row for row in rows if float(row.get("score") or 0) >= float(min_score)]
+        rows.sort(key=_created_at, reverse=True)
+        size = normalize_limit(limit)
+        offset = 0
+        if cursor and str(cursor).startswith("offset:"):
+            offset = int(str(cursor).split(":", 1)[1])
+        window = rows[offset : offset + size]
+        token = f"offset:{offset + size}" if offset + size < len(rows) else None
+        return page_body(window, next_cursor=token)
+
+    def upsert_evidence_batch(
+        self,
+        user_id: str,
+        match_id: str,
+        items: list[dict[str, Any]],
+        *,
+        ttl_seconds: int | None = None,
+    ) -> dict[str, Any]:
+        written: list[dict[str, Any]] = []
+        ttl = int(ttl_seconds if ttl_seconds is not None else EVIDENCE_TTL_SECONDS)
+        stamp = utc_now()
+        for index, item in enumerate(items):
+            raw = item.get("text") or item.get("snippet") or item.get("sentence")
+            snippet_hash = str(item.get("snippetHash") or (hashlib.sha256(str(raw or "").encode("utf-8")).hexdigest() if raw else ""))
+            row = {
+                "id": version_id(match_id, stamp, salt=f"{index}|{snippet_hash}"),
+                "userId": user_id,
+                "user_id": user_id,
+                "matchId": match_id,
+                "type": str(item.get("type") or "snippet"),
+                "weight": float(item.get("weight") or 1),
+                "orderIndex": int(item["orderIndex"] if item.get("orderIndex") is not None else index),
+                "snippetHash": snippet_hash,
+                "createdAt": stamp,
+                "schemaVersion": SCHEMA_VERSION,
+                "ttl": ttl,
+            }
+            if self._dal:
+                saved = self._dal.upsert(EVIDENCE_CONTAINER, row)
+            else:
+                row["_etag"] = "1"
+                self._evidence[(user_id, row["id"])] = row
+                saved = dict(row)
+            written.append(saved)
+        self._emit("evidence_batch", correlationId=match_id, status="ok", count=len(written))
+        return {"count": len(written), "items": written, "ttl": ttl}
+
+    def begin_scoring_run(
+        self,
+        user_id: str,
+        *,
+        job_id: str = "",
+        resume_id: str = "",
+        model_version: str = DEFAULT_MODEL_ID,
+        correlation_id: str | None = None,
+    ) -> dict[str, Any]:
+        from app.matching.constants import SCORING_RUNS_CONTAINER
+
+        started = time.perf_counter()
+        corr = correlation_id or match_record_id(
+            user_id=user_id, job_id=job_id, resume_id=resume_id, model_version=model_version
+        )
+        row = {
+            "id": corr,
+            "userId": user_id,
+            "user_id": user_id,
+            "jobId": job_id,
+            "resumeId": resume_id,
+            "modelVersion": model_version,
+            "status": "running",
+            "errorCode": None,
+            "latencyMs": 0,
+            "correlationId": corr,
+            "startedAt": utc_now(),
+            "schemaVersion": SCHEMA_VERSION,
+            "_started": started,
+        }
+        if self._dal:
+            saved = self._dal.upsert(SCORING_RUNS_CONTAINER, row)
+        else:
+            row["_etag"] = "1"
+            self._records[(f"run:{user_id}", corr)] = row
+            saved = dict(row)
+        self._emit("scoring_begin", correlationId=corr, status="running")
+        return saved
+
+    def end_scoring_run(
+        self,
+        user_id: str,
+        correlation_id: str,
+        *,
+        status: str = "completed",
+        error_code: str | None = None,
+        latency_ms: int | None = None,
+    ) -> dict[str, Any]:
+        from app.matching.constants import SCORING_RUNS_CONTAINER
+
+        if self._dal:
+            try:
+                current = self._dal.read(SCORING_RUNS_CONTAINER, correlation_id, partition_key=user_id)
+            except KeyError:
+                current = {"id": correlation_id, "userId": user_id, "correlationId": correlation_id}
+        else:
+            current = dict(self._records.get((f"run:{user_id}", correlation_id)) or {"id": correlation_id, "userId": user_id})
+        started = float(current.pop("_started", 0) or 0)
+        current.update(
+            {
+                "userId": user_id,
+                "status": status,
+                "errorCode": error_code,
+                "latencyMs": int(latency_ms if latency_ms is not None else ((time.perf_counter() - started) * 1000 if started else 0)),
+                "endedAt": utc_now(),
+                "schemaVersion": SCHEMA_VERSION,
+                "correlationId": correlation_id,
+            }
+        )
+        if self._dal:
+            saved = self._dal.upsert(SCORING_RUNS_CONTAINER, current)
+        else:
+            current["_etag"] = _next_etag(current.get("_etag"))
+            self._records[(f"run:{user_id}", correlation_id)] = current
+            saved = dict(current)
+        self._emit(
+            "scoring_end",
+            correlationId=correlation_id,
+            status=status,
+            errorCode=error_code,
+            latencyMs=saved.get("latencyMs"),
+        )
+        return saved
+
 
 _STORE: MatchRecordStore | None = None
 

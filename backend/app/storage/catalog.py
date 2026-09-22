@@ -177,6 +177,25 @@ _OVERLAYS: dict[str, _Overlay] = {
             ]
         ),
     ),
+    "scoring_runs": _Overlay(
+        feature="matching",
+        entity="ScoringRun",
+        unique_keys=(("/correlationId",),),
+        logical_unique=("userId", "jobId", "resumeId", "modelVersion", "correlationId"),
+        query_patterns=("userId + startedAt desc", "correlationId point read"),
+        relationships=("N—1 match_records; begin/end scoring telemetry",),
+        ru_note="PK /userId. Composite (userId, startedAt desc). Unique correlationId per user.",
+        indexing_policy=_policy(
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/startedAt", "order": "descending"},
+            ],
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/correlationId", "order": "ascending"},
+            ],
+        ),
+    ),
     "user_match_prefs": _Overlay(
         feature="matching",
         entity="UserMatchPrefs",
