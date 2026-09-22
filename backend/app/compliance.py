@@ -161,10 +161,15 @@ def _secret() -> bytes:
 
 def append_audit(action: str, payload: dict[str, Any]) -> dict[str, Any]:
     previous = _CHAIN[-1]["hash"] if _CHAIN else "genesis"
-    body = scrub_v2({"action": action, "at": utc_now(), "payload": payload, "prev": previous})
+    body = {
+        "action": action,
+        "at": utc_now(),
+        "payload": scrub_v2(payload),
+        "prev": previous,
+    }
     blob = json.dumps(body, sort_keys=True, default=str)
     digest = hmac.new(_secret(), blob.encode("utf-8"), hashlib.sha256).hexdigest()
-    row = {**body, "hash": digest, "prev": previous}
+    row = {**body, "hash": digest}
     _CHAIN.append(row)
     return row
 
