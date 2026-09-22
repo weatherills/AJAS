@@ -19,6 +19,7 @@ FEATURE_OWNER = {
     "learning": "learning",
     "auto_apply": "apply",
     "privacy": "privacy",
+    "schema_plane": "platform",
 }
 
 FEATURE_API: dict[str, tuple[str, ...]] = {
@@ -37,6 +38,7 @@ FEATURE_API: dict[str, tuple[str, ...]] = {
     "learning": ("GET /api/v1/metrics",),
     "platform": ("GET /api/v1/ops/storage",),
     "privacy": ("GET /api/v1/privacy/requests",),
+    "schema_plane": ("GET /api/v1/ops/storage",),
 }
 
 CONTAINER_RETENTION_KEY = {
@@ -56,6 +58,12 @@ CONTAINER_RETENTION_KEY = {
     "resume_versions": "resumes",
     "decision_events": "matches",
     "audit_events": "matches",
+    "candidates": "resumes",
+    "attachments": "resumes",
+    "integration_outbox": "webhooks",
+    "webhook_deliveries": "webhooks",
+    "resume_parse_queue": "resumes",
+    "oauth_credentials": "logs",
 }
 
 SLA = "p95 in-partition < 250ms; queue page of 25 ≤ 5 RU"

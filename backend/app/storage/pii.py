@@ -11,6 +11,10 @@ from app.settings.crypto import open_token, seal_token
 ENCRYPT_PATHS: dict[str, tuple[str, ...]] = {
     "email_connections": ("access_token_enc", "refresh_token_enc"),
     "user_settings": ("token_blob",),
+    "candidates": ("email", "phone"),
+    "recruiters": ("email", "phone"),
+    "oauth_credentials": ("access_token", "refresh_token", "secret"),
+    "webhooks_outbound": ("secret",),
 }
 
 MASK_PATHS: dict[str, tuple[str, ...]] = {
@@ -25,6 +29,10 @@ MASK_PATHS: dict[str, tuple[str, ...]] = {
     "job_postings_raw": ("payload", "text", "body"),
     "match_evidence": ("sentences", "snippet", "text"),
     "cover_letters": ("body",),
+    "candidates": ("email", "phone"),
+    "recruiters": ("email", "phone"),
+    "attachments": ("filename",),
+    "oauth_credentials": ("access_token", "refresh_token"),
 }
 
 REDACT_ALWAYS: tuple[str, ...] = ("access_token", "refresh_token", "password", "cosmos_key")

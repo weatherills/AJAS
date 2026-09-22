@@ -8,8 +8,12 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 |---|---|---|---|---|---|---|---|---|---|---|
 | `apply_packages` | auto_apply | ApplyPackage | `/auto_apply_id` | — | — | 1 | Session | apply | — | — |
 | `apply_runs` | auto_apply | ApplyRun | `/userId` | 365 | /idempotency_key | 2 | Session | apply | 365 | — |
+| `attachments` | schema_plane | Attachment | `/userId` | — | — | 1 | Session | platform | 730 | filename |
 | `audit_events` | review | AuditEvent | `/user_id` | — | — | 3 | Session | review | 365 | — |
 | `auto_apply_attempts` | auto_apply | Application | `/user_id` | 180 | /job_id+/resume_id | 6 | Session | apply | 547 | — |
+| `auto_apply_rules` | schema_plane | AutoApplyRule | `/userId` | — | — | 1 | Session | platform | — | — |
+| `candidates` | schema_plane | Candidate | `/id` | — | — | 1 | Session | platform | 730 | email,phone |
+| `companies` | schema_plane | Company | `/id` | — | — | 1 | Session | platform | — | — |
 | `cover_letters` | auto_apply | CoverLetter | `/user_id` | — | — | 1 | Session | apply | — | body |
 | `crawl_schedules` | job_sources | CrawlSchedule | `/source_tenant_id` | — | — | 1 | Session | ingest | — | — |
 | `data_subjects` | privacy | DataSubject | `/userId` | — | — | 0 | Session | privacy | — | — |
@@ -32,6 +36,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `form_autofill_values` | auto_apply | FormAutofillValue | `/auto_apply_id` | — | /vendor+/field_key | 1 | Strong | apply | — | — |
 | `graph_subscriptions` | mail | GraphSubscription | `/email_account_id` | — | — | 0 | Session | mail | — | — |
 | `graph_sync_cursors` | mail | GraphSyncCursor | `/email_account_id` | — | — | 0 | Session | mail | — | — |
+| `integration_outbox` | schema_plane | IntegrationOutbox | `/id` | 14 | — | 1 | Session | platform | 90 | — |
 | `job_posting_links` | job_sources | JobPostingLink | `/raw_id` | — | — | 2 | Session | ingest | — | — |
 | `job_postings_canonical` | job_sources | JobPosting | `/id` | — | /canonical_key; /dedupe_hash | 7 | Session | ingest | 365 | — |
 | `job_postings_raw` | job_sources | JobPostingRaw | `/source_tenant_id` | 90 | — | 4 | Session | ingest | 365 | payload,text,body |
@@ -45,11 +50,15 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `metrics_snapshot` | learning | MetricsSnapshot | `/scope_ref` | — | — | 2 | Session | learning | — | — |
 | `model_params` | learning | ModelParams | `/user_id` | — | — | 1 | Session | learning | — | — |
 | `model_registry` | matching | ModelRegistry | `/id` | — | — | 1 | Session | matching | — | — |
+| `oauth_credentials` | schema_plane | OAuthCredential | `/userId` | — | — | 1 | Session | platform | 30 | access_token,refresh_token,secret |
 | `pii_field_catalog` | privacy | PiiFieldCatalog | `/id` | — | — | 0 | Session | privacy | — | — |
 | `privacy_audit_log` | privacy | PrivacyAuditLog | `/userId` | — | — | 1 | Session | privacy | — | — |
 | `privacy_requests` | privacy | PrivacyRequest | `/userId` | — | — | 1 | Session | privacy | — | — |
 | `recommendations` | learning | Recommendation | `/user_id` | — | — | 3 | Session | learning | — | — |
+| `recruiter_inboxes` | schema_plane | RecruiterInbox | `/recruiterId` | — | — | 1 | Session | platform | — | — |
+| `recruiters` | schema_plane | Recruiter | `/companyId` | — | — | 1 | Session | platform | — | email,phone |
 | `resume_parse_events` | resumes | ResumeParseEvent | `/resume_id` | 90 | — | 1 | Session | resumes | 90 | snapshot,rawJson,text |
+| `resume_parse_queue` | schema_plane | ResumeParseQueue | `/userId` | 7 | — | 1 | Session | platform | 730 | — |
 | `resume_variants` | auto_apply | ResumeVariant | `/user_id` | — | — | 1 | Session | apply | — | — |
 | `resume_versions` | resumes | ResumeVersion | `/resume_id` | — | — | 2 | Session | resumes | 730 | rawJson,text |
 | `resumes` | resumes | Resume | `/user_id` | — | — | 3 | Session | resumes | 730 | original_filename,rawJson,text,text_preview |
@@ -58,6 +67,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `run_resume_selections` | resumes | RunResumeSelection | `/run_id` | — | — | 1 | Session | resumes | — | — |
 | `schema_migrations` | platform | SchemaMigration | `/id` | — | — | 1 | Strong | platform | — | — |
 | `scoring_runs` | matching | ScoringRun | `/userId` | — | /correlationId | 2 | Session | matching | — | — |
+| `scrape_jobs_queue` | schema_plane | ScrapeJob | `/source` | 7 | /fingerprint | 1 | Session | platform | 7 | — |
 | `settings_audit_log` | settings | SettingsAudit | `/user_id` | — | — | 2 | Session | settings | — | — |
 | `source_fetch_runs` | job_sources | SourceFetchRun | `/source_tenant_id` | — | — | 1 | Session | ingest | — | — |
 | `source_rate_limits` | job_sources | SourceRateLimit | `/source_tenant_id` | — | — | 2 | Session | ingest | — | — |
@@ -71,6 +81,8 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `users` | platform | User | `/id` | — | — | 1 | Session | platform | — | email |
 | `vendor_field_mappings` | auto_apply | VendorFieldMapping | `/vendor` | — | — | 2 | Session | apply | — | — |
 | `webhook_callbacks` | auto_apply | WebhookCallback | `/vendor_application_id` | 90 | /dedupe_key | 2 | Session | apply | 90 | — |
+| `webhook_deliveries` | schema_plane | WebhookDelivery | `/webhookId` | 90 | — | 1 | Session | platform | 90 | — |
+| `webhooks_outbound` | schema_plane | WebhookOutbound | `/id` | — | — | 1 | Session | platform | — | secret |
 | `weight_config` | learning | WeightConfig | `/weight_config_id` | — | — | 1 | Session | learning | — | — |
 | `weight_tuning_event` | learning | WeightTuningEvent | `/tuning_event_id` | — | — | 1 | Session | learning | — | — |
 
@@ -95,6 +107,56 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - DAL: `CatalogRepository(apply_runs)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
+### `attachments`
+
+- Query: userId + kind
+- Query: checksum
+- Rel: b
+- Rel: y
+- Rel: t
+- Rel: e
+- Rel: s
+- Rel:  
+- Rel: i
+- Rel: n
+- Rel:  
+- Rel: B
+- Rel: l
+- Rel: o
+- Rel: b
+- Rel: ;
+- Rel:  
+- Rel: M
+- Rel: I
+- Rel: M
+- Rel: E
+- Rel:  
+- Rel: +
+- Rel:  
+- Rel: s
+- Rel: i
+- Rel: z
+- Rel: e
+- Rel:  
+- Rel: m
+- Rel: e
+- Rel: t
+- Rel: a
+- Rel: d
+- Rel: a
+- Rel: t
+- Rel: a
+- Rel:  
+- Rel: o
+- Rel: n
+- Rel: l
+- Rel: y
+- Logical unique: `userId, checksum`
+- RU: PK /userId. Checksum uniqueness is DAL-enforced per user.
+- API: GET /api/v1/ops/storage
+- DAL: `CatalogRepository(attachments)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
 ### `audit_events`
 
 - Query: match_id + occurred_at
@@ -114,6 +176,138 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - RU: TTL 180d on attempts. Queue of in-flight attempts is a partitioned status filter ~3 RU. Unique (job_id, resume_id) per user.
 - API: GET /api/v1/auto-apply/requests; POST /api/v1/auto-apply/requests
 - DAL: `CatalogRepository(auto_apply_attempts)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `auto_apply_rules`
+
+- Query: userId + priority + enabled
+- Rel: N
+- Rel: —
+- Rel: 1
+- Rel:  
+- Rel: u
+- Rel: s
+- Rel: e
+- Rel: r
+- Rel: s
+- Rel: ;
+- Rel:  
+- Rel: J
+- Rel: S
+- Rel: O
+- Rel: N
+- Rel:  
+- Rel: c
+- Rel: o
+- Rel: n
+- Rel: d
+- Rel: i
+- Rel: t
+- Rel: i
+- Rel: o
+- Rel: n
+- Rel: s
+- RU: PK /userId. Small per-user rule set.
+- API: GET /api/v1/ops/storage
+- DAL: `CatalogRepository(auto_apply_rules)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `candidates`
+
+- Query: point read by id
+- Query: email uniqueness scan
+- Rel: 1
+- Rel: —
+- Rel: N
+- Rel:  
+- Rel: r
+- Rel: e
+- Rel: s
+- Rel: u
+- Rel: m
+- Rel: e
+- Rel: s
+- Rel:  
+- Rel: v
+- Rel: i
+- Rel: a
+- Rel:  
+- Rel: c
+- Rel: a
+- Rel: n
+- Rel: d
+- Rel: i
+- Rel: d
+- Rel: a
+- Rel: t
+- Rel: e
+- Rel: _
+- Rel: i
+- Rel: d
+- Rel: ;
+- Rel:  
+- Rel: 1
+- Rel: —
+- Rel: N
+- Rel:  
+- Rel: a
+- Rel: p
+- Rel: p
+- Rel: l
+- Rel: i
+- Rel: c
+- Rel: a
+- Rel: t
+- Rel: i
+- Rel: o
+- Rel: n
+- Rel: s
+- Logical unique: `email, email_hash`
+- RU: PK /id. Email uniqueness is DAL-enforced (Cosmos unique keys are per partition).
+- API: GET /api/v1/ops/storage
+- DAL: `CatalogRepository(candidates)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `companies`
+
+- Query: point read by id
+- Query: domain uniqueness scan
+- Rel: 1
+- Rel: —
+- Rel: N
+- Rel:  
+- Rel: j
+- Rel: o
+- Rel: b
+- Rel: _
+- Rel: p
+- Rel: o
+- Rel: s
+- Rel: t
+- Rel: i
+- Rel: n
+- Rel: g
+- Rel: s
+- Rel: ;
+- Rel:  
+- Rel: 1
+- Rel: —
+- Rel: N
+- Rel:  
+- Rel: r
+- Rel: e
+- Rel: c
+- Rel: r
+- Rel: u
+- Rel: i
+- Rel: t
+- Rel: e
+- Rel: r
+- Rel: s
+- Logical unique: `domain`
+- RU: PK /id. Domain uniqueness is DAL-enforced.
+- API: GET /api/v1/ops/storage
+- DAL: `CatalogRepository(companies)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
 ### `cover_letters`
@@ -342,7 +536,9 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 ### `email_recipients`
 
 - Query: message_id list
-- RU: Child rows; queried with parent message.
+- Query: email_thread_id + address
+- Logical unique: `email_thread_id, address`
+- RU: Kanban alias thread_participants. Dedupe (thread_id, email) is logical unique.
 - API: GET /api/v1/email/threads; POST /api/v1/threads/{threadId}/reply
 - DAL: `CatalogRepository(email_recipients)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
@@ -431,6 +627,68 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - DAL: `CatalogRepository(graph_sync_cursors)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
+### `integration_outbox`
+
+- Query: status + nextRetryAt
+- Query: dedupe_key point read
+- Rel: 1
+- Rel: —
+- Rel: N
+- Rel:  
+- Rel: w
+- Rel: e
+- Rel: b
+- Rel: h
+- Rel: o
+- Rel: o
+- Rel: k
+- Rel: _
+- Rel: d
+- Rel: e
+- Rel: l
+- Rel: i
+- Rel: v
+- Rel: e
+- Rel: r
+- Rel: i
+- Rel: e
+- Rel: s
+- Rel: ;
+- Rel:  
+- Rel: K
+- Rel: a
+- Rel: n
+- Rel: b
+- Rel: a
+- Rel: n
+- Rel:  
+- Rel: a
+- Rel: l
+- Rel: i
+- Rel: a
+- Rel: s
+- Rel:  
+- Rel: w
+- Rel: e
+- Rel: b
+- Rel: h
+- Rel: o
+- Rel: o
+- Rel: k
+- Rel: s
+- Rel: _
+- Rel: o
+- Rel: u
+- Rel: t
+- Rel: b
+- Rel: o
+- Rel: x
+- Logical unique: `id, dedupe_key`
+- RU: Document id equals dedupe_key so uniqueness is free. TTL 14d after delivery.
+- API: GET /api/v1/ops/storage
+- DAL: `CatalogRepository(integration_outbox)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
 ### `job_posting_links`
 
 - Query: raw_id point read
@@ -449,9 +707,13 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - Query: company + posted_at desc
 - Query: location
 - Query: source
-- Rel: 1—N raw via links; 1—N Application/matches
+- Query: apply_url
+- Query: scraped_at
+- Query: status
+- Query: title
+- Rel: 1—N raw via links; 1—N Application/matches; Kanban alias job_postings
 - Logical unique: `canonical_key, dedupe_hash, company+apply_url`
-- RU: PK /id so dedup lookups use indexed fields (~3 RU) not partition scans. Unique canonical_key + dedupe_hash per account.
+- RU: PK /id so dedup lookups use indexed fields (~3 RU) not partition scans. Unique canonical_key + dedupe_hash per account. apply_url uniqueness is DAL-enforced.
 - API: GET /api/v1/jobs
 - DAL: `CatalogRepository(job_postings_canonical)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
@@ -567,6 +829,60 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - DAL: `CatalogRepository(model_registry)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
+### `oauth_credentials`
+
+- Query: userId + provider point read
+- Rel: t
+- Rel: o
+- Rel: k
+- Rel: e
+- Rel: n
+- Rel: s
+- Rel:  
+- Rel: e
+- Rel: n
+- Rel: c
+- Rel: r
+- Rel: y
+- Rel: p
+- Rel: t
+- Rel: e
+- Rel: d
+- Rel:  
+- Rel: a
+- Rel: t
+- Rel:  
+- Rel: r
+- Rel: e
+- Rel: s
+- Rel: t
+- Rel: ;
+- Rel:  
+- Rel: e
+- Rel: x
+- Rel: c
+- Rel: l
+- Rel: u
+- Rel: d
+- Rel: e
+- Rel: d
+- Rel:  
+- Rel: f
+- Rel: r
+- Rel: o
+- Rel: m
+- Rel:  
+- Rel: i
+- Rel: n
+- Rel: d
+- Rel: e
+- Rel: x
+- Logical unique: `userId, provider`
+- RU: PK /userId. Token paths excluded from the index.
+- API: GET /api/v1/ops/storage
+- DAL: `CatalogRepository(oauth_credentials)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
 ### `pii_field_catalog`
 
 - Query: container + path
@@ -602,6 +918,105 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - DAL: `CatalogRepository(recommendations)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
+### `recruiter_inboxes`
+
+- Query: recruiterId + provider
+- Rel: N
+- Rel: —
+- Rel: 1
+- Rel:  
+- Rel: r
+- Rel: e
+- Rel: c
+- Rel: r
+- Rel: u
+- Rel: i
+- Rel: t
+- Rel: e
+- Rel: r
+- Rel: s
+- Rel: ;
+- Rel:  
+- Rel: o
+- Rel: a
+- Rel: u
+- Rel: t
+- Rel: h
+- Rel: _
+- Rel: r
+- Rel: e
+- Rel: f
+- Rel:  
+- Rel: →
+- Rel:  
+- Rel: o
+- Rel: a
+- Rel: u
+- Rel: t
+- Rel: h
+- Rel: _
+- Rel: c
+- Rel: r
+- Rel: e
+- Rel: d
+- Rel: e
+- Rel: n
+- Rel: t
+- Rel: i
+- Rel: a
+- Rel: l
+- Rel: s
+- Logical unique: `recruiterId, provider, address`
+- RU: PK /recruiterId. One inbox row per provider+address.
+- API: GET /api/v1/ops/storage
+- DAL: `CatalogRepository(recruiter_inboxes)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `recruiters`
+
+- Query: companyId + email
+- Rel: N
+- Rel: —
+- Rel: 1
+- Rel:  
+- Rel: c
+- Rel: o
+- Rel: m
+- Rel: p
+- Rel: a
+- Rel: n
+- Rel: i
+- Rel: e
+- Rel: s
+- Rel: ;
+- Rel:  
+- Rel: 1
+- Rel: —
+- Rel: N
+- Rel:  
+- Rel: r
+- Rel: e
+- Rel: c
+- Rel: r
+- Rel: u
+- Rel: i
+- Rel: t
+- Rel: e
+- Rel: r
+- Rel: _
+- Rel: i
+- Rel: n
+- Rel: b
+- Rel: o
+- Rel: x
+- Rel: e
+- Rel: s
+- Logical unique: `companyId, email, email_hash`
+- RU: PK /companyId colocates a company's recruiters. Email unique per company.
+- API: GET /api/v1/ops/storage
+- DAL: `CatalogRepository(recruiters)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
 ### `resume_parse_events`
 
 - Query: resume_id + created_at desc
@@ -610,6 +1025,63 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - RU: TTL 90d prunes stale parsed versions. PK resume_id keeps the timeline in one partition.
 - API: GET /api/resumes
 - DAL: `CatalogRepository(resume_parse_events)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `resume_parse_queue`
+
+- Query: userId + status + createdAt desc
+- Rel: N
+- Rel: —
+- Rel: 1
+- Rel:  
+- Rel: r
+- Rel: e
+- Rel: s
+- Rel: u
+- Rel: m
+- Rel: e
+- Rel: s
+- Rel: ;
+- Rel:  
+- Rel: s
+- Rel: t
+- Rel: a
+- Rel: t
+- Rel: e
+- Rel: s
+- Rel:  
+- Rel: q
+- Rel: u
+- Rel: e
+- Rel: u
+- Rel: e
+- Rel: d
+- Rel: |
+- Rel: p
+- Rel: r
+- Rel: o
+- Rel: c
+- Rel: e
+- Rel: s
+- Rel: s
+- Rel: i
+- Rel: n
+- Rel: g
+- Rel: |
+- Rel: d
+- Rel: o
+- Rel: n
+- Rel: e
+- Rel: |
+- Rel: f
+- Rel: a
+- Rel: i
+- Rel: l
+- Rel: e
+- Rel: d
+- RU: TTL 7d. PK /userId keeps a user's parse jobs in one partition.
+- API: GET /api/v1/ops/storage
+- DAL: `CatalogRepository(resume_parse_queue)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
 ### `resume_variants`
@@ -699,8 +1171,9 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - Query: createdAt range
 - Query: processing_status
 - Query: checksum_sha256
-- Rel: 1—N children embedded; 1—N resume_parse_events; primaryFileId + parsedVersion FKs
-- Logical unique: `user_id, id`
+- Query: candidate_id
+- Rel: 1—N children embedded; 1—N resume_parse_events; primaryFileId + parsedVersion FKs; candidate_id FK
+- Logical unique: `user_id, id, checksum_sha256`
 - RU: Library list of ~20 resumes is a single partitioned query (~5 RU). Dual-write userId/updatedAt for PRD lists.
 - API: GET /api/resumes
 - DAL: `CatalogRepository(resumes)`
@@ -751,6 +1224,39 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - RU: PK /userId. Composite (userId, startedAt desc). Unique correlationId per user.
 - API: POST /api/v1/matches/rank; GET /api/v1/match-records; POST /api/v1/matching/prune; POST /api/v1/matching/batch-rescore
 - DAL: `CatalogRepository(scoring_runs)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `scrape_jobs_queue`
+
+- Query: source + scheduledAt
+- Query: fingerprint
+- Rel: f
+- Rel: e
+- Rel: e
+- Rel: d
+- Rel: s
+- Rel:  
+- Rel: s
+- Rel: o
+- Rel: u
+- Rel: r
+- Rel: c
+- Rel: e
+- Rel: _
+- Rel: f
+- Rel: e
+- Rel: t
+- Rel: c
+- Rel: h
+- Rel: _
+- Rel: r
+- Rel: u
+- Rel: n
+- Rel: s
+- Logical unique: `source, fingerprint`
+- RU: PK /source. Unique fingerprint per source partition. TTL 7d.
+- API: GET /api/v1/ops/storage
+- DAL: `CatalogRepository(scrape_jobs_queue)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
 ### `settings_audit_log`
@@ -877,6 +1383,67 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - RU: TTL 90 days per Auto-Apply PRD. Unique dedupe_key drops duplicate vendor posts.
 - API: GET /api/v1/auto-apply/requests; POST /api/v1/auto-apply/requests
 - DAL: `CatalogRepository(webhook_callbacks)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `webhook_deliveries`
+
+- Query: webhookId + nextRetryAt
+- Rel: N
+- Rel: —
+- Rel: 1
+- Rel:  
+- Rel: w
+- Rel: e
+- Rel: b
+- Rel: h
+- Rel: o
+- Rel: o
+- Rel: k
+- Rel: s
+- Rel: _
+- Rel: o
+- Rel: u
+- Rel: t
+- Rel: b
+- Rel: o
+- Rel: u
+- Rel: n
+- Rel: d
+- RU: TTL 90d. PK /webhookId colocates delivery attempts.
+- API: GET /api/v1/ops/storage
+- DAL: `CatalogRepository(webhook_deliveries)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `webhooks_outbound`
+
+- Query: event + active
+- Query: target_url
+- Rel: 1
+- Rel: —
+- Rel: N
+- Rel:  
+- Rel: w
+- Rel: e
+- Rel: b
+- Rel: h
+- Rel: o
+- Rel: o
+- Rel: k
+- Rel: _
+- Rel: d
+- Rel: e
+- Rel: l
+- Rel: i
+- Rel: v
+- Rel: e
+- Rel: r
+- Rel: i
+- Rel: e
+- Rel: s
+- Logical unique: `target_url`
+- RU: PK /id. target_url uniqueness is DAL-enforced.
+- API: GET /api/v1/ops/storage
+- DAL: `CatalogRepository(webhooks_outbound)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
 ### `weight_config`

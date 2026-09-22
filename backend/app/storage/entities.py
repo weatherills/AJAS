@@ -48,6 +48,8 @@ class JobPosting(BaseModel):
     apply_url: str = ""
     is_active: bool = True
     source: str = "greenhouse"
+    status: str = "open"
+    scraped_at: str | None = None
     created_at: str
     updated_at: str
 
@@ -65,6 +67,7 @@ class StoredResume(BaseModel):
     blob_uri: str
     checksum_sha256: str
     processing_status: str = "uploaded"
+    candidate_id: str | None = None
     is_deleted: bool = False
     created_at: str
     updated_at: str

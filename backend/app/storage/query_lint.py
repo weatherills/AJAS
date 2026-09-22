@@ -10,7 +10,18 @@ from app.storage.catalog import container_by_id
 
 # Tiny catalogs that are meant to be scanned (few documents).
 SCAN_ALLOWLIST = frozenset(
-    {"job_sources", "email_templates", "model_registry", "schema_migrations", "vendor_field_mappings", "weight_config"}
+    {
+        "job_sources",
+        "email_templates",
+        "model_registry",
+        "schema_migrations",
+        "vendor_field_mappings",
+        "weight_config",
+        "candidates",
+        "companies",
+        "webhooks_outbound",
+        "integration_outbox",
+    }
 )
 
 _PROFILES: list[dict[str, Any]] = []
