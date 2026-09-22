@@ -7,6 +7,7 @@ describe('feature flags', () => {
     expect(FLAG_DEFAULTS.ann_recall).toBe(false)
     expect(FLAG_DEFAULTS.gap_penalty).toBe(true)
     expect(FLAG_DEFAULTS.respect_robots).toBe(true)
+    expect(FLAG_DEFAULTS.bulk_auto_apply).toBe(true)
     const merged = mergeFlags({ workday_adapter: true })
     expect(merged.workday_adapter).toBe(true)
     expect(flagRows(merged).some((row) => row.id === 'workday_adapter' && row.on)).toBe(true)

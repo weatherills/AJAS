@@ -1,3 +1,4 @@
+import { laterOutcomeFromJob } from '../lib/autoApply'
 import type { ApplyDetail, ApplySummary, AutoApplyApi, CreateApplyBody } from './autoApplyTypes'
 import { markMockReviewApplied } from './reviewMock'
 
@@ -30,24 +31,32 @@ export const mockAutoApplyApi: AutoApplyApi = {
     const existing = [...rows.values()].find(
       (row) =>
         row.source.job_posting_id === (body.job_posting_id || null) &&
-        !['submitted', 'failed', 'cancelled', 'packaged'].includes(row.state),
+        !['submitted', 'failed', 'cancelled', 'packaged', 'received', 'interview_requested', 'rejected_auto', 'duplicate'].includes(
+          row.state,
+        ),
     )
     if (existing) throw new Error(`Duplicate in-flight request (${existing.request_id})`)
     const requestId = `req-${rows.size + 1}`
     const stamped = now()
     const packaged = needsManual(body.job_source, body.posting_url)
+    const later = packaged ? null : laterOutcomeFromJob(body.job_posting_id, body.posting_url)
+    const state = packaged ? 'packaged' : later || 'submitted'
+    const history = packaged
+      ? [
+          { event: 'queued', at: stamped },
+          { event: 'needs_review', at: stamped },
+        ]
+      : [
+          { event: 'queued', at: stamped },
+          { event: 'submission_succeeded', at: stamped },
+          ...(later
+            ? [{ event: later, at: stamped, payload: { event_type: later } }]
+            : []),
+        ]
     const detail: ApplyDetail = {
       request_id: requestId,
-      state: packaged ? 'packaged' : 'submitted',
-      state_history: packaged
-        ? [
-            { event: 'queued', at: stamped },
-            { event: 'needs_review', at: stamped },
-          ]
-        : [
-            { event: 'queued', at: stamped },
-            { event: 'submission_succeeded', at: stamped },
-          ],
+      state,
+      state_history: history,
       source: {
         type: body.job_source,
         job_posting_id: body.job_posting_id || null,
@@ -162,4 +171,46 @@ export const mockAutoApplyApi: AutoApplyApi = {
       source: 'ai',
     }
   },
+}
+
+export function seedMockApplyStatuses() {
+  const stamped = now()
+  const demos: { id: string; job: string; state: ApplyDetail['state']; event: string; url: string }[] = [
+    { id: 'req-demo-submitted', job: 'job-staff', state: 'submitted', event: 'submission_succeeded', url: 'https://boards.greenhouse.io/demo/jobs/job-staff' },
+    { id: 'req-demo-received', job: 'job-received', state: 'received', event: 'received', url: 'https://boards.greenhouse.io/demo/jobs/received' },
+    { id: 'req-demo-interview', job: 'job-interview', state: 'interview_requested', event: 'interview_requested', url: 'https://jobs.lever.co/demo/job-interview' },
+    { id: 'req-demo-rejected', job: 'job-reject', state: 'rejected_auto', event: 'rejected_auto', url: 'https://boards.greenhouse.io/demo/jobs/reject' },
+    { id: 'req-demo-duplicate', job: 'job-dup', state: 'duplicate', event: 'duplicate', url: 'https://boards.greenhouse.io/demo/jobs/duplicate' },
+  ]
+  for (const demo of demos) {
+    if (rows.has(demo.id)) continue
+    rows.set(demo.id, {
+      request_id: demo.id,
+      state: demo.state,
+      state_history: [
+        { event: 'queued', at: stamped },
+        { event: 'submission_succeeded', at: stamped },
+        { event: demo.event, at: stamped, payload: { event_type: demo.event } },
+      ],
+      source: {
+        type: demo.url.includes('lever') ? 'lever' : 'greenhouse',
+        job_posting_id: demo.job,
+        posting_url: demo.url,
+        external_application_id: `${demo.job}-ext`,
+      },
+      artifacts: {
+        resume_blob_sas: 'https://blob.local/resume.pdf',
+        cover_letter_blob_sas: null,
+        package_blob_sas: null,
+        deep_link_url: demo.url,
+      },
+      autofill: [],
+      validation_errors: null,
+      failure_reason: demo.state === 'rejected_auto' ? 'Vendor rejected the application.' : null,
+      submitted_at: stamped,
+      packaged_at: null,
+      created_at: stamped,
+      updated_at: stamped,
+    })
+  }
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { autoApplyApi, USE_MOCK } from '../api'
+import { USE_MOCK, autoApplyApi } from '../api'
+import { seedMockApplyStatuses } from '../api/autoApplyMock'
 import type { ApplyDetail, ApplySummary, JobSource } from '../api/autoApplyTypes'
 import { AppNav } from '../components/AppNav'
 import { JobCrossLinks } from '../components/JobCrossLinks'
@@ -9,7 +10,9 @@ import {
   canCancel,
   canMarkManualSubmitted,
   copyAnswersText,
+  effectiveApplyState,
   isInFlight,
+  matchesStatusFilter,
   sourceBadge,
   stateLabel,
 } from '../lib/autoApply'
@@ -19,13 +22,8 @@ import { applyHref, reviewHref, useHashSearch } from '../lib/routes'
 type Toast = { id: number; text: string; tone?: 'info' | 'error' }
 type StatusFilter = 'all' | 'queued' | 'submitted' | 'needs_action' | 'failed'
 
-function matchesFilter(state: string, filter: StatusFilter): boolean {
-  if (filter === 'all') return true
-  if (filter === 'queued') return state === 'queued' || state === 'created' || state === 'submitting' || state === 'rate_limited'
-  if (filter === 'submitted') return state === 'submitted'
-  if (filter === 'needs_action') return state === 'packaged' || state === 'needs_review'
-  if (filter === 'failed') return state === 'failed' || state === 'cancelled'
-  return true
+function rowState(row: { state: string; state_history?: ApplyDetail['state_history'] }): string {
+  return effectiveApplyState(row.state, row.state_history)
 }
 
 export function ApplyPage({ requestId }: { requestId: string | null }) {
@@ -49,6 +47,7 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
+      if (USE_MOCK) seedMockApplyStatuses()
       const listed = await autoApplyApi.list()
       setItems(listed.items)
       setError(null)
@@ -89,7 +88,7 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
   const jobId = detail?.source.job_posting_id || jobFilter
   const listed = useMemo(() => {
     const scoped = jobFilter ? items.filter((row) => row.job_id === jobFilter) : items
-    return scoped.filter((row) => matchesFilter(row.state, statusFilter))
+    return scoped.filter((row) => matchesStatusFilter(rowState(row), statusFilter))
   }, [items, jobFilter, statusFilter])
 
   useEffect(() => {
@@ -156,7 +155,7 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
               [
                 ['all', 'All'],
                 ['queued', 'Queued'],
-                ['submitted', 'Submitted'],
+                ['submitted', 'Submitted / Received'],
                 ['needs_action', 'Needs Action'],
                 ['failed', 'Failed'],
               ] as const
@@ -184,6 +183,7 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
           <ul className="apply-list">
             {listed.map((row) => {
               const badge = sourceBadge((row.vendor as JobSource) || 'greenhouse')
+              const shown = rowState(row)
               return (
                 <li key={row.request_id}>
                   <a
@@ -196,7 +196,7 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
                         {badge.label} · {row.mode === 'manual_package' ? 'manual' : 'API'}
                       </div>
                     </div>
-                    <span className={`status-badge status-${row.state}`}>{stateLabel(row.state)}</span>
+                    <span className={`status-badge status-${shown}`}>{stateLabel(shown)}</span>
                   </a>
                 </li>
               )
@@ -209,7 +209,7 @@ export function ApplyPage({ requestId }: { requestId: string | null }) {
             <>
               <h2>Status</h2>
               <p>
-                <span className={`status-badge status-${detail.state}`}>{stateLabel(detail.state)}</span>
+                <span className={`status-badge status-${rowState(detail)}`}>{stateLabel(rowState(detail))}</span>
               </p>
               <p className="muted">Request {detail.request_id}</p>
               {lastNote && (

@@ -1662,14 +1662,31 @@ select:focus-visible {
   margin: 0.35rem 0 0.75rem;
 }
 
+.apply-bulk-progress {
+  margin: 0 0 0.75rem;
+}
+
 .status-submitted,
+.status-received,
 .status-ready {
   color: #34d399;
 }
 
+.status-interview_requested,
+.status-interview-requested {
+  color: #a78bfa;
+}
+
 .status-packaged,
-.status-submitting {
+.status-submitting,
+.status-duplicate {
   color: #38bdf8;
+}
+
+.status-rejected_auto,
+.status-rejected-auto,
+.status-failed {
+  color: #f87171;
 }
 
 .status-cancelled,
