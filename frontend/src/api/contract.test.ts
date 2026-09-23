@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { liveAutoApplyApi } from './autoApplyLive'
 import { liveEmailApi } from './emailLive'
+import { liveJobsApi } from './jobsLive'
 import { liveMatchingApi } from './matchingLive'
 import { liveReviewApi } from './reviewLive'
 
@@ -39,5 +40,7 @@ describe('frontend live clients', () => {
     expect(typeof liveMatchingApi.scoreMany).toBe('function')
     expect(typeof liveAutoApplyApi.list).toBe('function')
     expect(typeof liveEmailApi.status).toBe('function')
+    expect(typeof liveJobsApi.list).toBe('function')
+    expect(typeof liveJobsApi.sourceStatus).toBe('function')
   })
 })

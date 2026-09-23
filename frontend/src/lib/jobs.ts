@@ -12,8 +12,48 @@ import type { SettingsApi } from '../api/settingsTypes'
 
 const FILTER_KEY = 'ajas.jobFeed.filters'
 const VISIT_KEY = 'ajas.jobFeed.lastVisit'
+const SESSION_MEMORY = new Map<string, string>()
+
+function readSession(key: string): string | null {
+  try {
+    if (typeof localStorage !== 'undefined') return localStorage.getItem(key)
+  } catch {
+    /* fall through to memory */
+  }
+  return SESSION_MEMORY.get(key) ?? null
+}
+
+function writeSession(key: string, value: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(key, value)
+      return
+    }
+  } catch {
+    /* fall through to memory */
+  }
+  SESSION_MEMORY.set(key, value)
+}
+
+export function resetFeedSession(): void {
+  SESSION_MEMORY.clear()
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(FILTER_KEY)
+      localStorage.removeItem(VISIT_KEY)
+    }
+  } catch {
+    /* memory only */
+  }
+}
+
+export function seedInvalidFeedFilters(): void {
+  writeSession(FILTER_KEY, '{not-json')
+}
 
 export const PAGE_SIZE = 25
+/** Fetch the next page when the sentinel is within 20% of the viewport (80% scroll). */
+export const INFINITE_SCROLL_ROOT_MARGIN = '20% 0px'
 export const ALL_SOURCES: JobSourceName[] = ['greenhouse', 'lever']
 
 const SLUG = /[^a-z0-9]+/g
@@ -54,7 +94,7 @@ export function clearSessionFilters(filters: JobFilters): JobFilters {
 
 export function loadFilters(): JobFilters {
   try {
-    const raw = localStorage.getItem(FILTER_KEY)
+    const raw = readSession(FILTER_KEY)
     if (!raw) return defaultFilters()
     const parsed = JSON.parse(raw) as Partial<JobFilters>
     const sources = Array.isArray(parsed.sources)
@@ -76,13 +116,13 @@ export function loadFilters(): JobFilters {
 }
 
 export function saveFilters(filters: JobFilters): void {
-  localStorage.setItem(FILTER_KEY, JSON.stringify(filters))
+  writeSession(FILTER_KEY, JSON.stringify(filters))
 }
 
 export function takeLastVisit(): string {
-  const previous = localStorage.getItem(VISIT_KEY)
+  const previous = readSession(VISIT_KEY)
   const stamp = new Date().toISOString()
-  localStorage.setItem(VISIT_KEY, stamp)
+  writeSession(VISIT_KEY, stamp)
   return previous || stamp
 }
 
@@ -378,6 +418,96 @@ export function alsoFromLabel(sources: JobSourceRef[], primary: JobSourceName): 
   const names = [...new Set(others.map((item) => (item.source === 'greenhouse' ? 'Greenhouse' : 'Lever')))]
   if (names.length === 1) return `Also found on ${names[0]}`
   return `Also found on ${names.join(' and ')}`
+}
+
+export function alsoFromCount(sources: JobSourceRef[], primary: JobSourceName): number {
+  return sources.filter((item) => item.source !== primary).length
+}
+
+export function alsoFromTooltip(sources: JobSourceRef[]): string {
+  return sources
+    .map((item) => {
+      const posted = item.postedAt ? formatWhen(item.postedAt) : 'unknown date'
+      return `${sourceTitle(item.source)} · ${item.domain} · posted ${posted}`
+    })
+    .join('\n')
+}
+
+export function sourceLinkLabel(item: JobSourceRef): string {
+  const posted = item.postedAt ? ` · ${formatWhen(item.postedAt)}` : ''
+  return `${sourceTitle(item.source)} · ${item.domain}${posted}`
+}
+
+export function pageCursor(page: number, pageSize = PAGE_SIZE): string | null {
+  if (page <= 1) return null
+  return String((Math.max(1, page) - 1) * pageSize)
+}
+
+export function pageCount(total: number, pageSize = PAGE_SIZE): number {
+  return Math.max(1, Math.ceil(Math.max(0, total) / pageSize))
+}
+
+export function visiblePageNumbers(current: number, totalPages: number, windowSize = 2): number[] {
+  const last = Math.max(1, totalPages)
+  const page = Math.min(last, Math.max(1, current))
+  const start = Math.max(1, page - windowSize)
+  const end = Math.min(last, page + windowSize)
+  const pages: number[] = []
+  for (let n = start; n <= end; n += 1) pages.push(n)
+  return pages
+}
+
+export function sourceRefreshBlocked(
+  row: SourceStatus | undefined,
+  opts: { offline?: boolean; now?: number } = {},
+): boolean {
+  const now = opts.now ?? Date.now()
+  if (!row || opts.offline) return true
+  if (row.status === 'syncing' || row.status === 'unconfigured' || row.configured === false) return true
+  return backoffRemainingMs(row.backoffUntil, now) > 0
+}
+
+export function allSourcesRefreshBlocked(
+  rows: Array<SourceStatus | undefined>,
+  opts: { offline?: boolean; now?: number } = {},
+): boolean {
+  if (opts.offline) return true
+  if (!rows.length) return true
+  return rows.every((row) => sourceRefreshBlocked(row, opts))
+}
+
+export function rateLimitWaitingMessage(rows: SourceStatus[], now = Date.now()): string | null {
+  const limited = rows.filter(
+    (row) => row.status === 'rate_limited' || backoffRemainingMs(row.backoffUntil, now) > 0,
+  )
+  if (!limited.length) return null
+  return limited
+    .map((row) => {
+      const left = backoffRemainingMs(row.backoffUntil, now)
+      const wait = left > 0 ? ` (${formatCountdown(left)})` : ''
+      return `${sourceTitle(row.source)}: Waiting due to rate limit${wait}`
+    })
+    .join(' · ')
+}
+
+export function shouldPauseInfiniteScroll(
+  selected: JobSourceName[],
+  rows: SourceStatus[],
+  now = Date.now(),
+): boolean {
+  const targets = selected.length ? selected : ALL_SOURCES
+  const relevant = rows.filter((row) => targets.includes(row.source) && sourceIsConfiguredStatus(row))
+  if (!relevant.length) return false
+  return relevant.every(
+    (row) => row.status === 'rate_limited' || backoffRemainingMs(row.backoffUntil, now) > 0,
+  )
+}
+
+export function syncAnnounce(kind: 'started' | 'completed' | 'rate_limited' | 'error'): string {
+  if (kind === 'started') return 'Syncing started'
+  if (kind === 'completed') return 'Syncing completed'
+  if (kind === 'rate_limited') return 'Rate limit active'
+  return 'Sync error'
 }
 
 export function sourceTitle(source: JobSourceName): string {

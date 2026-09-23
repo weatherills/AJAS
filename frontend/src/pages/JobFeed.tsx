@@ -27,12 +27,16 @@ import { rowActions } from '../lib/quickActions'
 import { TRIAGE_HELP, triageShortcut } from '../lib/triageKeys'
 import {
   ALL_SOURCES,
+  alsoFromCount,
   alsoFromLabel,
+  alsoFromTooltip,
+  allSourcesRefreshBlocked,
   backoffRemainingMs,
   clearSessionFilters,
   feedSourcesFromSettings,
   formatCountdown,
   formatWhen,
+  INFINITE_SCROLL_ROOT_MARGIN,
   loadFilters,
   loadFilterPresets,
   saveFilterPreset,
@@ -41,10 +45,18 @@ import {
   matchesExtraFilters,
   nextFeedSources,
   PAGE_SIZE,
+  pageCount as feedPageCount,
+  pageCursor,
   persistFeedSourceChip,
+  rateLimitWaitingMessage,
   refreshToastForStatuses,
   saveFilters,
+  shouldPauseInfiniteScroll,
   skeletonPlaceholders,
+  sourceLinkLabel,
+  sourceRefreshBlocked,
+  syncAnnounce,
+  visiblePageNumbers,
   windowedRange,
   boardErrorCopy,
   feedErrorLines,
@@ -201,14 +213,17 @@ export function JobFeedPage() {
     statusFingerprint.current = nextFp
     setStatuses(rows)
     if (rows.some((item) => item.status === 'syncing')) {
-      setLiveMessage('Syncing started')
+      setLiveMessage(syncAnnounce('started'))
       pollMs.current = nextSourcePollMs(true, pollMs.current)
+    } else if (rows.some((item) => item.status === 'rate_limited' && backoffRemainingMs(item.backoffUntil) > 0)) {
+      setLiveMessage(syncAnnounce('rate_limited'))
+      pollMs.current = nextSourcePollMs(false, pollMs.current)
     } else {
       pollMs.current = nextSourcePollMs(false, pollMs.current)
     }
     if (shouldRefetch && !loadingRef.current && !loadingMoreRef.current) {
       const currentPage = pageRef.current
-      const cursor = paginationRef.current === 'pages' && currentPage > 1 ? String((currentPage - 1) * PAGE_SIZE) : null
+      const cursor = paginationRef.current === 'pages' ? pageCursor(currentPage) : null
       void loadPageRef.current(cursor, false, { silent: true })
     }
   }, [])
@@ -511,7 +526,7 @@ export function JobFeedPage() {
           (item) => item.status === 'rate_limited' && backoffRemainingMs(item.backoffUntil, Date.now()) === 0,
         )
         for (const row of limited) {
-          setLiveMessage('Rate limit ended')
+          setLiveMessage(syncAnnounce('completed'))
           void refresh(row.source, true)
         }
       }
@@ -534,6 +549,7 @@ export function JobFeedPage() {
 
   useEffect(() => {
     if (filters.pagination !== 'infinite') return
+    if (shouldPauseInfiniteScroll(filters.sources, statuses)) return
     const node = sentinel.current
     if (!node) return
     const observer = new IntersectionObserver(
@@ -542,11 +558,11 @@ export function JobFeedPage() {
           void loadPage(cursor, true)
         }
       },
-      { root: null, rootMargin: '20% 0px', threshold: 0 },
+      { root: null, rootMargin: INFINITE_SCROLL_ROOT_MARGIN, threshold: 0 },
     )
     observer.observe(node)
     return () => observer.disconnect()
-  }, [cursor, filters.pagination, loadPage, loading, loadingMore])
+  }, [cursor, filters.pagination, filters.sources, loadPage, loading, loadingMore, statuses])
 
   useEffect(() => {
     if (!selected) {
@@ -593,10 +609,10 @@ export function JobFeedPage() {
     try {
       const snapshot = await jobsApi.list({ ...query, cursor: null, limit: 500 })
       const before = new Set(snapshot.items.map((item) => item.id))
-      setLiveMessage('Syncing started')
+      setLiveMessage(syncAnnounce('started'))
       const rows = await jobsApi.refresh(source)
       applyStatuses(rows)
-      await loadPage(filters.pagination === 'infinite' ? null : String((page - 1) * PAGE_SIZE), false)
+      await loadPage(filters.pagination === 'infinite' ? null : pageCursor(page), false)
       const after = await jobsApi.list({ ...query, cursor: null, limit: 500 })
       const added = after.items.filter((item) => !before.has(item.id)).length
       const outcome = refreshToastForStatuses(source, rows, added)
@@ -604,7 +620,7 @@ export function JobFeedPage() {
       setLiveMessage(outcome.live)
     } catch (err) {
       toast(err instanceof Error ? err.message : 'Refresh failed', 'error')
-      setLiveMessage('Sync error')
+      setLiveMessage(syncAnnounce('error'))
       void loadStatus()
     }
   }
@@ -642,9 +658,12 @@ export function JobFeedPage() {
     }
   }
 
-  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const pageCount = feedPageCount(total)
   const lever = statuses.find((item) => item.source === 'lever')
   const greenhouse = statuses.find((item) => item.source === 'greenhouse')
+  const refreshBlocked = allSourcesRefreshBlocked([greenhouse, lever], { offline, now })
+  const waitingDueToRateLimit = rateLimitWaitingMessage(statuses, now)
+  const pauseInfinite = shouldPauseInfiniteScroll(filters.sources, statuses, now)
   const boardErrorLines = feedErrorLines(statuses)
   const sourceUnconfigured = statuses.filter((item) => !sourceIsConfiguredStatus(item))
   const sourcesOff = filters.sources.length === 0 && statuses.some((item) => sourceIsConfiguredStatus(item))
@@ -720,17 +739,6 @@ export function JobFeedPage() {
     jdVersions.current[selected.id] = detail.description
   }, [selected, detail])
 
-  function sourceBlocked(row: SourceStatus | undefined) {
-    return (
-      !row ||
-      offline ||
-      row.status === 'syncing' ||
-      row.status === 'unconfigured' ||
-      row.configured === false ||
-      backoffRemainingMs(row.backoffUntil, now) > 0
-    )
-  }
-
   return (
     <div className={`page library-page feed-page ${selected ? 'feed-page-open' : ''}`}>
       <div className="sr-only" aria-live="polite">
@@ -757,7 +765,7 @@ export function JobFeedPage() {
           <button
             type="button"
             className="primary"
-            disabled={offline || (sourceBlocked(greenhouse) && sourceBlocked(lever))}
+            disabled={refreshBlocked}
             onClick={() => void refresh('all')}
             aria-label="Refresh all sources"
           >
@@ -792,7 +800,7 @@ export function JobFeedPage() {
         {(['greenhouse', 'lever'] as JobSourceName[]).map((name) => {
           const row = statuses.find((item) => item.source === name)
           const left = backoffRemainingMs(row?.backoffUntil ?? null, now)
-          const blocked = sourceBlocked(row)
+          const blocked = sourceRefreshBlocked(row, { offline, now })
           const label = row ? statusLabel(row, now) : 'Idle'
           const boardErrors = row ? sourceBoardErrors(row) : []
           const boards = row?.boards || []
@@ -1135,7 +1143,7 @@ export function JobFeedPage() {
                 <button
                   type="button"
                   className="primary"
-                  disabled={offline || (sourceBlocked(greenhouse) && sourceBlocked(lever))}
+                  disabled={refreshBlocked}
                   onClick={() => void refresh('all')}
                 >
                   Retry refresh
@@ -1234,7 +1242,12 @@ export function JobFeedPage() {
                           aria-label={`Select ${job.title}`}
                         />
                       </label>
-                      <button type="button" className="job-card-hit" onClick={() => selectJob(job)}>
+                      <button
+                        type="button"
+                        className="job-card-hit"
+                        onClick={() => selectJob(job)}
+                        aria-label={`Open details for ${job.title} at ${job.company}`}
+                      >
                         <div className="job-card-top">
                           <h2>{job.title}</h2>
                           <span className={`source-chip source-${job.primarySource}`}>{sourceTitle(job.primarySource)}</span>
@@ -1247,11 +1260,11 @@ export function JobFeedPage() {
                         {also && (
                           <p
                             className="also-chip"
-                            title={job.sources.map((item) => `${sourceTitle(item.source)} · ${item.domain}`).join('\n')}
+                            title={alsoFromTooltip(job.sources)}
                           >
                             {also}
-                            {job.sources.filter((item) => item.source !== job.primarySource).length
-                              ? ` (${job.sources.filter((item) => item.source !== job.primarySource).length})`
+                            {alsoFromCount(job.sources, job.primarySource)
+                              ? ` (${alsoFromCount(job.sources, job.primarySource)})`
                               : ''}
                           </p>
                         )}
@@ -1295,6 +1308,12 @@ export function JobFeedPage() {
             </ul>
             </>
           )}
+          {waitingDueToRateLimit && (
+            <p className="banner" role="status">
+              {waitingDueToRateLimit}
+              {pauseInfinite ? ' Infinite scroll is paused until the cooldown ends.' : ''}
+            </p>
+          )}
           {filters.pagination === 'infinite' && <div ref={sentinel} className="feed-sentinel" />}
           {loadingMore && (
             <ul className="job-list" aria-hidden="true">
@@ -1313,7 +1332,7 @@ export function JobFeedPage() {
                 onClick={() => {
                   const next = page - 1
                   setPage(next)
-                  void loadPage(String((next - 1) * PAGE_SIZE), false)
+                  void loadPage(pageCursor(next), false)
                 }}
               >
                 Previous
@@ -1321,13 +1340,28 @@ export function JobFeedPage() {
               <span className="muted">
                 Page {page} of {pageCount}
               </span>
+              {visiblePageNumbers(page, pageCount).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className={n === page ? 'is-selected' : 'secondary'}
+                  aria-current={n === page ? 'page' : undefined}
+                  aria-label={`Page ${n}`}
+                  onClick={() => {
+                    setPage(n)
+                    void loadPage(pageCursor(n), false)
+                  }}
+                >
+                  {n}
+                </button>
+              ))}
               <button
                 type="button"
                 disabled={page >= pageCount}
                 onClick={() => {
                   const next = page + 1
                   setPage(next)
-                  void loadPage(String((next - 1) * PAGE_SIZE), false)
+                  void loadPage(pageCursor(next), false)
                 }}
               >
                 Next
@@ -1450,7 +1484,7 @@ export function JobFeedPage() {
                   {detail.sources.map((item) => (
                     <li key={`${item.source}-${item.sourceUrl}`}>
                       <a href={item.sourceUrl} target="_blank" rel="noreferrer">
-                        {sourceTitle(item.source)} · {item.domain}
+                        {sourceLinkLabel(item)}
                       </a>
                     </li>
                   ))}
@@ -1479,7 +1513,20 @@ export function JobFeedPage() {
       </div>
 
       <div className="feed-sticky-refresh">
-        <button type="button" className="primary" disabled={offline} onClick={() => void refresh('all')}>
+        <button
+          type="button"
+          className="primary"
+          disabled={refreshBlocked}
+          onClick={() => void refresh('all')}
+          aria-label="Refresh all sources"
+          title={
+            offline
+              ? 'Refresh is disabled while offline'
+              : refreshBlocked
+                ? waitingDueToRateLimit || 'Refresh is cooling down'
+                : 'Refresh Greenhouse and Lever'
+          }
+        >
           Refresh
         </button>
       </div>

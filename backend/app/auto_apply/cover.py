@@ -7,7 +7,7 @@ from typing import Any
 from app.auto_apply.models import AutoApplyAttempt
 
 MAX_COVER_CHARS = 4000
-COVER_MAX_TOKENS = 400
+COVER_MAX_TOKENS = 1000
 COVER_UPLOAD_MAX_BYTES = 200_000
 
 
@@ -89,6 +89,15 @@ def extract_cover_upload(*, filename: str, content_type: str | None, data: bytes
         raise AutoApplyValidationError("File is empty", path="file")
     if len(data) > COVER_UPLOAD_MAX_BYTES:
         raise AutoApplyValidationError("Cover letter must be under 200 KB.", path="file")
+    from app.auto_apply.attachments import inspect_attachment_bytes
+
+    inspect_attachment_bytes(
+        kind="coverLetter",
+        content_type=content_type or "application/octet-stream",
+        data=data,
+        filename=filename or "cover.bin",
+        require_text=False,
+    )
     name = (filename or "cover.bin").lower()
     mime = (content_type or "").split(";")[0].strip().lower()
     if name.endswith(".doc") and not name.endswith(".docx"):

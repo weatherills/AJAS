@@ -3,6 +3,9 @@ import { mockJobsApi, resetMockJobs, simulateLeverRateLimit, simulateSourceError
 import { mockSettingsApi, resetMockSettings, markMockSourceConfigured } from '../api/settingsMock'
 import {
   alsoFromLabel,
+  alsoFromCount,
+  alsoFromTooltip,
+  allSourcesRefreshBlocked,
   backoffRemainingMs,
   boardAddPayload,
   boardInputHint,
@@ -12,14 +15,32 @@ import {
   feedSourcesFromSettings,
   feedSourcesQueryParam,
   formatCountdown,
+  formatWhen,
+  INFINITE_SCROLL_ROOT_MARGIN,
+  loadFilters,
+  saveFilters,
+  takeLastVisit,
+  resetFeedSession,
+  seedInvalidFeedFilters,
   mergeJobs,
   matchesExtraFilters,
   matchesQuery,
   nextFeedSources,
   paginate,
   PAGE_SIZE,
+  pageCount,
+  pageCursor,
   persistFeedSourceChip,
+  rateLimitWaitingMessage,
+  shouldPauseInfiniteScroll,
   skeletonPlaceholders,
+  sourceLinkLabel,
+  sourceRefreshBlocked,
+  sourceDomain,
+  sourceTitle,
+  slug,
+  syncAnnounce,
+  visiblePageNumbers,
   windowedRange,
   loadFilterPresets,
   saveFilterPreset,
@@ -170,6 +191,7 @@ describe('job feed helpers', () => {
 
   it('saves and loads filter presets per user', () => {
     const filters = { ...defaultFilters(), q: 'staff', location: 'Remote' }
+    expect(saveFilterPreset('  ', defaultFilters(), 'ada')).toEqual([])
     saveFilterPreset('Remote staff', filters, 'ada')
     saveFilterPreset('Onsite', { ...defaultFilters(), location: 'Austin' }, 'linus')
     expect(loadFilterPresets('ada')).toHaveLength(1)
@@ -457,5 +479,217 @@ describe('mock jobs api', () => {
     await expect(persistFeedSourceChip(mockSettingsApi, 'greenhouse', true)).rejects.toMatchObject({
       code: 'SOURCE_NOT_CONFIGURED',
     })
+  })
+
+  it('adds a Greenhouse posting after a successful refresh', async () => {
+    resetMockJobs()
+    const before = await mockJobsApi.list({
+      sources: ['greenhouse', 'lever'],
+      q: 'Applied Scientist',
+      location: '',
+      status: 'all',
+      cursor: null,
+      limit: 25,
+    })
+    expect(before.items).toHaveLength(0)
+    await mockJobsApi.refresh('greenhouse')
+    const after = await mockJobsApi.list({
+      sources: ['greenhouse'],
+      q: 'Applied Scientist',
+      location: '',
+      status: 'all',
+      cursor: null,
+      limit: 25,
+    })
+    expect(after.items.some((item) => item.title === 'Applied Scientist')).toBe(true)
+    const toast = refreshToastForStatuses('greenhouse', await mockJobsApi.sourceStatus(), after.total)
+    expect(toast.text).toMatch(/Greenhouse updated/)
+  })
+
+  it('rejects unknown job ids', async () => {
+    resetMockJobs()
+    await expect(mockJobsApi.get('missing-job')).rejects.toThrow(/not found/i)
+  })
+
+  it('clears an expired Lever rate limit on the next status read', async () => {
+    resetMockJobs()
+    simulateLeverRateLimit(-1)
+    const rows = await mockJobsApi.sourceStatus()
+    expect(rows.find((item) => item.source === 'lever')?.status).toBe('ok')
+  })
+
+  it('rejects empty board tokens and unknown removals', async () => {
+    resetMockJobs()
+    await expect(mockJobsApi.addTenant('greenhouse', { boardToken: '  ' })).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+    })
+    await expect(mockJobsApi.removeTenant('greenhouse', 'not-on-file')).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+})
+
+describe('job feed PRD helpers', () => {
+  it('slugs titles, domains, and source labels', () => {
+    expect(slug(' Staff Engineer ')).toBe('staff-engineer')
+    expect(slug('')).toBe('unknown')
+    expect(sourceDomain('https://www.boards.greenhouse.io/acme/jobs/1')).toBe('boards.greenhouse.io')
+    expect(sourceDomain('not a url')).toBe('not a url')
+    expect(sourceTitle('greenhouse')).toBe('Greenhouse')
+    expect(sourceTitle('lever')).toBe('Lever')
+    expect(INFINITE_SCROLL_ROOT_MARGIN).toBe('20% 0px')
+  })
+
+  it('round-trips session filters and last-visit stamps', () => {
+    resetFeedSession()
+    expect(loadFilters()).toEqual(defaultFilters())
+    const stored = {
+      ...defaultFilters(),
+      q: 'staff',
+      location: 'Austin',
+      status: 'new' as const,
+      pagination: 'pages' as const,
+      sources: ['lever' as const],
+    }
+    saveFilters(stored)
+    expect(loadFilters()).toMatchObject({
+      q: 'staff',
+      location: 'Austin',
+      status: 'new',
+      pagination: 'pages',
+      sources: ['lever'],
+    })
+    seedInvalidFeedFilters()
+    expect(loadFilters()).toEqual(defaultFilters())
+    resetFeedSession()
+    const first = takeLastVisit()
+    expect(first).toMatch(/T/)
+    const second = takeLastVisit()
+    expect(second).toBe(first)
+    expect(formatWhen(null)).toBe('Never')
+    expect(formatWhen('not-a-date')).toBe('not-a-date')
+    expect(formatWhen('2026-09-07T12:00:00.000Z')).toMatch(/2026/)
+  })
+
+  it('labels source states including syncing and rate-limit countdown', () => {
+    const now = Date.parse('2026-09-23T12:00:00.000Z')
+    expect(
+      statusLabel(
+        { source: 'greenhouse', status: 'ok', lastSyncAt: null, backoffUntil: null, errorMessage: null, progress: null },
+        now,
+      ),
+    ).toBe('OK')
+    expect(
+      statusLabel(
+        {
+          source: 'greenhouse',
+          status: 'syncing',
+          lastSyncAt: null,
+          backoffUntil: null,
+          errorMessage: null,
+          progress: 'page 2/5',
+        },
+        now,
+      ),
+    ).toBe('Syncing… page 2/5')
+    expect(
+      statusLabel(
+        {
+          source: 'lever',
+          status: 'rate_limited',
+          lastSyncAt: null,
+          backoffUntil: '2026-09-23T12:01:05.000Z',
+          errorMessage: null,
+          progress: null,
+        },
+        now,
+      ),
+    ).toBe('Temporarily limited 01:05')
+    expect(
+      statusLabel({
+        source: 'lever',
+        status: 'error',
+        lastSyncAt: null,
+        backoffUntil: null,
+        errorMessage: 'Lever unreachable',
+        progress: null,
+      }),
+    ).toBe('Unreachable')
+  })
+
+  it('builds Also-from tooltips with posted date and domain', () => {
+    const sources = [
+      {
+        source: 'greenhouse' as const,
+        sourceUrl: 'https://boards.greenhouse.io/acme/jobs/1',
+        postedAt: '2026-09-07T12:00:00.000Z',
+        domain: 'boards.greenhouse.io',
+      },
+      {
+        source: 'lever' as const,
+        sourceUrl: 'https://jobs.lever.co/acme/staff',
+        postedAt: '2026-09-08T12:00:00.000Z',
+        domain: 'jobs.lever.co',
+      },
+    ]
+    expect(alsoFromCount(sources, 'greenhouse')).toBe(1)
+    expect(alsoFromTooltip(sources)).toContain('boards.greenhouse.io')
+    expect(alsoFromTooltip(sources)).toContain('posted')
+    expect(alsoFromTooltip(sources)).toContain('jobs.lever.co')
+    expect(sourceLinkLabel(sources[1])).toContain('Lever · jobs.lever.co')
+    expect(sourceLinkLabel({ ...sources[1], postedAt: null })).toBe('Lever · jobs.lever.co')
+  })
+
+  it('picks the freshest source as primary when merging', () => {
+    const older = sample('gh', 'greenhouse')
+    const newer = { ...sample('lv', 'lever'), updatedAt: '2026-09-08T12:00:00.000Z' }
+    const merged = mergeJobs([older, newer])
+    expect(merged).toHaveLength(1)
+    expect(merged[0].primarySource).toBe('lever')
+    expect(merged[0].id).toBe('gh')
+  })
+
+  it('paginates with cursor helpers and numbered pages', () => {
+    expect(pageCursor(1)).toBeNull()
+    expect(pageCursor(2)).toBe('25')
+    expect(pageCount(0)).toBe(1)
+    expect(pageCount(40)).toBe(2)
+    expect(visiblePageNumbers(1, 5)).toEqual([1, 2, 3])
+    expect(visiblePageNumbers(5, 5)).toEqual([3, 4, 5])
+  })
+
+  it('blocks refresh and pauses infinite scroll while a source is rate-limited', () => {
+    const now = Date.parse('2026-09-23T12:00:00.000Z')
+    const limited: SourceStatus = {
+      source: 'lever',
+      status: 'rate_limited',
+      lastSyncAt: null,
+      backoffUntil: '2026-09-23T12:00:30.000Z',
+      errorMessage: '429',
+      progress: null,
+      configured: true,
+    }
+    const ok: SourceStatus = {
+      source: 'greenhouse',
+      status: 'ok',
+      lastSyncAt: '2026-09-23T11:00:00.000Z',
+      backoffUntil: null,
+      errorMessage: null,
+      progress: null,
+      configured: true,
+    }
+    expect(sourceRefreshBlocked(undefined)).toBe(true)
+    expect(sourceRefreshBlocked(ok, { offline: true })).toBe(true)
+    expect(sourceRefreshBlocked(limited, { now })).toBe(true)
+    expect(sourceRefreshBlocked(ok, { now })).toBe(false)
+    expect(allSourcesRefreshBlocked([ok, limited], { now })).toBe(false)
+    expect(allSourcesRefreshBlocked([limited], { now })).toBe(true)
+    expect(rateLimitWaitingMessage([limited], now)).toMatch(/Waiting due to rate limit/)
+    expect(rateLimitWaitingMessage([limited], now)).toMatch(/00:30/)
+    expect(shouldPauseInfiniteScroll(['lever'], [limited], now)).toBe(true)
+    expect(shouldPauseInfiniteScroll(['greenhouse', 'lever'], [ok, limited], now)).toBe(false)
+    expect(shouldPauseInfiniteScroll(['greenhouse'], [ok], now)).toBe(false)
+    expect(syncAnnounce('started')).toBe('Syncing started')
+    expect(syncAnnounce('completed')).toBe('Syncing completed')
+    expect(syncAnnounce('rate_limited')).toBe('Rate limit active')
+    expect(syncAnnounce('error')).toBe('Sync error')
   })
 })
