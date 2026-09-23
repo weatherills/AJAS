@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<source>
+  <publisher>AJAS fixtures</publisher>
+  <job>
+    <title><![CDATA[Backend Engineer]]></title>
+    <date>2026-03-01</date>
+    <referencenumber>zr-xml-1</referencenumber>
+    <url><![CDATA[https://fixtures.ajas.local/ziprecruiter/zr-xml-1]]></url>
+    <company><![CDATA[Contoso]]></company>
+    <city>Austin</city>
+    <state>TX</state>
+    <country>US</country>
+    <description><![CDATA[Required: python azure.]]></description>
+    <salary>$140000-$165000</salary>
+    <jobtype>Full-time</jobtype>
+    <email>should-not-be-ingested@example.com</email>
+  </job>
+</source>

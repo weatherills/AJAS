@@ -1,0 +1,36 @@
+{
+  "total": 2,
+  "limit": 20,
+  "offset": 0,
+  "company": "Northwind",
+  "host": "fixtures.ajas.local",
+  "site": "Northwind_External",
+  "jobPostings": [
+    {
+      "title": "Staff Data Engineer",
+      "externalPath": "/job/Seattle/Staff-Data-Engineer_R88001",
+      "locationsText": "Seattle, WA",
+      "postedOn": "Posted 3 Days Ago",
+      "bulletFields": ["R88001"],
+      "jobPostingInfo": {
+        "jobReqId": "R88001",
+        "jobDescription": "Required: python spark azure. Compensation $175,000-$205,000.",
+        "timeType": "Full time",
+        "startDate": "2026-03-01",
+        "location": "Seattle, WA"
+      }
+    },
+    {
+      "title": "Platform SRE",
+      "externalPath": "/job/Remote/Platform-SRE_R88002",
+      "locationsText": "Remote",
+      "bulletFields": ["R88002"],
+      "jobPostingInfo": {
+        "jobReqId": "R88002",
+        "jobDescription": "Required: kubernetes terraform.",
+        "timeType": "Full time",
+        "startDate": "2026-03-02"
+      }
+    }
+  ]
+}

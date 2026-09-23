@@ -1,4 +1,4 @@
-"""Indeed / LinkedIn fixture ingestion: fetch, normalize, dedupe, apply-method, throttle."""
+"""Indeed / LinkedIn / Workday / ZipRecruiter fixture ingestion: fetch, normalize, dedupe, throttle."""
 
 from __future__ import annotations
 
@@ -18,6 +18,8 @@ from app.integrations.linkedin_spec import (
     map_linkedin_job,
     walk_pages,
 )
+from app.integrations.workday_spec import RATE_PLAN as WORKDAY_RATE, map_workday_job, unwrap_workday_payload
+from app.integrations.ziprecruiter_spec import RATE_PLAN as ZIP_RATE, map_ziprecruiter_job, unwrap_ziprecruiter_payload
 from app.integrations.search import SearchSpec, matches_search, parse_search
 from app.job_sources.boards import SOURCE_FLAGS, backoff_seconds, iter_pages
 from app.job_sources.circuit import allow as circuit_allow, record_status
@@ -165,6 +167,24 @@ def detect_apply_method(job: dict[str, Any]) -> dict[str, str]:
     }
 
 
+MAPPERS = {
+    "linkedin": map_linkedin_job,
+    "workday": map_workday_job,
+    "ziprecruiter": map_ziprecruiter_job,
+}
+
+UNWRAPPERS = {
+    "workday": unwrap_workday_payload,
+    "ziprecruiter": unwrap_ziprecruiter_payload,
+}
+
+INGEST_CAPS = {
+    "linkedin": int(RATE_PLAN["ingest"]["capPerWindow"]),
+    "workday": int(WORKDAY_RATE["ingest"]["capPerWindow"]),
+    "ziprecruiter": int(ZIP_RATE["ingest"]["capPerWindow"]),
+}
+
+
 def _first(*values: Any) -> str:
     for value in values:
         if isinstance(value, str) and value.strip():
@@ -177,19 +197,20 @@ def _first(*values: Any) -> str:
 
 
 def normalize_job(source: str, job: dict[str, Any]) -> dict[str, Any]:
-    linkedin = map_linkedin_job(job) if source == "linkedin" else None
-    if linkedin:
-        title = str(linkedin.get("title") or "")
-        company = str(linkedin.get("company") or "")
-        location = str(linkedin.get("location") or "")
-        body = str(linkedin.get("description") or "")
-        apply_url = str(linkedin.get("postingUrl") or "")
-        employment = str(linkedin.get("employmentType") or "")
-        posted_at = str(linkedin.get("postedAt") or "")
-        posting_id = str(linkedin.get("sourcePostingId") or "")
-        listing_key = str(linkedin.get("listingKey") or "")
-        visibility = str(linkedin.get("visibility") or "public")
-        visible = bool(linkedin.get("visible"))
+    mapper = MAPPERS.get(source)
+    mapped = mapper(job) if mapper else None
+    if mapped:
+        title = str(mapped.get("title") or "")
+        company = str(mapped.get("company") or "")
+        location = str(mapped.get("location") or "")
+        body = str(mapped.get("description") or "")
+        apply_url = str(mapped.get("postingUrl") or "")
+        employment = str(mapped.get("employmentType") or "")
+        posted_at = str(mapped.get("postedAt") or "")
+        posting_id = str(mapped.get("sourcePostingId") or "")
+        listing_key = str(mapped.get("listingKey") or "")
+        visibility = str(mapped.get("visibility") or "public")
+        visible = bool(mapped.get("visible"))
     else:
         title = _first(job.get("title"), job.get("jobTitle"))
         company = _first(job.get("company"), job.get("companyName"), job.get("employer"))
@@ -256,7 +277,10 @@ def _pages_from(payload: Any) -> list[list[Any]]:
     return iter_pages(payload)
 
 
-def _linkedin_pages(payload: Any) -> tuple[list[list[Any]], dict[str, Any]]:
+def _board_pages(source: str, payload: Any) -> tuple[list[list[Any]], dict[str, Any]]:
+    unwrap = UNWRAPPERS.get(source)
+    if unwrap:
+        payload = unwrap(payload)
     walked = walk_pages(payload)
     return [list(page.get("jobs") or []) for page in walked["pages"]], {
         "stop": walked["stop"],
@@ -282,12 +306,13 @@ def ingest_jobs(
 ) -> dict[str, Any]:
     """Normalize fixture pages into canonical postings with idempotent upserts.
 
-    Live HTML scraping of Indeed/LinkedIn is not implemented. When ``listing_url``
-    is supplied, robots + consent must pass; fixture hosts are used in tests.
+    Live HTML scraping of Indeed/LinkedIn/Workday/ZipRecruiter is not implemented.
+    When ``listing_url`` is supplied, robots + consent must pass; fixture hosts are used in tests.
     """
     spec = search if isinstance(search, SearchSpec) else parse_search(search)
     flag = _flag_for(source)
-    cap = int(rate_cap if rate_cap is not None else RATE_PLAN["ingest"]["capPerWindow"] if source == "linkedin" else 50)
+    cap = int(rate_cap if rate_cap is not None else INGEST_CAPS.get(source, 50))
+    mapped_source = source in MAPPERS
     metrics = {
         "source": source,
         "ingested": 0,
@@ -306,7 +331,7 @@ def ingest_jobs(
     if not circuit_allow(source):
         metrics["failed"] += 1
         bump("circuit_open")
-        linkedin_audit.record("circuit_open", reason="circuit_open")
+        linkedin_audit.record("circuit_open", reason="circuit_open", source=source)
         return {"jobs": [], "metrics": metrics, "search": spec.as_dict(), "reason": "circuit_open", "pagination": pagination}
     if listing_url and not can_fetch(listing_url):
         metrics["failed"] += 1
@@ -315,8 +340,8 @@ def ingest_jobs(
     bucket = store if store is not None else {}
     known = seen if seen is not None else {}
     out: list[dict[str, Any]] = []
-    if source == "linkedin":
-        pages, pagination = _linkedin_pages(payload)
+    if mapped_source:
+        pages, pagination = _board_pages(source, payload)
     else:
         pages = _pages_from(payload)
         pagination = {"stop": "no_next_cursor", "cursors": [], "windowSize": 25, "mode": "offset"}
@@ -333,8 +358,7 @@ def ingest_jobs(
             break
         if not isinstance(rows, list):
             continue
-        if source == "linkedin":
-            linkedin_audit.record("fetch_page", page=index, count=len(rows))
+        linkedin_audit.record("fetch_page", source=source, page=index, count=len(rows))
         for job in rows:
             if not isinstance(job, dict):
                 metrics["failed"] += 1
@@ -344,16 +368,16 @@ def ingest_jobs(
             except Exception:
                 metrics["failed"] += 1
                 continue
-            if source == "linkedin" and not row.get("visible", True):
+            if mapped_source and not row.get("visible", True):
                 metrics["skipped"] += 1
                 if row.get("visibility") == "private":
                     metrics["privateSkipped"] += 1
                     bump("private_skipped")
-                    linkedin_audit.record("skipped_private", listingKey=row.get("listingKey"))
+                    linkedin_audit.record("skipped_private", source=source, listingKey=row.get("listingKey"))
                 else:
                     metrics["expiredSkipped"] += 1
                     bump("expired_skipped")
-                    linkedin_audit.record("skipped_expired", listingKey=row.get("listingKey"))
+                    linkedin_audit.record("skipped_expired", source=source, listingKey=row.get("listingKey"))
                 continue
             if not row["title"] or not row["company"] or not row["postingUrl"]:
                 metrics["failed"] += 1
@@ -365,19 +389,18 @@ def ingest_jobs(
             listing_key = str(row.get("listingKey") or "")
             posted_at = str(row.get("postedAt") or "")
             previous = None
-            if source == "linkedin" and listing_key and posted_at:
+            if mapped_source and listing_key and posted_at:
                 previous = known.get(listing_key)
             if previous is None:
                 previous = known.get(fingerprint) or bucket.get(row["id"])
             listing_hit = bool(
-                source == "linkedin" and listing_key and posted_at and previous and previous.get("listingKey") == listing_key
+                mapped_source and listing_key and posted_at and previous and previous.get("listingKey") == listing_key
             )
             if previous and (listing_hit or previous.get("contentHash") == row["contentHash"]):
                 metrics["skipped"] += 1
                 metrics["deduped"] += 1
                 bump("deduped")
-                if source == "linkedin":
-                    linkedin_audit.record("deduped", listingKey=listing_key)
+                linkedin_audit.record("deduped", source=source, listingKey=listing_key)
                 if not any(item.get("id") == previous.get("id") for item in out):
                     out.append(previous)
                 continue
@@ -397,15 +420,15 @@ def ingest_jobs(
             pagination["stop"] = "limit_reached"
             break
     record_status(source, 200)
-    if source == "linkedin":
-        linkedin_audit.record(
-            "fetch",
-            ingested=metrics["ingested"],
-            skipped=metrics["skipped"],
-            failed=metrics["failed"],
-            pages=metrics["pages"],
-            stop=pagination.get("stop"),
-        )
+    linkedin_audit.record(
+        "fetch",
+        source=source,
+        ingested=metrics["ingested"],
+        skipped=metrics["skipped"],
+        failed=metrics["failed"],
+        pages=metrics["pages"],
+        stop=pagination.get("stop"),
+    )
     return {
         "jobs": out[: spec.limit],
         "metrics": metrics,
@@ -423,8 +446,16 @@ def linkedin_ingest(payload: Any, **kwargs: Any) -> dict[str, Any]:
     return ingest_jobs("linkedin", payload, **kwargs)
 
 
+def workday_ingest(payload: Any, **kwargs: Any) -> dict[str, Any]:
+    return ingest_jobs("workday", payload, **kwargs)
+
+
+def ziprecruiter_ingest(payload: Any, **kwargs: Any) -> dict[str, Any]:
+    return ingest_jobs("ziprecruiter", payload, **kwargs)
+
+
 def listing_fetcher(source: str, payload: Any, **kwargs: Any) -> dict[str, Any]:
-    """Paginated listing fetch used by Indeed and LinkedIn Jobs."""
+    """Paginated listing fetch used by Indeed, LinkedIn, Workday, and ZipRecruiter."""
     return ingest_jobs(source, payload, **kwargs)
 
 

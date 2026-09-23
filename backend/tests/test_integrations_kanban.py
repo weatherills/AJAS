@@ -24,6 +24,8 @@ from app.integrations.ingest import (
     reset_limiter,
     retry_with_backoff,
     throttle,
+    workday_ingest,
+    ziprecruiter_ingest,
 )
 from app.integrations.pipeline import run_linkedin_e2e
 from app.integrations.scheduler import due, record_run, reset as reset_scheduler, tick
@@ -71,6 +73,8 @@ def _enable(monkeypatch, **flags: bool) -> None:
     mapping = {
         "indeed": "FLAG_INDEED_ADAPTER",
         "linkedin": "FLAG_LINKEDIN_ADAPTER",
+        "workday": "FLAG_WORKDAY_ADAPTER",
+        "ziprecruiter": "FLAG_ZIPRECRUITER_ADAPTER",
         "easy": "FLAG_LINKEDIN_EASY_APPLY",
         "harvest": "FLAG_GREENHOUSE_HARVEST",
         "gmail": "FLAG_GMAIL_ADAPTER",
@@ -106,6 +110,8 @@ def test_flags_default_off():
     flags = feature_flags()
     assert flags["indeed_adapter"] is False
     assert flags["linkedin_adapter"] is False
+    assert flags["workday_adapter"] is False
+    assert flags["ziprecruiter_adapter"] is False
     assert flags["linkedin_easy_apply"] is False
     assert flags["greenhouse_harvest"] is False
     assert flags["gmail_adapter"] is False
@@ -137,6 +143,93 @@ def test_indeed_flag_off_returns_nothing():
     out = indeed_ingest(payload)
     assert out["jobs"] == []
     assert out["reason"] == "flag_off"
+
+
+def test_workday_cxs_envelope_and_fixture_pages(monkeypatch):
+    from app.integrations.workday_spec import API_CONTRACT, RATE_PLAN, spec_bundle
+    from app.job_sources.constants import SOURCE_TYPES
+
+    _enable(monkeypatch, workday=True)
+    payload = json.loads((FIXTURES / "workday_cxs.json").read_text())
+    out = workday_ingest(payload)
+    assert out["reason"] == "ok"
+    assert out["metrics"]["ingested"] == 2
+    northwind = next(job for job in out["jobs"] if job["sourcePostingId"] == "R88001")
+    assert northwind["title"] == "Staff Data Engineer"
+    assert northwind["company"] == "Northwind"
+    assert northwind["location"] == "Seattle, WA"
+    assert "Staff-Data-Engineer_R88001" in northwind["postingUrl"]
+    pages = json.loads((FIXTURES / "workday.json").read_text())
+    paged = workday_ingest(pages)
+    assert paged["metrics"]["ingested"] == 1
+    _enable(monkeypatch)
+    assert workday_ingest(pages)["reason"] == "flag_off"
+    _enable(monkeypatch, workday=True)
+    expired = workday_ingest(
+        {
+            "company": "Northwind",
+            "jobs": [
+                {
+                    "id": "wd-x",
+                    "title": "Closed Role",
+                    "company": "Northwind",
+                    "apply_url": "https://fixtures.ajas.local/workday/x",
+                    "expired": True,
+                }
+            ],
+        }
+    )
+    assert expired["jobs"] == []
+    assert expired["metrics"]["expiredSkipped"] == 1
+    bundle = spec_bundle()
+    assert bundle["api"]["publicSearchApi"] is False
+    assert API_CONTRACT["officialRestSoap"] == "tenant-customer-only"
+    assert RATE_PLAN["ingest"]["capPerWindow"] == 20
+    assert SOURCE_TYPES == frozenset({"greenhouse", "lever"})
+
+
+def test_ziprecruiter_jobs_v1_partner_and_pages(monkeypatch):
+    from app.integrations.ziprecruiter_spec import API_CONTRACT, parse_publisher_xml, spec_bundle
+
+    _enable(monkeypatch, ziprecruiter=True)
+    payload = json.loads((FIXTURES / "ziprecruiter_jobs_v1.json").read_text())
+    out = ziprecruiter_ingest(payload)
+    assert out["reason"] == "ok"
+    assert out["metrics"]["ingested"] == 2
+    backend = next(job for job in out["jobs"] if job["sourcePostingId"] == "zr-api-1")
+    assert backend["title"] == "Backend Engineer"
+    assert backend["company"] == "Contoso"
+    assert backend["location"] == "Austin, TX"
+    partner = ziprecruiter_ingest(
+        {
+            "job": {
+                "job_id": "zr-partner-1",
+                "name": "Staff Platform Engineer",
+                "hiring_company": {"name": "Northwind"},
+                "city": "Remote",
+                "url": "https://fixtures.ajas.local/ziprecruiter/zr-partner-1",
+                "description": "python azure kubernetes",
+            }
+        }
+    )
+    assert partner["jobs"][0]["sourcePostingId"] == "zr-partner-1"
+    assert partner["jobs"][0]["company"] == "Northwind"
+    pages = json.loads((FIXTURES / "ziprecruiter_pages.json").read_text())
+    paged = ziprecruiter_ingest(pages)
+    assert paged["metrics"]["ingested"] == 2
+    assert paged["metrics"]["pages"] == 2
+    xml = (FIXTURES / "ziprecruiter_publisher.xml").read_text()
+    parsed = parse_publisher_xml(xml)
+    assert parsed[0]["id"] == "zr-xml-1"
+    assert all("email" not in row for row in parsed)
+    xml_out = ziprecruiter_ingest(xml)
+    assert xml_out["metrics"]["ingested"] == 1
+    assert "should-not-be-ingested" not in str(xml_out)
+    _enable(monkeypatch)
+    assert ziprecruiter_ingest(payload)["reason"] == "flag_off"
+    bundle = spec_bundle()
+    assert bundle["api"]["publicSearchApi"] is False
+    assert API_CONTRACT["partnerJobsApi"] == "ats-partner-only"
 
 
 def test_linkedin_search_inputs_and_listing_fetcher(monkeypatch):
@@ -439,10 +532,12 @@ def test_slack_formatter_and_webhook(monkeypatch):
 
 
 def test_http_routes_flag_gated(monkeypatch):
-    _enable(monkeypatch, indeed=True, linkedin=True, easy=True, harvest=True, gmail=True, drive=True, slack=True)
+    _enable(monkeypatch, indeed=True, linkedin=True, workday=True, ziprecruiter=True, easy=True, harvest=True, gmail=True, drive=True, slack=True)
     reset_service()
     status = json.loads(routes.integrations_status(_req("GET", "http://localhost/api/v1/integrations/status")).get_body())
     assert status["flags"]["indeed_adapter"] is True
+    assert status["flags"]["workday_adapter"] is True
+    assert status["flags"]["ziprecruiter_adapter"] is True
     payload = json.loads((FIXTURES / "indeed.json").read_text())
     ingest = routes.integrations_ingest(
         _req("POST", "http://localhost/api/v1/integrations/ingest/indeed", body={"payload": payload}, route_params={"source": "indeed"})
@@ -450,6 +545,32 @@ def test_http_routes_flag_gated(monkeypatch):
     assert ingest.status_code in {200, 202}
     body = json.loads(ingest.get_body())
     assert body["jobs"]
+    wd = json.loads(
+        routes.integrations_ingest(
+            _req(
+                "POST",
+                "http://localhost/api/v1/integrations/ingest/workday",
+                body={"payload": json.loads((FIXTURES / "workday_cxs.json").read_text())},
+                route_params={"source": "workday"},
+            )
+        ).get_body()
+    )
+    assert wd["jobs"]
+    zr = json.loads(
+        routes.integrations_ingest(
+            _req(
+                "POST",
+                "http://localhost/api/v1/integrations/ingest/ziprecruiter",
+                body={"payload": json.loads((FIXTURES / "ziprecruiter_jobs_v1.json").read_text())},
+                route_params={"source": "ziprecruiter"},
+            )
+        ).get_body()
+    )
+    assert zr["jobs"]
+    wd_spec = json.loads(routes.integrations_workday_spec(_req("GET", "http://localhost/api/v1/integrations/workday/spec")).get_body())
+    assert wd_spec["api"]["publicSearchApi"] is False
+    zr_spec = json.loads(routes.integrations_ziprecruiter_spec(_req("GET", "http://localhost/api/v1/integrations/ziprecruiter/spec")).get_body())
+    assert zr_spec["flag"] == "ziprecruiter_adapter"
     search = json.loads(routes.integrations_search_inputs(_req("GET", "http://localhost/api/v1/integrations/linkedin/search", params={"keywords": "python"})).get_body())
     assert search["search"]["keywords"] == "python"
     apply_resp = routes.integrations_easy_apply(
