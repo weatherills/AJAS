@@ -1,4 +1,6 @@
 # AJAS — AI Job Application System
+THIS PROJECT IS ON HOLD DUE TO THE COMPLEXITY OF RETRIEVING JOB APPLICATIONS FROM POPULAR JOB BOARDS
+It is my hope that as more people start automating their workflows, Linkedin and others will open their platforms enough so that we can automate the application process and therefore spend more time reading their articles.
 
 AJAS ingests job postings, matches them against a user's resume using hybrid
 keyword + semantic scoring, and streamlines review, auto-apply, and email
