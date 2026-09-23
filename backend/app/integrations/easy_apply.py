@@ -125,7 +125,13 @@ def _attachments_meta(attachments: list[dict[str, Any]] | None) -> list[dict[str
         if isinstance(data, str):
             data = data.encode("utf-8")
         size = int(item.get("size") or len(data))
-        validate_attachment(kind=kind if kind in {"resume", "coverLetter"} else "resume", content_type=content_type, size=size)
+        validate_attachment(
+            kind=kind if kind in {"resume", "coverLetter"} else "resume",
+            content_type=content_type,
+            size=size,
+            data=data if isinstance(data, (bytes, bytearray)) else None,
+            filename=str(item.get("name") or f"{kind}.pdf"),
+        )
         meta.append(
             {
                 "kind": kind,
@@ -252,7 +258,13 @@ def submit(
         answers = answer_questions(questions, approved=approved_answers)
         files = _attachments_meta(files_in)
     except AutoApplyValidationError as exc:
-        code = "ATTACHMENT_SIZE" if "smaller" in str(exc) else "ATTACHMENT_TYPE"
+        lowered = str(exc).lower()
+        if "antivirus" in lowered:
+            code = "ATTACHMENT_VIRUS"
+        elif "smaller" in lowered:
+            code = "ATTACHMENT_SIZE"
+        else:
+            code = "ATTACHMENT_TYPE"
         receipt = _store_receipt(job, {}, [], {}, status="failed", reason=str(exc))
         _audit("validation_failed", jobId=job.get("id"), error=str(exc), code=code)
         return {"status": "failed", "reason": str(exc), "code": code, "receipt": receipt, **error_payload(code)}

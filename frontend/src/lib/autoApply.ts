@@ -15,7 +15,7 @@ export const APPLY_STATES = [
   'duplicate',
 ] as const
 
-/** Matches backend cover generation budget (`COVER_MAX_TOKENS` / `MAX_COVER_CHARS`). */
+/** Backend generation budget is 1000 tokens; UI warns earlier at 400. */
 export const COVER_TOKEN_BUDGET = 400
 export const COVER_CHAR_BUDGET = 4000
 export const COVER_TOKEN_WARN_AT = 320

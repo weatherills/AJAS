@@ -23,7 +23,7 @@ from app.auto_apply.store import AutoApplyStore, get_auto_apply_store
 from app.auto_apply.submitters import HttpPoster, map_vendor_fields, submit_to_vendor
 from app.auto_apply.validation import retry_backoff_seconds, validate_apply_fields
 from app.audit import record_action
-from app.auto_apply.attachments import POLICY as ATTACHMENT_POLICY
+from app.auto_apply.attachments import POLICY as ATTACHMENT_POLICY, validate_attachment
 from app.config import get_settings
 
 logger = logging.getLogger("ajas")
@@ -126,6 +126,7 @@ class AutoApplyService:
         answers = body.get("answers") if isinstance(body.get("answers"), dict) else {}
         profile = self._profile_for(user_id, str(resume_id), answers)
         validate_apply_fields(body, profile)
+        self._inspect_inline_attachments(body)
         mode = "manual_package" if vendor == "manual" or _needs_manual_package(vendor, posting_url if isinstance(posting_url, str) else None) else "api"
         key = idempotency_key or (body.get("idempotency_key") if isinstance(body.get("idempotency_key"), str) else None)
 
@@ -506,6 +507,42 @@ class AutoApplyService:
         except AutoApplyNotFoundError:
             return None
         return cover.body_text
+
+    def _inspect_inline_attachments(self, body: dict[str, Any]) -> None:
+        """Virus-scan optional inline resume/cover bytes (Backend PRD attachments)."""
+        items = body.get("attachments")
+        if not isinstance(items, list):
+            resume_bytes = body.get("resume_bytes")
+            if isinstance(resume_bytes, (bytes, bytearray)):
+                items = [
+                    {
+                        "kind": "resume",
+                        "contentType": str(body.get("resume_content_type") or "application/pdf"),
+                        "name": str(body.get("resume_filename") or "resume.pdf"),
+                        "data": bytes(resume_bytes),
+                    }
+                ]
+            else:
+                return
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            kind = str(item.get("kind") or item.get("type") or "resume")
+            content_type = str(item.get("contentType") or item.get("content_type") or "application/pdf")
+            raw = item.get("data") or item.get("bytes") or b""
+            if isinstance(raw, str):
+                raw = raw.encode("utf-8")
+            if not isinstance(raw, (bytes, bytearray)) or not raw:
+                continue
+            filename = str(item.get("name") or item.get("filename") or f"{kind}.pdf")
+            validate_attachment(
+                kind=kind if kind in {"resume", "coverLetter"} else "resume",
+                content_type=content_type,
+                size=len(raw),
+                data=bytes(raw),
+                filename=filename,
+                require_text=bool(item.get("require_text")),
+            )
 
     def _require_auto_apply_enabled(self, user_id: str) -> None:
         try:

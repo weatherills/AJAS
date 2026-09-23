@@ -12,6 +12,7 @@ from typing import Any
 from app.auto_apply.attachments import COVER_TYPES, MAX_BYTES, POLICY, RESUME_TYPES
 from app.auto_apply.captcha import detect as detect_captcha
 from app.auto_apply.field_map import DEFAULT_MAP
+from app.mail.scan import scan_attachment
 from app.job_sources.circuit import FAILURE_THRESHOLD, OPEN_SECONDS
 from app.job_sources.keys import canonical_id_for, slug, utc_now
 
@@ -411,6 +412,13 @@ ERROR_MATRIX: dict[str, dict[str, Any]] = {
         "action": "replace_file",
         "retryable": False,
     },
+    "ATTACHMENT_VIRUS": {
+        "http": 400,
+        "status": "failed",
+        "user": "That file failed the antivirus scan. Replace it with a clean PDF or DOCX.",
+        "action": "replace_file",
+        "retryable": False,
+    },
     "MISSING_RESUME": {
         "http": 400,
         "status": "failed",
@@ -556,6 +564,11 @@ def classify_field_error(profile: dict[str, Any], attachments: list[dict[str, An
             return "ATTACHMENT_TYPE"
         if size > MAX_BYTES:
             return "ATTACHMENT_SIZE"
+        raw = data.encode("utf-8") if isinstance(data, str) else (data if isinstance(data, (bytes, bytearray)) else b"")
+        if raw:
+            scanned = scan_attachment(bytes(raw), file_name=str(item.get("name") or "file"))
+            if not scanned.clean:
+                return "ATTACHMENT_VIRUS"
     return None
 
 

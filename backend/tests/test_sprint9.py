@@ -202,6 +202,7 @@ def test_attachment_policy_and_cover_from_explanation():
     with pytest.raises(AutoApplyValidationError):
         validate_attachment(kind="resume", content_type="image/png", size=10)
     assert POLICY["resume"]["maxBytes"] == 5 * 1024 * 1024
+    assert POLICY["resume"]["virusScan"] is True
     attempt = AutoApplyAttempt(
         user_id="u",
         vendor="greenhouse",

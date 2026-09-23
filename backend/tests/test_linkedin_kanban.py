@@ -40,6 +40,7 @@ from app.integrations.pipeline import run_linkedin_e2e
 from app.integrations.service import reset_service
 from app.job_sources.circuit import record_status, reset as reset_circuit
 from app.job_sources.constants import SOURCE_TYPES
+from app.mail.scan import EICAR_SIGNATURE
 
 FIXTURES = Path(__file__).parent / "fixtures" / "job_boards"
 USER = "user-1"
@@ -255,6 +256,12 @@ def test_easy_apply_validation_error_matrix_and_remediation(monkeypatch):
         attachments=[{"kind": "resume", "name": "x.pdf", "contentType": "application/pdf", "size": 6 * 1024 * 1024, "data": b"%PDF"}],
     )
     assert too_big["code"] == "ATTACHMENT_SIZE"
+    virus = ea.submit(
+        job=job,
+        profile=PROFILE,
+        attachments=[{"kind": "resume", "name": "cv.pdf", "contentType": "application/pdf", "data": EICAR_SIGNATURE}],
+    )
+    assert virus["code"] == "ATTACHMENT_VIRUS"
     private = ea.submit(job={**job, "private": True}, profile=PROFILE, attachments=[RESUME])
     assert private["code"] == "PRIVATE_JOB"
     expired = ea.submit(job={**job, "expired": True}, profile=PROFILE, attachments=[RESUME])
@@ -267,8 +274,8 @@ def test_easy_apply_validation_error_matrix_and_remediation(monkeypatch):
 
 def test_attachment_spec_cover_template_and_profile_map(monkeypatch):
     _enable(monkeypatch, linkedin=True, easy=True)
-    assert ATTACHMENT_SPEC["resume"]["required"] is True
-    assert ATTACHMENT_SPEC["coverLetter"]["required"] is False
+    assert ATTACHMENT_SPEC["resume"]["virusScan"] is True
+    assert ATTACHMENT_SPEC["coverLetter"]["virusScan"] is True
     assert ATTACHMENT_SPEC["resume"]["maxBytes"] == 5 * 1024 * 1024
     job = {
         "id": "j2",
