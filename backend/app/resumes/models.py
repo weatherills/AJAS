@@ -15,12 +15,13 @@ def new_id() -> str:
 
 
 class ResumeContact(BaseModel):
-    """Optional 1:1 contact/profile row for a resume."""
+    """Optional 1:1 contact/profile row. Container ``resume_contacts``, pk ``/resume_id``."""
 
     model_config = ConfigDict(extra="ignore")
 
     id: str = Field(default_factory=new_id)
     resume_id: str
+    user_id: str | None = None
     full_name: str | None = None
     email: str | None = None
     phone: str | None = None
@@ -32,10 +33,13 @@ class ResumeContact(BaseModel):
 
 
 class ResumeSkill(BaseModel):
+    """1:N skill row. Container ``resume_skills``, pk ``/resume_id``."""
+
     model_config = ConfigDict(extra="ignore")
 
     id: str = Field(default_factory=new_id)
     resume_id: str
+    user_id: str | None = None
     name: str
     order_index: int = 0
     source: ChildSource = "parsed"
@@ -44,10 +48,13 @@ class ResumeSkill(BaseModel):
 
 
 class ResumeExperience(BaseModel):
+    """1:N work-history row. Container ``resume_experiences``, pk ``/resume_id``."""
+
     model_config = ConfigDict(extra="ignore")
 
     id: str = Field(default_factory=new_id)
     resume_id: str
+    user_id: str | None = None
     title: str | None = None
     company: str | None = None
     location: str | None = None
@@ -62,10 +69,13 @@ class ResumeExperience(BaseModel):
 
 
 class ResumeEducation(BaseModel):
+    """1:N education row. Container ``resume_educations``, pk ``/resume_id``."""
+
     model_config = ConfigDict(extra="ignore")
 
     id: str = Field(default_factory=new_id)
     resume_id: str
+    user_id: str | None = None
     institution: str | None = None
     degree: str | None = None
     field: str | None = None
@@ -91,7 +101,11 @@ class StructuredResume(BaseModel):
 
 
 class Resume(BaseModel):
-    """Parent resume document — Cosmos container ``resumes``, pk ``/user_id``."""
+    """Parent resume document — Cosmos container ``resumes``, pk ``/user_id``.
+
+    Child collections are hydrated from ``resume_contacts`` / ``resume_skills`` /
+    ``resume_experiences`` / ``resume_educations`` and are not persisted on this row.
+    """
 
     model_config = ConfigDict(extra="ignore")
 

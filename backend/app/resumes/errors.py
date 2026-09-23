@@ -18,7 +18,7 @@ class ResumeNotFoundError(ResumeStoreError):
 
 
 class ResumeSelectionRejectedError(ResumeStoreError):
-    """A run cannot select this resume (deleted or cross-user)."""
+    """A run cannot select this resume (deleted, unparsed, or cross-user)."""
 
 
 class FileRejectedError(ResumeStoreError):

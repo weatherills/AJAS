@@ -6,10 +6,21 @@ from typing import Any
 
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
 
+from app.resumes.children import (
+    attach_children,
+    child_dumps,
+    parent_document,
+    snapshot_from_embedded,
+    structured_from_rows,
+)
 from app.resumes.constants import (
+    CONTACTS_CONTAINER,
+    EDUCATIONS_CONTAINER,
     EVENTS_CONTAINER,
+    EXPERIENCES_CONTAINER,
     RESUMES_CONTAINER,
     SELECTIONS_CONTAINER,
+    SKILLS_CONTAINER,
     ChildSource,
     ProcessingStatus,
 )
@@ -17,7 +28,11 @@ from app.resumes.errors import ResumeNotFoundError
 from app.resumes.memory import InMemoryResumeStore
 from app.resumes.models import (
     Resume,
+    ResumeContact,
+    ResumeEducation,
+    ResumeExperience,
     ResumeParseEvent,
+    ResumeSkill,
     RunResumeSelection,
     StructuredResume,
 )
@@ -28,13 +43,17 @@ class CosmosResumeStore:
 
     Mutations go through the in-memory rules (validation, events, uniqueness)
     after loading the caller's current documents from Cosmos, then write back.
-    This keeps the Database PRD in one place.
+    Children live in dedicated containers, not as JSON on the parent row.
     """
 
     def __init__(self, database: Any) -> None:
         self._resumes = database.get_container_client(RESUMES_CONTAINER)
         self._events = database.get_container_client(EVENTS_CONTAINER)
         self._selections = database.get_container_client(SELECTIONS_CONTAINER)
+        self._contacts = database.get_container_client(CONTACTS_CONTAINER)
+        self._skills = database.get_container_client(SKILLS_CONTAINER)
+        self._experiences = database.get_container_client(EXPERIENCES_CONTAINER)
+        self._educations = database.get_container_client(EDUCATIONS_CONTAINER)
 
     def create_resume(self, **kwargs: Any) -> Resume:
         working = self._hydrate_user(kwargs["user_id"])
@@ -48,7 +67,9 @@ class CosmosResumeStore:
             item = self._resumes.read_item(item=resume_id, partition_key=user_id)
         except CosmosResourceNotFoundError as exc:
             raise ResumeNotFoundError(resume_id) from exc
-        return Resume.model_validate(item)
+        resume = Resume.model_validate(item)
+        snapshot = self._load_children(resume_id, fallback=item)
+        return attach_children(resume, snapshot)
 
     def list_resumes(self, user_id: str, *, include_deleted: bool = False) -> list[Resume]:
         query = (
@@ -64,7 +85,11 @@ class CosmosResumeStore:
             ],
             partition_key=user_id,
         )
-        return [Resume.model_validate(item) for item in items]
+        rows = []
+        for item in items:
+            resume = Resume.model_validate(item)
+            rows.append(attach_children(resume, self._load_children(resume.id, fallback=item)))
+        return rows
 
     def record_status(
         self,
@@ -100,6 +125,7 @@ class CosmosResumeStore:
             source_version=source_version,
         )
         self._persist_resume(updated)
+        self._persist_children(resume_id, working.child_documents(resume_id))
         self._persist_new_events(working, resume_id)
         return updated
 
@@ -121,6 +147,7 @@ class CosmosResumeStore:
             source=source,
         )
         self._persist_resume(updated)
+        self._persist_children(resume_id, working.child_documents(resume_id))
         self._persist_new_events(working, resume_id)
         return updated
 
@@ -197,6 +224,9 @@ class CosmosResumeStore:
         )
         return [ResumeParseEvent.model_validate(item) for item in items]
 
+    def child_documents(self, resume_id: str) -> StructuredResume:
+        return self._load_children(resume_id)
+
     def _hydrate_user(
         self,
         user_id: str,
@@ -213,17 +243,82 @@ class CosmosResumeStore:
         )
         for item in items:
             resume = Resume.model_validate(item)
-            working._resumes[(resume.user_id, resume.id)] = resume  # noqa: SLF001
+            working._store_parent(resume)  # noqa: SLF001
+            snapshot = self._load_children(resume.id, fallback=item)
+            working._save_children(resume.id, snapshot)  # noqa: SLF001
         if event_resume_id:
             working._events[event_resume_id] = self.list_parse_events(event_resume_id)  # noqa: SLF001
         return working
 
     def _persist_resume(self, resume: Resume) -> None:
-        payload = resume.model_dump()
+        payload = parent_document(resume)
         try:
             self._resumes.replace_item(item=resume.id, body=payload)
         except CosmosResourceNotFoundError:
             self._resumes.create_item(body=payload)
+
+    def _persist_children(self, resume_id: str, snapshot: StructuredResume) -> None:
+        dumps = child_dumps(snapshot)
+        self._replace_rows(self._contacts, resume_id, dumps["contacts"])
+        self._replace_rows(self._skills, resume_id, dumps["skills"])
+        self._replace_rows(self._experiences, resume_id, dumps["experiences"])
+        self._replace_rows(self._educations, resume_id, dumps["educations"])
+
+    def _replace_rows(self, container: Any, resume_id: str, rows: list[dict[str, Any]]) -> None:
+        existing = list(
+            container.query_items(
+                query="SELECT * FROM c WHERE c.resume_id = @resume_id",
+                parameters=[{"name": "@resume_id", "value": resume_id}],
+                partition_key=resume_id,
+            )
+        )
+        keep = {row["id"] for row in rows}
+        for item in existing:
+            if item["id"] not in keep:
+                container.delete_item(item=item["id"], partition_key=resume_id)
+        for row in rows:
+            container.upsert_item(row)
+
+    def _load_children(
+        self,
+        resume_id: str,
+        *,
+        fallback: dict[str, Any] | None = None,
+    ) -> StructuredResume:
+        contacts = self._query_children(self._contacts, resume_id)
+        skills = self._query_children(self._skills, resume_id, order=True)
+        experiences = self._query_children(self._experiences, resume_id, order=True)
+        educations = self._query_children(self._educations, resume_id, order=True)
+        snapshot = structured_from_rows(
+            contacts=[ResumeContact.model_validate(item) for item in contacts],
+            skills=[ResumeSkill.model_validate(item) for item in skills],
+            experiences=[ResumeExperience.model_validate(item) for item in experiences],
+            educations=[ResumeEducation.model_validate(item) for item in educations],
+        )
+        if (
+            snapshot.contact is None
+            and not snapshot.skills
+            and not snapshot.experiences
+            and not snapshot.educations
+            and fallback
+        ):
+            legacy = snapshot_from_embedded(fallback)
+            if legacy is not None:
+                self._persist_children(resume_id, legacy)
+                return legacy
+        return snapshot
+
+    def _query_children(self, container: Any, resume_id: str, *, order: bool = False) -> list[dict[str, Any]]:
+        query = "SELECT * FROM c WHERE c.resume_id = @resume_id"
+        if order:
+            query += " ORDER BY c.order_index ASC"
+        return list(
+            container.query_items(
+                query=query,
+                parameters=[{"name": "@resume_id", "value": resume_id}],
+                partition_key=resume_id,
+            )
+        )
 
     def _persist_new_events(self, working: InMemoryResumeStore, resume_id: str) -> None:
         existing_ids = {event.id for event in self.list_parse_events(resume_id)}

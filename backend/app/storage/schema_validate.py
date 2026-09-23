@@ -10,6 +10,10 @@ from app.review.constants import DECISIONS, MATCH_STATUSES
 REQUIRED: dict[str, tuple[str, ...]] = {
     "resumes": ("id", "user_id", "original_filename", "mime_type", "blob_uri"),
     "resume_versions": ("id", "resume_id", "user_id", "blob_uri"),
+    "resume_contacts": ("id", "resume_id"),
+    "resume_skills": ("id", "resume_id", "name"),
+    "resume_experiences": ("id", "resume_id"),
+    "resume_educations": ("id", "resume_id"),
     "job_postings_canonical": ("id", "canonical_key", "title", "source"),
     "job_postings_raw": ("id", "source_tenant_id", "source_posting_id"),
     "matches": ("id", "user_id", "job_id", "resume_id", "status"),

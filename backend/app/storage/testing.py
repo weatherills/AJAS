@@ -123,6 +123,9 @@ class FakeContainer:
         pk = kwargs.get("partition_key")
         if pk is not None:
             rows = [row for row in rows if str(row.get(self.pk_field)) == str(pk)]
+        query = str(query or "")
+        if "ORDER BY c.order_index" in query:
+            rows.sort(key=lambda row: row.get("order_index") or 0)
         continuation = kwargs.get("continuation")
         offset = 0
         if isinstance(continuation, str) and continuation.startswith("offset:"):

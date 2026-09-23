@@ -5,15 +5,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from app.resumes.constants import (
+    CHILDREN_INDEXING_POLICY,
+    CHILDREN_PARTITION_KEY,
+    CONTACTS_CONTAINER,
+    CONTACTS_INDEXING_POLICY,
+    EDUCATIONS_CONTAINER,
     EVENTS_CONTAINER,
     EVENTS_INDEXING_POLICY,
     EVENTS_PARTITION_KEY,
+    EXPERIENCES_CONTAINER,
     RESUMES_CONTAINER,
     RESUMES_INDEXING_POLICY,
     RESUMES_PARTITION_KEY,
     SELECTIONS_CONTAINER,
     SELECTIONS_INDEXING_POLICY,
     SELECTIONS_PARTITION_KEY,
+    SKILLS_CONTAINER,
     VERSIONS_CONTAINER,
     VERSIONS_INDEXING_POLICY,
     VERSIONS_PARTITION_KEY,
@@ -25,6 +32,14 @@ if TYPE_CHECKING:  # pragma: no cover
 
 def container_specs() -> list[dict[str, Any]]:
     """Return Resume Management containers and their Cosmos policies."""
+    children = [
+        {
+            "id": name,
+            "partition_key": CHILDREN_PARTITION_KEY,
+            "indexing_policy": CONTACTS_INDEXING_POLICY if name == CONTACTS_CONTAINER else CHILDREN_INDEXING_POLICY,
+        }
+        for name in (CONTACTS_CONTAINER, SKILLS_CONTAINER, EXPERIENCES_CONTAINER, EDUCATIONS_CONTAINER)
+    ]
     return [
         {
             "id": RESUMES_CONTAINER,
@@ -48,6 +63,7 @@ def container_specs() -> list[dict[str, Any]]:
             "partition_key": VERSIONS_PARTITION_KEY,
             "indexing_policy": VERSIONS_INDEXING_POLICY,
         },
+        *children,
     ]
 
 

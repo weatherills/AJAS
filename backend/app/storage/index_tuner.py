@@ -10,6 +10,9 @@ from app.storage.catalog import container_by_id
 RECORDED_QUERIES: dict[str, tuple[tuple[str, ...], ...]] = {
     "matches": (("/user_id", "/status", "/queued_at"), ("/user_id", "/ai_score")),
     "resumes": (("/user_id", "/is_deleted", "/updated_at"),),
+    "resume_skills": (("/resume_id", "/order_index"),),
+    "resume_experiences": (("/resume_id", "/order_index"),),
+    "resume_educations": (("/resume_id", "/order_index"),),
     "email_threads": (("/email_account_id", "/last_message_at"),),
     "auto_apply_attempts": (("/user_id", "/status"),),
     "decision_events": (("/user_id", "/decided_at"),),

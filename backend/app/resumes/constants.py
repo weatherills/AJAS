@@ -33,11 +33,23 @@ RESUMES_CONTAINER: Final[str] = "resumes"
 SELECTIONS_CONTAINER: Final[str] = "run_resume_selections"
 EVENTS_CONTAINER: Final[str] = "resume_parse_events"
 VERSIONS_CONTAINER: Final[str] = "resume_versions"
+CONTACTS_CONTAINER: Final[str] = "resume_contacts"
+SKILLS_CONTAINER: Final[str] = "resume_skills"
+EXPERIENCES_CONTAINER: Final[str] = "resume_experiences"
+EDUCATIONS_CONTAINER: Final[str] = "resume_educations"
 
 RESUMES_PARTITION_KEY: Final[str] = "/user_id"
 SELECTIONS_PARTITION_KEY: Final[str] = "/run_id"
 EVENTS_PARTITION_KEY: Final[str] = "/resume_id"
 VERSIONS_PARTITION_KEY: Final[str] = "/resume_id"
+CHILDREN_PARTITION_KEY: Final[str] = "/resume_id"
+
+CHILD_CONTAINERS: Final[tuple[str, str, str, str]] = (
+    CONTACTS_CONTAINER,
+    SKILLS_CONTAINER,
+    EXPERIENCES_CONTAINER,
+    EDUCATIONS_CONTAINER,
+)
 
 # Logical Cosmos indexing from the Database PRD.
 RESUMES_INDEXING_POLICY: Final[dict] = {
@@ -106,6 +118,26 @@ VERSIONS_INDEXING_POLICY: Final[dict] = {
             {"path": "/is_deleted", "order": "ascending"},
             {"path": "/created_at", "order": "descending"},
         ],
+    ],
+}
+
+CONTACTS_INDEXING_POLICY: Final[dict] = {
+    "indexingMode": "consistent",
+    "automatic": True,
+    "includedPaths": [{"path": "/*"}],
+    "excludedPaths": [{"path": "/\"_etag\"/?"}],
+}
+
+CHILDREN_INDEXING_POLICY: Final[dict] = {
+    "indexingMode": "consistent",
+    "automatic": True,
+    "includedPaths": [{"path": "/*"}],
+    "excludedPaths": [{"path": "/\"_etag\"/?"}],
+    "compositeIndexes": [
+        [
+            {"path": "/resume_id", "order": "ascending"},
+            {"path": "/order_index", "order": "ascending"},
+        ]
     ],
 }
 

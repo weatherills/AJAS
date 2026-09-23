@@ -9,6 +9,10 @@ from typing import Any, Iterable
 DURABLE_CONTAINERS: tuple[str, ...] = (
     "users",
     "resumes",
+    "resume_contacts",
+    "resume_skills",
+    "resume_experiences",
+    "resume_educations",
     "job_postings_canonical",
     "auto_apply_attempts",
     "matches",

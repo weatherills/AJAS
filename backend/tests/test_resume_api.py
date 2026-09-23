@@ -12,6 +12,7 @@ from pypdf import PdfWriter
 from app.features import resume_management as routes
 from app.resumes.blobs import InMemoryBlobStore, sas_is_expired
 from app.resumes.memory import InMemoryResumeStore
+from app.resumes.models import StructuredResume
 from app.resumes.parser import HeuristicResumeParser
 from app.resumes.queueing import InMemoryParseQueue
 from app.resumes.runtime import set_service
@@ -343,6 +344,10 @@ def test_patch_promotes_failed_to_parsed(svc):
     assert patched["skills"] == ["Python"]
 
 
+def _mark_parsed(svc: ResumeService, resume_id: str) -> None:
+    svc.store.record_parse_success(USER, resume_id, StructuredResume())
+
+
 def test_active_resume_one_per_run_and_revoke_on_delete(svc):
     first = _body(
         routes.upload_resume(
@@ -354,6 +359,8 @@ def test_active_resume_one_per_run_and_revoke_on_delete(svc):
             _req("POST", "http://localhost/api/resumes", file=("b.pdf", "application/pdf", _pdf()))
         )
     )
+    _mark_parsed(svc, first["id"])
+    _mark_parsed(svc, second["id"])
     set_resp = routes.set_active_resume(
         _req(
             "POST",

@@ -253,7 +253,7 @@ _OVERLAYS: dict[str, _Overlay] = {
             "checksum_sha256",
             "candidate_id",
         ),
-        relationships=("1—N children embedded; 1—N resume_parse_events; primaryFileId + parsedVersion FKs; candidate_id FK",),
+        relationships=("1—N resume_contacts/skills/experiences/educations; 1—N resume_parse_events; primaryFileId + parsedVersion FKs; candidate_id FK",),
         ru_note="Library list of ~20 resumes is a single partitioned query (~5 RU). Dual-write userId/updatedAt for PRD lists.",
     ),
     "run_resume_selections": _Overlay(
@@ -279,6 +279,53 @@ _OVERLAYS: dict[str, _Overlay] = {
         query_patterns=("resume_id + version desc", "resume_id + is_deleted"),
         relationships=("N—1 resumes; blob bytes live in Storage, this row is metadata"),
         ru_note="Soft-deleted versions set document ttl=90d. Library point-in-time restore reads this container.",
+    ),
+    "resume_contacts": _Overlay(
+        feature="resumes",
+        entity="ResumeContact",
+        logical_unique=("resume_id",),
+        query_patterns=("point read by resume_id",),
+        relationships=("1—1 resumes; document id equals resume_id"),
+        ru_note="PK /resume_id plus id=resume_id makes the 1:1 unique without a unique-key policy.",
+    ),
+    "resume_skills": _Overlay(
+        feature="resumes",
+        entity="ResumeSkill",
+        query_patterns=("resume_id + order_index",),
+        relationships=("N—1 resumes; source parsed|manual"),
+        ru_note="In-partition list ordered by order_index is a single composite (~3 RU).",
+        indexing_policy=_policy(
+            [
+                {"path": "/resume_id", "order": "ascending"},
+                {"path": "/order_index", "order": "ascending"},
+            ]
+        ),
+    ),
+    "resume_experiences": _Overlay(
+        feature="resumes",
+        entity="ResumeExperience",
+        query_patterns=("resume_id + order_index",),
+        relationships=("N—1 resumes; end_date >= start_date; is_current implies end_date null"),
+        ru_note="In-partition list ordered by order_index is a single composite (~3 RU).",
+        indexing_policy=_policy(
+            [
+                {"path": "/resume_id", "order": "ascending"},
+                {"path": "/order_index", "order": "ascending"},
+            ]
+        ),
+    ),
+    "resume_educations": _Overlay(
+        feature="resumes",
+        entity="ResumeEducation",
+        query_patterns=("resume_id + order_index",),
+        relationships=("N—1 resumes; order_index for deterministic UI order"),
+        ru_note="In-partition list ordered by order_index is a single composite (~3 RU).",
+        indexing_policy=_policy(
+            [
+                {"path": "/resume_id", "order": "ascending"},
+                {"path": "/order_index", "order": "ascending"},
+            ]
+        ),
     ),
     "job_sources": _Overlay(
         feature="job_sources",

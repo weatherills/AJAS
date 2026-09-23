@@ -19,13 +19,21 @@ from app.resumes import (
     library_preview,
 )
 from app.resumes.constants import (
+    CHILD_CONTAINERS,
+    CHILDREN_INDEXING_POLICY,
+    CHILDREN_PARTITION_KEY,
+    CONTACTS_CONTAINER,
+    CONTACTS_INDEXING_POLICY,
+    EDUCATIONS_CONTAINER,
     EVENTS_CONTAINER,
     EVENTS_PARTITION_KEY,
+    EXPERIENCES_CONTAINER,
     RESUMES_CONTAINER,
     RESUMES_INDEXING_POLICY,
     RESUMES_PARTITION_KEY,
     SELECTIONS_CONTAINER,
     SELECTIONS_PARTITION_KEY,
+    SKILLS_CONTAINER,
     VERSIONS_CONTAINER,
     VERSIONS_PARTITION_KEY,
 )
@@ -94,6 +102,8 @@ class FakeContainer:
             rows.sort(key=lambda r: r.get("updated_at") or "", reverse=True)
         if "ORDER BY c.created_at DESC" in query:
             rows.sort(key=lambda r: r.get("created_at") or "", reverse=True)
+        if "ORDER BY c.order_index" in query:
+            rows.sort(key=lambda r: r.get("order_index") or 0)
         return rows
 
 
@@ -103,10 +113,17 @@ class FakeDatabase:
             RESUMES_CONTAINER: FakeContainer("user_id"),
             SELECTIONS_CONTAINER: FakeContainer("run_id"),
             EVENTS_CONTAINER: FakeContainer("resume_id"),
+            VERSIONS_CONTAINER: FakeContainer("resume_id"),
+            CONTACTS_CONTAINER: FakeContainer("resume_id"),
+            SKILLS_CONTAINER: FakeContainer("resume_id"),
+            EXPERIENCES_CONTAINER: FakeContainer("resume_id"),
+            EDUCATIONS_CONTAINER: FakeContainer("resume_id"),
         }
         self.created: list[dict] = []
 
     def get_container_client(self, name: str) -> FakeContainer:
+        if name not in self._containers:
+            self._containers[name] = FakeContainer("resume_id")
         return self._containers[name]
 
     def create_container_if_not_exists(self, **kwargs) -> None:
@@ -163,18 +180,35 @@ def _snapshot(*, skills=None, experiences=None, educations=None, contact=None) -
 
 def test_container_specs_match_prd():
     specs = {spec["id"]: spec for spec in container_specs()}
-    assert set(specs) == {RESUMES_CONTAINER, SELECTIONS_CONTAINER, EVENTS_CONTAINER, VERSIONS_CONTAINER}
+    assert set(specs) == {
+        RESUMES_CONTAINER,
+        SELECTIONS_CONTAINER,
+        EVENTS_CONTAINER,
+        VERSIONS_CONTAINER,
+        CONTACTS_CONTAINER,
+        SKILLS_CONTAINER,
+        EXPERIENCES_CONTAINER,
+        EDUCATIONS_CONTAINER,
+    }
     assert specs[RESUMES_CONTAINER]["partition_key"] == RESUMES_PARTITION_KEY
     assert specs[SELECTIONS_CONTAINER]["partition_key"] == SELECTIONS_PARTITION_KEY
     assert specs[EVENTS_CONTAINER]["partition_key"] == EVENTS_PARTITION_KEY
     assert specs[VERSIONS_CONTAINER]["partition_key"] == VERSIONS_PARTITION_KEY
+    for name in CHILD_CONTAINERS:
+        assert specs[name]["partition_key"] == CHILDREN_PARTITION_KEY
+    assert specs[CONTACTS_CONTAINER]["indexing_policy"] == CONTACTS_INDEXING_POLICY
+    assert specs[SKILLS_CONTAINER]["indexing_policy"] == CHILDREN_INDEXING_POLICY
+    assert specs[EXPERIENCES_CONTAINER]["indexing_policy"] == CHILDREN_INDEXING_POLICY
+    assert specs[EDUCATIONS_CONTAINER]["indexing_policy"] == CHILDREN_INDEXING_POLICY
     assert specs[RESUMES_CONTAINER]["indexing_policy"] == RESUMES_INDEXING_POLICY
     composite = specs[RESUMES_CONTAINER]["indexing_policy"]["compositeIndexes"][0]
     paths = [part["path"] for part in composite]
     assert paths == ["/user_id", "/is_deleted", "/updated_at"]
+    child_paths = [part["path"] for part in CHILDREN_INDEXING_POLICY["compositeIndexes"][0]]
+    assert child_paths == ["/resume_id", "/order_index"]
 
 
-def test_ensure_resume_containers_creates_four():
+def test_ensure_resume_containers_creates_prd_set():
     from app.resumes.containers import ensure_resume_containers
 
     db = FakeDatabase()
@@ -184,9 +218,15 @@ def test_ensure_resume_containers_creates_four():
         SELECTIONS_CONTAINER,
         EVENTS_CONTAINER,
         VERSIONS_CONTAINER,
+        CONTACTS_CONTAINER,
+        SKILLS_CONTAINER,
+        EXPERIENCES_CONTAINER,
+        EDUCATIONS_CONTAINER,
     }
     resumes = next(item for item in db.created if item["id"] == RESUMES_CONTAINER)
     assert resumes["partition_key"].path == "/user_id"
+    skills = next(item for item in db.created if item["id"] == SKILLS_CONTAINER)
+    assert skills["partition_key"].path == "/resume_id"
 
 
 def test_upload_creates_uploaded_row_and_event(store):
@@ -258,10 +298,26 @@ def test_parse_success_writes_children_and_validated(store):
     assert parsed.validated_at is not None
     assert parsed.contact is not None
     assert parsed.contact.source == "parsed"
+    assert parsed.contact.id == resume.id
     assert [s.name for s in parsed.skills] == ["Python", "Azure"]
     assert [s.order_index for s in parsed.skills] == [0, 1]
     assert parsed.skills[0].parsing_confidence == 88
     assert store.list_parse_events(resume.id)[0].event_type == "succeeded"
+    children = store.child_documents(resume.id)
+    assert [s.name for s in children.skills] == ["Python", "Azure"]
+    assert children.contact is not None
+    assert children.contact.id == resume.id
+    parent = store.get_resume(USER, resume.id)
+    assert parent.skills[0].user_id == USER
+    if isinstance(store, CosmosResumeStore):
+        raw = store._resumes.items[(USER, resume.id)]  # noqa: SLF001
+        assert "skills" not in raw
+        assert "contact" not in raw
+        assert "experiences" not in raw
+        assert "educations" not in raw
+        skill_rows = list(store._skills.items.values())  # noqa: SLF001
+        assert {row["name"] for row in skill_rows} == {"Python", "Azure"}
+        assert all(row["resume_id"] == resume.id for row in skill_rows)
 
 
 def test_partial_parse_stays_unvalidated(store):
@@ -318,6 +374,7 @@ def test_one_contact_per_resume(store):
     )
     assert parsed.contact is not None
     assert parsed.contact.email == "jane@example.com"
+    assert parsed.contact.id == resume.id
     replaced = store.replace_structured_data(
         USER,
         resume.id,
@@ -333,6 +390,14 @@ def test_one_contact_per_resume(store):
         last_edited_by=USER,
     )
     assert replaced.contact.email == "jane.d@example.com"
+    assert replaced.contact.id == resume.id
+    children = store.child_documents(resume.id)
+    assert children.contact is not None
+    assert children.contact.id == resume.id
+    if isinstance(store, CosmosResumeStore):
+        contacts = list(store._contacts.items.values())  # noqa: SLF001
+        assert len(contacts) == 1
+        assert contacts[0]["email"] == "jane.d@example.com"
 
 
 def test_library_hides_deleted_and_orders_by_updated_at(store):
@@ -381,9 +446,8 @@ def test_run_selection_is_one_per_run_and_rejects_invalid(store):
     assert replaced.resume_id == other.id
     assert store.get_run_selection("run-1").resume_id == other.id
 
-    # Backend PRD: uploaded/parsing/failed are selectable; deleted is not.
-    uploaded_ok = store.set_run_selection(run_id="run-2", user_id=USER, resume_id=not_ready.id)
-    assert uploaded_ok.resume_id == not_ready.id
+    with pytest.raises(ResumeSelectionRejectedError):
+        store.set_run_selection(run_id="run-2", user_id=USER, resume_id=not_ready.id)
     with pytest.raises(ResumeSelectionRejectedError):
         store.set_run_selection(run_id="run-3", user_id=USER, resume_id=deleted.id)
     with pytest.raises(ResumeNotFoundError):
@@ -474,6 +538,25 @@ def test_one_active_resume_per_user(store):
     assert store.get_user_active(USER).id == second.id
 
 
+def test_replace_clears_removed_child_rows(store):
+    resume = _upload(store)
+    store.record_parse_success(
+        USER, resume.id, _snapshot(skills=[_skill("Python"), _skill("Go")])
+    )
+    store.replace_structured_data(
+        USER,
+        resume.id,
+        _snapshot(skills=[_skill("Rust")]),
+        last_edited_by=USER,
+    )
+    children = store.child_documents(resume.id)
+    assert [skill.name for skill in children.skills] == ["Rust"]
+    assert [skill.order_index for skill in children.skills] == [0]
+    if isinstance(store, CosmosResumeStore):
+        assert len(store._skills.items) == 1  # noqa: SLF001
+        assert next(iter(store._skills.items.values()))["name"] == "Rust"  # noqa: SLF001
+
+
 def test_edit_audit_keeps_old_and_new(store):
     resume = _upload(store)
     store.record_parse_success(USER, resume.id, _snapshot(skills=[_skill("Python")]))
@@ -492,5 +575,90 @@ def test_edit_audit_keeps_old_and_new(store):
     assert parsed.parsed_version >= 2
 
 
-def test_new_id_is_unique():
-    assert new_id() != new_id()
+def test_schema_validate_requires_child_keys():
+    from app.storage.schema_validate import SchemaValidationError, validate_item
+
+    validate_item("resume_skills", {"id": "s1", "resume_id": "r1", "name": "Python"})
+    validate_item("resume_contacts", {"id": "r1", "resume_id": "r1"})
+    with pytest.raises(SchemaValidationError):
+        validate_item("resume_skills", {"id": "s1", "resume_id": "r1"})
+    with pytest.raises(SchemaValidationError):
+        validate_item("resume_experiences", {"id": "e1"})
+
+
+def test_failed_parse_is_not_selectable(store):
+    resume = _upload(store)
+    store.record_status(USER, resume.id, "failed", parsing_error="empty")
+    with pytest.raises(ResumeSelectionRejectedError):
+        store.set_run_selection(run_id="run-fail", user_id=USER, resume_id=resume.id)
+
+
+def test_catalog_exposes_child_containers():
+    from app.storage.catalog import container_by_id
+
+    for name in CHILD_CONTAINERS:
+        spec = container_by_id(name)
+        assert spec.partition_key == "/resume_id"
+        assert spec.feature == "resumes"
+    contacts = container_by_id(CONTACTS_CONTAINER)
+    assert contacts.logical_unique == ("resume_id",)
+    assert contacts.entity == "ResumeContact"
+    skills = container_by_id(SKILLS_CONTAINER)
+    paths = [[part["path"] for part in index] for index in skills.indexing_policy["compositeIndexes"]]
+    assert ["/resume_id", "/order_index"] in paths
+
+
+def test_parent_document_omits_child_collections():
+    from app.resumes.children import parent_document
+
+    store = InMemoryResumeStore()
+    row = store.create_resume(
+        user_id=USER,
+        original_filename="cv.pdf",
+        mime_type=PDF,
+        file_size=12,
+        blob_uri="blob://cv.pdf",
+        checksum_sha256="xyz",
+    )
+    store.record_parse_success(
+        USER,
+        row.id,
+        _snapshot(
+            skills=[_skill("Python")],
+            contact=ResumeContact(
+                resume_id=row.id, full_name="Ada", email="ada@example.com", updated_at=utc_now()
+            ),
+        ),
+    )
+    hydrated = store.get_resume(USER, row.id)
+    payload = parent_document(hydrated)
+    assert "skills" not in payload
+    assert "contact" not in payload
+    assert "experiences" not in payload
+    assert "educations" not in payload
+    assert payload["id"] == row.id
+    assert hydrated.skills[0].name == "Python"
+
+
+def test_legacy_embedded_children_migrate_to_containers():
+    db = FakeDatabase()
+    store = CosmosResumeStore(db)
+    resume = _upload(store)
+    parent = dict(store._resumes.items[(USER, resume.id)])  # noqa: SLF001
+    parent["skills"] = [
+        ResumeSkill(resume_id=resume.id, name="Legacy", order_index=0, updated_at=utc_now()).model_dump()
+    ]
+    parent["contact"] = ResumeContact(
+        resume_id=resume.id, full_name="Legacy User", email="legacy@example.com", updated_at=utc_now()
+    ).model_dump()
+    store._resumes.items[(USER, resume.id)] = parent  # noqa: SLF001
+    loaded = store.get_resume(USER, resume.id)
+    assert [s.name for s in loaded.skills] == ["Legacy"]
+    assert loaded.contact is not None
+    assert loaded.contact.email == "legacy@example.com"
+    children = store.child_documents(resume.id)
+    assert [s.name for s in children.skills] == ["Legacy"]
+    assert any(row["name"] == "Legacy" for row in store._skills.items.values())  # noqa: SLF001
+    store.record_status(USER, resume.id, "queued")
+    assert "skills" not in store._resumes.items[(USER, resume.id)]  # noqa: SLF001
+
