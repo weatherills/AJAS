@@ -19,6 +19,7 @@ from app.integrations.harvest import list_applications, map_application
 from app.integrations.ingest import (
     classify_error,
     detect_apply_method,
+    glassdoor_ingest,
     indeed_ingest,
     linkedin_ingest,
     reset_limiter,
@@ -71,6 +72,7 @@ def _enable(monkeypatch, **flags: bool) -> None:
     mapping = {
         "indeed": "FLAG_INDEED_ADAPTER",
         "linkedin": "FLAG_LINKEDIN_ADAPTER",
+        "glassdoor": "FLAG_GLASSDOOR_ADAPTER",
         "easy": "FLAG_LINKEDIN_EASY_APPLY",
         "harvest": "FLAG_GREENHOUSE_HARVEST",
         "gmail": "FLAG_GMAIL_ADAPTER",
@@ -106,6 +108,7 @@ def test_flags_default_off():
     flags = feature_flags()
     assert flags["indeed_adapter"] is False
     assert flags["linkedin_adapter"] is False
+    assert flags["glassdoor_adapter"] is False
     assert flags["linkedin_easy_apply"] is False
     assert flags["greenhouse_harvest"] is False
     assert flags["gmail_adapter"] is False
@@ -137,6 +140,87 @@ def test_indeed_flag_off_returns_nothing():
     out = indeed_ingest(payload)
     assert out["jobs"] == []
     assert out["reason"] == "flag_off"
+
+
+def test_indeed_job_sync_xml_and_json_shapes(monkeypatch):
+    from app.integrations.indeed_spec import API_CONTRACT, parse_job_sync_xml, spec_bundle
+    from app.job_sources.constants import SOURCE_TYPES
+
+    _enable(monkeypatch, indeed=True)
+    xml = (FIXTURES / "indeed_job_sync.xml").read_text()
+    parsed = parse_job_sync_xml(xml)
+    assert {row["referencenumber"] for row in parsed} == {"ind-sync-1", "ind-sync-2"}
+    assert all("email" not in row for row in parsed)
+    out = indeed_ingest(xml)
+    assert out["reason"] == "ok"
+    assert out["metrics"]["ingested"] == 2
+    titles = {job["title"] for job in out["jobs"]}
+    assert titles == {"Staff Platform Engineer", "Senior Backend Engineer"}
+    acme = next(job for job in out["jobs"] if job["company"] == "Acme")
+    assert acme["location"] == "Austin, TX, US"
+    assert acme["postingUrl"].endswith("/ind-sync-1")
+    assert acme["sourcePostingId"] == "ind-sync-1"
+    assert "should-not-be-ingested" not in str(out)
+    assert indeed_ingest(xml.encode("utf-8"))["metrics"]["ingested"] == 2
+    json_feed = {
+        "sourcedJobPostings": [
+            {
+                "sourcedPostingId": "js-1",
+                "title": "Platform Engineer",
+                "companyName": "Initech",
+                "url": "https://fixtures.ajas.local/indeed/js-1",
+                "location": {"city": "Remote", "country": "US"},
+                "description": "python azure",
+            }
+        ]
+    }
+    synced = indeed_ingest(json_feed)
+    assert synced["jobs"][0]["company"] == "Initech"
+    bundle = spec_bundle()
+    assert bundle["api"]["publicSearchApi"] is False
+    assert API_CONTRACT["publisherApi"] == "retired-2023"
+    assert SOURCE_TYPES == frozenset({"greenhouse", "lever"})
+
+
+def test_glassdoor_partner_envelope_and_pages(monkeypatch):
+    from app.integrations.glassdoor_spec import API_CONTRACT, RATE_PLAN, spec_bundle
+
+    _enable(monkeypatch, glassdoor=True)
+    payload = json.loads((FIXTURES / "glassdoor_partner.json").read_text())
+    out = glassdoor_ingest(payload)
+    assert out["reason"] == "ok"
+    assert out["metrics"]["ingested"] == 2
+    acme = next(job for job in out["jobs"] if job["company"] == "Acme")
+    assert acme["title"] == "Staff Platform Engineer"
+    assert acme["location"] == "Remote"
+    assert acme["postingUrl"].endswith("/gd-partner-1")
+    assert acme["sourcePostingId"] == "88001"
+    pages = json.loads((FIXTURES / "glassdoor.json").read_text())
+    paged = glassdoor_ingest(pages)
+    assert paged["metrics"]["ingested"] == 2
+    assert paged["metrics"]["pages"] == 2
+    _enable(monkeypatch)
+    assert glassdoor_ingest(pages)["reason"] == "flag_off"
+    _enable(monkeypatch, glassdoor=True)
+    expired = glassdoor_ingest(
+        {
+            "jobs": [
+                {
+                    "id": "gd-x",
+                    "title": "Closed Role",
+                    "company": "Acme",
+                    "apply_url": "https://fixtures.ajas.local/glassdoor/x",
+                    "expired": True,
+                }
+            ]
+        }
+    )
+    assert expired["jobs"] == []
+    assert expired["metrics"]["expiredSkipped"] == 1
+    bundle = spec_bundle()
+    assert bundle["api"]["publicSearchApi"] is False
+    assert API_CONTRACT["partnerApi"] == "closed-to-new-applicants"
+    assert RATE_PLAN["ingest"]["capPerWindow"] == 20
 
 
 def test_linkedin_search_inputs_and_listing_fetcher(monkeypatch):
@@ -439,10 +523,11 @@ def test_slack_formatter_and_webhook(monkeypatch):
 
 
 def test_http_routes_flag_gated(monkeypatch):
-    _enable(monkeypatch, indeed=True, linkedin=True, easy=True, harvest=True, gmail=True, drive=True, slack=True)
+    _enable(monkeypatch, indeed=True, linkedin=True, glassdoor=True, easy=True, harvest=True, gmail=True, drive=True, slack=True)
     reset_service()
     status = json.loads(routes.integrations_status(_req("GET", "http://localhost/api/v1/integrations/status")).get_body())
     assert status["flags"]["indeed_adapter"] is True
+    assert status["flags"]["glassdoor_adapter"] is True
     payload = json.loads((FIXTURES / "indeed.json").read_text())
     ingest = routes.integrations_ingest(
         _req("POST", "http://localhost/api/v1/integrations/ingest/indeed", body={"payload": payload}, route_params={"source": "indeed"})
@@ -450,6 +535,33 @@ def test_http_routes_flag_gated(monkeypatch):
     assert ingest.status_code in {200, 202}
     body = json.loads(ingest.get_body())
     assert body["jobs"]
+    gd = json.loads(
+        routes.integrations_ingest(
+            _req(
+                "POST",
+                "http://localhost/api/v1/integrations/ingest/glassdoor",
+                body={"payload": json.loads((FIXTURES / "glassdoor_partner.json").read_text())},
+                route_params={"source": "glassdoor"},
+            )
+        ).get_body()
+    )
+    assert gd["jobs"]
+    xml_ingest = json.loads(
+        routes.integrations_ingest(
+            _req(
+                "POST",
+                "http://localhost/api/v1/integrations/ingest/indeed",
+                body=(FIXTURES / "indeed_job_sync.xml").read_bytes(),
+                route_params={"source": "indeed"},
+            )
+        ).get_body()
+    )
+    assert xml_ingest["reason"] == "ok"
+    assert xml_ingest["metrics"]["ingested"] == 2
+    indeed_spec = json.loads(routes.integrations_indeed_spec(_req("GET", "http://localhost/api/v1/integrations/indeed/spec")).get_body())
+    assert indeed_spec["api"]["publicSearchApi"] is False
+    gd_spec = json.loads(routes.integrations_glassdoor_spec(_req("GET", "http://localhost/api/v1/integrations/glassdoor/spec")).get_body())
+    assert gd_spec["flag"] == "glassdoor_adapter"
     search = json.loads(routes.integrations_search_inputs(_req("GET", "http://localhost/api/v1/integrations/linkedin/search", params={"keywords": "python"})).get_body())
     assert search["search"]["keywords"] == "python"
     apply_resp = routes.integrations_easy_apply(

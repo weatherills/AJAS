@@ -10,7 +10,9 @@ from app.integrations.drive import LocalDriveClient, import_resume, list_library
 from app.integrations.easy_apply import audit_log, receipts, reset as reset_easy_apply, submit as easy_apply_submit
 from app.integrations.gmail import LocalGmailClient, send_mail, sync_inbox
 from app.integrations.harvest import list_applications
-from app.integrations.ingest import indeed_ingest, linkedin_ingest, reset_limiter
+from app.integrations.glassdoor_spec import spec_bundle as glassdoor_spec_bundle
+from app.integrations.indeed_spec import spec_bundle as indeed_spec_bundle
+from app.integrations.ingest import glassdoor_ingest, indeed_ingest, linkedin_ingest, reset_limiter
 from app.integrations.linkedin_audit import events as linkedin_events
 from app.integrations.linkedin_spec import spec_bundle
 from app.integrations.linkedin_session import STORE as SESSION_STORE, reset as reset_sessions
@@ -21,7 +23,11 @@ from app.integrations.slack import MemorySlackHttp, notify_event
 from app.mail.graph import GraphClient, default_graph_client
 from app.mail.outlook import outlook_status
 
-_SERVICE: "IntegrationService | None" = None
+INGESTERS = {
+    "indeed": indeed_ingest,
+    "linkedin": linkedin_ingest,
+    "glassdoor": glassdoor_ingest,
+}
 
 
 class IntegrationService:
@@ -49,6 +55,7 @@ class IntegrationService:
                 "indeed_adapter": flags.get("indeed_adapter"),
                 "linkedin_adapter": flags.get("linkedin_adapter"),
                 "linkedin_easy_apply": flags.get("linkedin_easy_apply"),
+                "glassdoor_adapter": flags.get("glassdoor_adapter"),
                 "greenhouse_harvest": flags.get("greenhouse_harvest"),
                 "gmail_adapter": flags.get("gmail_adapter"),
                 "google_drive": flags.get("google_drive"),
@@ -65,8 +72,17 @@ class IntegrationService:
         }
 
     def ingest(self, source: str, payload: Any, *, search: dict[str, Any] | None = None, listing_url: str | None = None) -> dict[str, Any]:
-        fn = indeed_ingest if source == "indeed" else linkedin_ingest
+        fn = INGESTERS.get(source)
+        if fn is None:
+            return {"jobs": [], "metrics": {"source": source, "enabled": False}, "reason": "unknown_source"}
         return fn(payload, listing_url=listing_url, search=search, seen=self.seen, store=self.jobs)
+
+    def board_spec(self, source: str) -> dict[str, Any]:
+        if source == "indeed":
+            return indeed_spec_bundle()
+        if source == "glassdoor":
+            return glassdoor_spec_bundle()
+        return spec_bundle()
 
     def search_spec(self, payload: dict[str, Any] | None) -> dict[str, Any]:
         return parse_search(payload).as_dict()

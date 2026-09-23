@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<source>
+  <publisher>AJAS fixtures</publisher>
+  <publisherurl>https://fixtures.ajas.local/indeed</publisherurl>
+  <job>
+    <title><![CDATA[Staff Platform Engineer]]></title>
+    <date>2026-03-01</date>
+    <referencenumber>ind-sync-1</referencenumber>
+    <url><![CDATA[https://fixtures.ajas.local/indeed/ind-sync-1]]></url>
+    <company><![CDATA[Acme]]></company>
+    <city>Austin</city>
+    <state>TX</state>
+    <country>US</country>
+    <description><![CDATA[Required: python kubernetes azure. Compensation $180,000-$210,000.]]></description>
+    <salary>$180000-$210000</salary>
+    <jobtype>Full-time</jobtype>
+    <email>should-not-be-ingested@example.com</email>
+  </job>
+  <job>
+    <title><![CDATA[Senior Backend Engineer]]></title>
+    <date>2026-03-02</date>
+    <referencenumber>ind-sync-2</referencenumber>
+    <url><![CDATA[https://fixtures.ajas.local/indeed/ind-sync-2]]></url>
+    <company><![CDATA[Globex]]></company>
+    <city>Remote</city>
+    <state></state>
+    <country>US</country>
+    <description><![CDATA[Required: python azure.]]></description>
+    <jobtype>Full-time</jobtype>
+  </job>
+</source>
