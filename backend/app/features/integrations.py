@@ -51,12 +51,17 @@ def integrations_ingest(req: func.HttpRequest) -> func.HttpResponse:
     try:
         _auth(req)
         source = (req.route_params.get("source") or "").strip().lower()
-        if source not in {"indeed", "linkedin"}:
-            return error_response("VALIDATION_ERROR", "source must be indeed or linkedin", 400)
+        if source not in {"indeed", "linkedin", "glassdoor"}:
+            return error_response("VALIDATION_ERROR", "source must be indeed, linkedin, or glassdoor", 400)
         body = _json_body(req)
+        payload = body.get("payload") if "payload" in body else body
+        if not payload:
+            raw = req.get_body() or b""
+            if raw.lstrip().startswith(b"<"):
+                payload = raw
         result = get_service().ingest(
             source,
-            body.get("payload") or body,
+            payload,
             search=body.get("search"),
             listing_url=body.get("listingUrl"),
         )
@@ -212,6 +217,26 @@ def integrations_receipts(req: func.HttpRequest) -> func.HttpResponse:
     try:
         _auth(req)
         return json_response(get_service().audit())
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/integrations/indeed/spec", methods=["GET"])
+def integrations_indeed_spec(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    try:
+        _auth(req)
+        return json_response(get_service().board_spec("indeed"))
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/integrations/glassdoor/spec", methods=["GET"])
+def integrations_glassdoor_spec(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    try:
+        _auth(req)
+        return json_response(get_service().board_spec("glassdoor"))
     except Exception as exc:
         return _handle(exc)
 
