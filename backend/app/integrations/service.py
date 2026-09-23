@@ -12,7 +12,14 @@ from app.integrations.gmail import LocalGmailClient, send_mail, sync_inbox
 from app.integrations.harvest import list_applications
 from app.integrations.glassdoor_spec import spec_bundle as glassdoor_spec_bundle
 from app.integrations.indeed_spec import spec_bundle as indeed_spec_bundle
-from app.integrations.ingest import glassdoor_ingest, indeed_ingest, linkedin_ingest, reset_limiter
+from app.integrations.ingest import (
+    glassdoor_ingest,
+    indeed_ingest,
+    linkedin_ingest,
+    reset_limiter,
+    workday_ingest,
+    ziprecruiter_ingest,
+)
 from app.integrations.linkedin_audit import events as linkedin_events
 from app.integrations.linkedin_spec import spec_bundle
 from app.integrations.linkedin_session import STORE as SESSION_STORE, reset as reset_sessions
@@ -20,13 +27,19 @@ from app.integrations.pipeline import run_linkedin_e2e
 from app.integrations.scheduler import reset as reset_scheduler, snapshot as schedule_snapshot, tick
 from app.integrations.search import SUPPORTED_INPUTS, parse_search
 from app.integrations.slack import MemorySlackHttp, notify_event
+from app.integrations.workday_spec import spec_bundle as workday_spec_bundle
+from app.integrations.ziprecruiter_spec import spec_bundle as ziprecruiter_spec_bundle
 from app.mail.graph import GraphClient, default_graph_client
 from app.mail.outlook import outlook_status
+
+_SERVICE: "IntegrationService | None" = None
 
 INGESTERS = {
     "indeed": indeed_ingest,
     "linkedin": linkedin_ingest,
     "glassdoor": glassdoor_ingest,
+    "workday": workday_ingest,
+    "ziprecruiter": ziprecruiter_ingest,
 }
 
 
@@ -56,6 +69,8 @@ class IntegrationService:
                 "linkedin_adapter": flags.get("linkedin_adapter"),
                 "linkedin_easy_apply": flags.get("linkedin_easy_apply"),
                 "glassdoor_adapter": flags.get("glassdoor_adapter"),
+                "workday_adapter": flags.get("workday_adapter"),
+                "ziprecruiter_adapter": flags.get("ziprecruiter_adapter"),
                 "greenhouse_harvest": flags.get("greenhouse_harvest"),
                 "gmail_adapter": flags.get("gmail_adapter"),
                 "google_drive": flags.get("google_drive"),
@@ -82,6 +97,10 @@ class IntegrationService:
             return indeed_spec_bundle()
         if source == "glassdoor":
             return glassdoor_spec_bundle()
+        if source == "workday":
+            return workday_spec_bundle()
+        if source == "ziprecruiter":
+            return ziprecruiter_spec_bundle()
         return spec_bundle()
 
     def search_spec(self, payload: dict[str, Any] | None) -> dict[str, Any]:

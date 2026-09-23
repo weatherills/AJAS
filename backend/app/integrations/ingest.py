@@ -1,4 +1,4 @@
-"""Indeed / LinkedIn / Glassdoor fixture ingestion: fetch, normalize, dedupe, apply-method, throttle."""
+"""Indeed / LinkedIn / Glassdoor / Workday / ZipRecruiter fixture ingestion."""
 
 from __future__ import annotations
 
@@ -20,6 +20,8 @@ from app.integrations.linkedin_spec import (
     map_linkedin_job,
     walk_pages,
 )
+from app.integrations.workday_spec import RATE_PLAN as WORKDAY_RATE, map_workday_job, unwrap_workday_payload
+from app.integrations.ziprecruiter_spec import RATE_PLAN as ZIP_RATE, map_ziprecruiter_job, unwrap_ziprecruiter_payload
 from app.integrations.search import SearchSpec, matches_search, parse_search
 from app.job_sources.boards import SOURCE_FLAGS, backoff_seconds, iter_pages
 from app.job_sources.circuit import allow as circuit_allow, record_status
@@ -167,6 +169,30 @@ def detect_apply_method(job: dict[str, Any]) -> dict[str, str]:
     }
 
 
+MAPPERS = {
+    "linkedin": map_linkedin_job,
+    "indeed": map_indeed_job,
+    "glassdoor": map_glassdoor_job,
+    "workday": map_workday_job,
+    "ziprecruiter": map_ziprecruiter_job,
+}
+
+UNWRAPPERS = {
+    "indeed": unwrap_indeed_payload,
+    "glassdoor": unwrap_glassdoor_payload,
+    "workday": unwrap_workday_payload,
+    "ziprecruiter": unwrap_ziprecruiter_payload,
+}
+
+INGEST_CAPS = {
+    "linkedin": int(RATE_PLAN["ingest"]["capPerWindow"]),
+    "indeed": int(INDEED_RATE["ingest"]["capPerWindow"]),
+    "glassdoor": int(GLASSDOOR_RATE["ingest"]["capPerWindow"]),
+    "workday": int(WORKDAY_RATE["ingest"]["capPerWindow"]),
+    "ziprecruiter": int(ZIP_RATE["ingest"]["capPerWindow"]),
+}
+
+
 def _first(*values: Any) -> str:
     for value in values:
         if isinstance(value, str) and value.strip():
@@ -176,19 +202,6 @@ def _first(*values: Any) -> str:
             if isinstance(nested, str) and nested.strip():
                 return nested.strip()
     return ""
-
-
-MAPPERS = {
-    "linkedin": map_linkedin_job,
-    "indeed": map_indeed_job,
-    "glassdoor": map_glassdoor_job,
-}
-
-INGEST_CAPS = {
-    "linkedin": int(RATE_PLAN["ingest"]["capPerWindow"]),
-    "indeed": int(INDEED_RATE["ingest"]["capPerWindow"]),
-    "glassdoor": int(GLASSDOOR_RATE["ingest"]["capPerWindow"]),
-}
 
 
 def normalize_job(source: str, job: dict[str, Any]) -> dict[str, Any]:
@@ -273,10 +286,9 @@ def _pages_from(payload: Any) -> list[list[Any]]:
 
 
 def _board_pages(source: str, payload: Any) -> tuple[list[list[Any]], dict[str, Any]]:
-    if source == "indeed":
-        payload = unwrap_indeed_payload(payload)
-    elif source == "glassdoor":
-        payload = unwrap_glassdoor_payload(payload)
+    unwrap = UNWRAPPERS.get(source)
+    if unwrap:
+        payload = unwrap(payload)
     walked = walk_pages(payload)
     return [list(page.get("jobs") or []) for page in walked["pages"]], {
         "stop": walked["stop"],
@@ -302,7 +314,7 @@ def ingest_jobs(
 ) -> dict[str, Any]:
     """Normalize fixture pages into canonical postings with idempotent upserts.
 
-    Live HTML scraping of Indeed/LinkedIn/Glassdoor is not implemented. When ``listing_url``
+    Live HTML scraping of extra boards is not implemented. When ``listing_url``
     is supplied, robots + consent must pass; fixture hosts are used in tests.
     """
     spec = search if isinstance(search, SearchSpec) else parse_search(search)
@@ -446,8 +458,16 @@ def glassdoor_ingest(payload: Any, **kwargs: Any) -> dict[str, Any]:
     return ingest_jobs("glassdoor", payload, **kwargs)
 
 
+def workday_ingest(payload: Any, **kwargs: Any) -> dict[str, Any]:
+    return ingest_jobs("workday", payload, **kwargs)
+
+
+def ziprecruiter_ingest(payload: Any, **kwargs: Any) -> dict[str, Any]:
+    return ingest_jobs("ziprecruiter", payload, **kwargs)
+
+
 def listing_fetcher(source: str, payload: Any, **kwargs: Any) -> dict[str, Any]:
-    """Paginated listing fetch used by Indeed, LinkedIn, and Glassdoor Jobs."""
+    """Paginated listing fetch used by extra-board ingest connectors."""
     return ingest_jobs(source, payload, **kwargs)
 
 

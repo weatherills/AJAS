@@ -1,0 +1,29 @@
+{
+  "success": true,
+  "num_paginable_jobs": 2,
+  "page": 1,
+  "jobs_per_page": 20,
+  "jobs": [
+    {
+      "id": "zr-api-1",
+      "name": "Backend Engineer",
+      "snippet": "Required: python azure. Compensation $140,000-$165,000.",
+      "hiring_company": { "name": "Contoso" },
+      "city": "Austin",
+      "state": "TX",
+      "url": "https://fixtures.ajas.local/ziprecruiter/zr-api-1",
+      "posted_time": "2026-03-01",
+      "salary_min_annual": 140000,
+      "salary_max_annual": 165000
+    },
+    {
+      "id": "zr-api-2",
+      "name": "Platform Engineer",
+      "snippet": "Required: kubernetes terraform.",
+      "hiring_company": { "name": "Contoso" },
+      "location": "Remote",
+      "url": "https://fixtures.ajas.local/ziprecruiter/zr-api-2",
+      "posted_time": "2026-03-02"
+    }
+  ]
+}

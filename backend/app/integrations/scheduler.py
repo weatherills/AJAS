@@ -6,7 +6,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
 from app.flags import feature_enabled
-from app.integrations.ingest import glassdoor_ingest, indeed_ingest, linkedin_ingest, reset_limiter
+from app.integrations.ingest import (
+    glassdoor_ingest,
+    indeed_ingest,
+    linkedin_ingest,
+    reset_limiter,
+    workday_ingest,
+    ziprecruiter_ingest,
+)
 from app.job_sources.boards import SOURCE_FLAGS
 from app.job_sources.keys import utc_now
 from app.notify import push as notify_push
@@ -15,7 +22,13 @@ ALERT_AFTER = 3
 FetchFn = Callable[..., dict[str, Any]]
 
 _STATE: dict[str, dict[str, Any]] = {}
-_FETCHERS: dict[str, FetchFn] = {"indeed": indeed_ingest, "linkedin": linkedin_ingest, "glassdoor": glassdoor_ingest}
+_FETCHERS: dict[str, FetchFn] = {
+    "indeed": indeed_ingest,
+    "linkedin": linkedin_ingest,
+    "glassdoor": glassdoor_ingest,
+    "workday": workday_ingest,
+    "ziprecruiter": ziprecruiter_ingest,
+}
 
 
 def reset() -> None:

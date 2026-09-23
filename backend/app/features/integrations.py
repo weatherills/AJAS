@@ -51,8 +51,12 @@ def integrations_ingest(req: func.HttpRequest) -> func.HttpResponse:
     try:
         _auth(req)
         source = (req.route_params.get("source") or "").strip().lower()
-        if source not in {"indeed", "linkedin", "glassdoor"}:
-            return error_response("VALIDATION_ERROR", "source must be indeed, linkedin, or glassdoor", 400)
+        if source not in {"indeed", "linkedin", "glassdoor", "workday", "ziprecruiter"}:
+            return error_response(
+                "VALIDATION_ERROR",
+                "source must be indeed, linkedin, glassdoor, workday, or ziprecruiter",
+                400,
+            )
         body = _json_body(req)
         payload = body.get("payload") if "payload" in body else body
         if not payload:
@@ -237,6 +241,26 @@ def integrations_glassdoor_spec(req: func.HttpRequest) -> func.HttpResponse:
     try:
         _auth(req)
         return json_response(get_service().board_spec("glassdoor"))
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/integrations/workday/spec", methods=["GET"])
+def integrations_workday_spec(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    try:
+        _auth(req)
+        return json_response(get_service().board_spec("workday"))
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/integrations/ziprecruiter/spec", methods=["GET"])
+def integrations_ziprecruiter_spec(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    try:
+        _auth(req)
+        return json_response(get_service().board_spec("ziprecruiter"))
     except Exception as exc:
         return _handle(exc)
 
