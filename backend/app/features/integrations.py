@@ -70,17 +70,22 @@ def integrations_ingest(req: func.HttpRequest) -> func.HttpResponse:
             search=body.get("search"),
             listing_url=body.get("listingUrl"),
             html=body.get("html"),
+            live=bool(body.get("live")),
+            account_id=str(body.get("accountId") or body.get("account_id") or "") or None,
         )
         return json_response(result, status_code=202 if result.get("reason") == "ok" else 200)
     except Exception as exc:
         return _handle(exc)
 
 
-@bp.route(route="v1/integrations/linkedin/search", methods=["GET"])
+@bp.route(route="v1/integrations/linkedin/search", methods=["GET", "POST"])
 def integrations_search_inputs(req: func.HttpRequest) -> func.HttpResponse:
     bind_request(req)
     try:
         _auth(req)
+        if req.method.upper() == "POST":
+            body = _json_body(req)
+            return json_response(get_service().linkedin_search(body))
         return json_response({"search": get_service().search_spec(dict(req.params)), "supported": get_service().status()["searchInputs"]})
     except Exception as exc:
         return _handle(exc)

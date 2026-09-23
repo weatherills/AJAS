@@ -54,7 +54,25 @@ export function seedInvalidFeedFilters(): void {
 export const PAGE_SIZE = 25
 /** Fetch the next page when the sentinel is within 20% of the viewport (80% scroll). */
 export const INFINITE_SCROLL_ROOT_MARGIN = '20% 0px'
-export const ALL_SOURCES: JobSourceName[] = ['greenhouse', 'lever']
+export const COSMOS_SOURCES: JobSourceName[] = ['greenhouse', 'lever']
+export const ALL_SOURCES: JobSourceName[] = ['greenhouse', 'lever', 'linkedin']
+
+export function isCosmosSource(name: JobSourceName): name is 'greenhouse' | 'lever' {
+  return name === 'greenhouse' || name === 'lever'
+}
+
+export function cosmosSources(sources: JobSourceName[]): JobSourceName[] {
+  return sources.filter(isCosmosSource)
+}
+
+export function isKnownSource(name: string): name is JobSourceName {
+  return name === 'greenhouse' || name === 'lever' || name === 'linkedin'
+}
+
+export function withLinkedIn(boardSources: JobSourceName[], current: JobSourceName[]): JobSourceName[] {
+  const extras = current.filter((item) => item === 'linkedin')
+  return [...boardSources, ...extras]
+}
 
 const SLUG = /[^a-z0-9]+/g
 
@@ -98,7 +116,7 @@ export function loadFilters(): JobFilters {
     if (!raw) return defaultFilters()
     const parsed = JSON.parse(raw) as Partial<JobFilters>
     const sources = Array.isArray(parsed.sources)
-      ? parsed.sources.filter((item): item is JobSourceName => item === 'greenhouse' || item === 'lever')
+      ? parsed.sources.filter((item): item is JobSourceName => isKnownSource(String(item)))
       : [...ALL_SOURCES]
     return {
       sources,
@@ -173,6 +191,9 @@ export function sourceUnconfiguredCopy(row: Pick<SourceStatus, 'source' | 'statu
   if (sourceIsConfiguredStatus(row)) return null
   const raw = (row.errorMessage || '').trim()
   if (raw) return raw
+  if (row.source === 'linkedin') {
+    return 'LinkedIn is not configured. Connect a session in Settings before searching or applying.'
+  }
   return `${sourceTitle(row.source)} is not configured. Add a board token before turning this source on, or Job Feed stays empty.`
 }
 
@@ -511,13 +532,15 @@ export function syncAnnounce(kind: 'started' | 'completed' | 'rate_limited' | 'e
 }
 
 export function sourceTitle(source: JobSourceName): string {
-  return source === 'greenhouse' ? 'Greenhouse' : 'Lever'
+  if (source === 'greenhouse') return 'Greenhouse'
+  if (source === 'linkedin') return 'LinkedIn'
+  return 'Lever'
 }
 
 export function boardInputHint(source: JobSourceName): string {
-  return source === 'greenhouse'
-    ? 'Board token or https://boards.greenhouse.io/… URL'
-    : 'Company slug or https://jobs.lever.co/… URL'
+  if (source === 'greenhouse') return 'Board token or https://boards.greenhouse.io/… URL'
+  if (source === 'linkedin') return 'Paste a LinkedIn li_at cookie in Settings — LinkedIn is not a public board crawl'
+  return 'Company slug or https://jobs.lever.co/… URL'
 }
 
 export function boardAddPayload(raw: string): { boardToken?: string; boardUrl?: string } {
@@ -547,15 +570,19 @@ export function feedSourcesFromSettings(sources: {
   return next
 }
 
-export function sourceEnabledField(name: JobSourceName): 'greenhouseEnabled' | 'leverEnabled' {
-  return name === 'greenhouse' ? 'greenhouseEnabled' : 'leverEnabled'
+export function sourceEnabledField(name: JobSourceName): 'greenhouseEnabled' | 'leverEnabled' | null {
+  if (name === 'greenhouse') return 'greenhouseEnabled'
+  if (name === 'lever') return 'leverEnabled'
+  return null
 }
 
 export function sourceChipPatch(
   name: JobSourceName,
   enabled: boolean,
-): { sources: { greenhouseEnabled?: boolean; leverEnabled?: boolean } } {
-  return { sources: { [sourceEnabledField(name)]: enabled } }
+): { sources: { greenhouseEnabled?: boolean; leverEnabled?: boolean } } | null {
+  const field = sourceEnabledField(name)
+  if (!field) return null
+  return { sources: { [field]: enabled } }
 }
 
 export function nextFeedSources(current: JobSourceName[], name: JobSourceName): { sources: JobSourceName[]; enabled: boolean } {
@@ -641,6 +668,8 @@ export async function persistFeedSourceChip(
   name: JobSourceName,
   enabled: boolean,
 ): Promise<JobSourceName[] | null> {
-  const doc = await api.patch(sourceChipPatch(name, enabled))
+  const patch = sourceChipPatch(name, enabled)
+  if (!patch) return null
+  const doc = await api.patch(patch)
   return feedSourcesFromSettings(doc.sources)
 }

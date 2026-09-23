@@ -15,6 +15,7 @@ from app.integrations import easy_apply as ea
 from app.integrations import linkedin_audit
 from app.integrations import linkedin_session
 from app.integrations.ingest import classify_error, linkedin_ingest, reset_limiter, retry_with_backoff, throttle
+from app.integrations.linkedin_client import MemoryLinkedInHttp, parse_guest_html, set_linkedin_http
 from app.integrations.linkedin_metrics import evaluate, qa_acceptance
 from app.integrations.linkedin_spec import (
     ATTACHMENT_SPEC,
@@ -380,12 +381,14 @@ def test_security_checklist_and_qa_metrics(monkeypatch):
     assert qa["passed"] is True
     assert SOURCE_TYPES == frozenset({"greenhouse", "lever"})
     assert flags["linkedin_adapter"] is True
-    assert flags["linkedin_easy_apply"] is False
+    assert flags["linkedin_easy_apply"] is True
 
 
 def test_prd_gap_pass_contracts_encoded():
     bundle = spec_bundle()
     assert bundle["liveScrape"] is False
+    assert bundle["liveSearch"] == "opt-in-allowlisted-guest"
+    assert bundle["liveApply"] == "session-voyager-or-external-ats"
     assert bundle["prdGaps"]["jobsIngestion"] == list(PRD_GAPS_INGEST)
     assert bundle["prdGaps"]["easyApply"] == list(PRD_GAPS_EASY_APPLY)
     repo = Path(__file__).resolve().parents[2]
@@ -406,7 +409,8 @@ def test_http_spec_session_and_e2e_acceptance(monkeypatch):
     spec = json.loads(routes.integrations_linkedin_spec(_req("GET", "http://localhost/api/v1/integrations/linkedin/spec")).get_body())
     assert spec["fieldMap"]
     assert spec["ratePlan"]["ingest"]["capPerWindow"] == 50
-    assert spec["pagination"]["mode"] == "cursor"
+    assert spec["liveSearch"] == "opt-in-allowlisted-guest"
+    assert spec["liveApply"] == "session-voyager-or-external-ats"
     created = json.loads(
         routes.integrations_linkedin_session(
             _req("POST", "http://localhost/api/v1/integrations/linkedin/session", body={"accountId": "acct-http", "token": "li_at_http"})
@@ -427,3 +431,77 @@ def test_http_spec_session_and_e2e_acceptance(monkeypatch):
         ).get_body()
     )
     assert http_e2e["ok"] is True
+
+
+def test_linkedin_live_guest_search_and_session_apply(monkeypatch):
+    _enable(monkeypatch, linkedin=True, easy=True)
+    monkeypatch.setenv("LINKEDIN_LIVE", "true")
+    get_settings.cache_clear()
+    html = (FIXTURES / "linkedin_guest.html").read_text()
+    assert len(parse_guest_html(html)) == 2
+    http = MemoryLinkedInHttp()
+    http.guest_html = html
+    set_linkedin_http(http)
+    live = linkedin_ingest({}, search={"keywords": "platform", "workplace": "remote"}, live=True)
+    assert live["reason"] == "ok"
+    assert live["liveFetch"] is True
+    assert live["jobs"]
+    assert live["jobs"][0]["company"] == "Initech"
+    assert any(job["applyMethod"] == "easy_apply" for job in live["jobs"])
+    http.get_handler = lambda url, headers: (200, "<html>unusual activity checkpoint</html>", {"Content-Type": "text/html"})
+    blocked = linkedin_ingest({}, search={"keywords": "staff"}, live=True)
+    assert blocked["reason"] == "needs_manual"
+    assert blocked["bypass"] is False
+    http.get_handler = None
+    linkedin_session.STORE.put("acct-live", "li_at=test-token; JSESSIONID=ajax:1")
+    job = next(item for item in live["jobs"] if item.get("applyMethod") == "easy_apply")
+    applied = ea.submit(
+        job=job,
+        profile=PROFILE,
+        attachments=[RESUME],
+        account_id="acct-live",
+        live=True,
+    )
+    assert applied["status"] == "submitted"
+    assert applied["receipt"]["confirmation"]
+    assert http.posts
+    http.apply_status = 401
+    expired = ea.submit(
+        job=job,
+        profile=PROFILE,
+        attachments=[RESUME],
+        account_id="acct-live",
+        live=True,
+    )
+    assert expired["status"] == "needs_manual"
+    assert expired["bypass"] is False
+    searched = json.loads(
+        routes.integrations_search_inputs(
+            _req(
+                "POST",
+                "http://localhost/api/v1/integrations/linkedin/search",
+                body={"live": True, "keywords": "platform", "accountId": "acct-live"},
+            )
+        ).get_body()
+    )
+    assert searched["jobs"]
+    monkeypatch.setenv("LINKEDIN_LIVE", "false")
+    get_settings.cache_clear()
+    set_linkedin_http(None)
+    disabled = linkedin_ingest({}, live=True)
+    assert disabled["reason"] == "live_disabled"
+
+
+def test_linkedin_easy_apply_routes_external_ats(monkeypatch):
+    _enable(monkeypatch, linkedin=True, easy=True)
+    job = {
+        "id": "gh-from-li",
+        "title": "Staff Platform Engineer",
+        "company": "Acme",
+        "postingUrl": "https://www.linkedin.com/jobs/view/1",
+        "externalApplyUrl": "https://boards.greenhouse.io/acme/jobs/99",
+        "applyMethod": "external",
+    }
+    sent = ea.submit(job=job, profile=PROFILE, attachments=[RESUME], live=True)
+    assert sent["status"] == "submitted"
+    assert sent["receipt"]

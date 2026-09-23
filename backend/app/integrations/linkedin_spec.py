@@ -671,7 +671,7 @@ SECURITY_CHECKLIST: tuple[dict[str, Any], ...] = (
     },
     {
         "id": "access_control",
-        "rule": "HTTP routes require JWT; linkedin_adapter defaults on (tested); linkedin_easy_apply stays off; SOURCE_TYPES stays greenhouse|lever.",
+        "rule": "HTTP routes require JWT; linkedin_adapter and linkedin_easy_apply default on (tested); live sockets need LINKEDIN_LIVE; SOURCE_TYPES stays greenhouse|lever.",
     },
     {
         "id": "redaction",
@@ -689,7 +689,7 @@ SUCCESS_TARGETS: dict[str, Any] = {
     "easyApplyCompletionPct": 80.0,
     "medianRuntimeMs": 8000,
     "qa": (
-        "flag_default_off",
+        "easy_apply_tested_on",
         "source_types_unchanged",
         "captcha_never_bypassed",
         "receipt_on_every_attempt",
@@ -749,6 +749,8 @@ def spec_bundle() -> dict[str, Any]:
     return {
         "generatedAt": utc_now(),
         "liveScrape": False,
+        "liveSearch": "opt-in-allowlisted-guest",
+        "liveApply": "session-voyager-or-external-ats",
         "sourceTypesUnchanged": True,
         "fieldMap": [dict(row) for row in FIELD_MAP],
         "ratePlan": RATE_PLAN,

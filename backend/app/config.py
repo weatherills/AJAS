@@ -132,11 +132,13 @@ class Settings(BaseSettings):
     ingestion_alert_webhook: str = ""
     auth_session_cookies: bool = True
     job_retention_days: int = 120
-    outbound_allowlist: str = "boards.greenhouse.io,api.lever.co,graph.microsoft.com,login.microsoftonline.com"
+    outbound_allowlist: str = "boards.greenhouse.io,api.lever.co,graph.microsoft.com,login.microsoftonline.com,www.linkedin.com,linkedin.com"
 
     flag_indeed_adapter: bool = True
     flag_linkedin_adapter: bool = True
-    flag_linkedin_easy_apply: bool = False
+    flag_linkedin_easy_apply: bool = True
+    linkedin_live: bool = False
+    linkedin_allowed_hosts: str = "www.linkedin.com,linkedin.com"
     flag_greenhouse_harvest: bool = False
     flag_gmail_adapter: bool = False
     flag_google_drive: bool = False

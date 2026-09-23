@@ -27,6 +27,7 @@ describe('auto-apply helpers', () => {
   it('infers vendor from job id or posting URL', () => {
     expect(inferJobSource('job-staff', null)).toBe('greenhouse')
     expect(inferJobSource('job-lever', 'https://jobs.lever.co/acme/1')).toBe('lever')
+    expect(inferJobSource('job-1', 'https://www.linkedin.com/jobs/view/4123456789')).toBe('linkedin')
     expect(inferJobSource('job-1', 'https://boards.greenhouse.io/acme/jobs/captcha')).toBe('manual')
   })
 
@@ -61,6 +62,14 @@ describe('auto-apply helpers', () => {
       location: 'Austin',
     })
     expect(lever.find((row) => row.label === 'name')?.value).toBe('Jane Doe')
+    const linkedin = vendorFieldPreview('linkedin', {
+      full_name: 'Jane Doe',
+      email: 'jane@example.com',
+      phone: '+15555550100',
+      location: 'Remote',
+      linkedin_url: 'https://www.linkedin.com/in/jane',
+    })
+    expect(linkedin.find((row) => row.label === 'linkedinProfile')?.value).toContain('linkedin.com/in/jane')
     expect(previewCoverLetter({ name: 'Jane Doe', jobTitle: 'Staff', company: 'Acme', source: 'greenhouse' })).toMatch(
       /Jane Doe/,
     )

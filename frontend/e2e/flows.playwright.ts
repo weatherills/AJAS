@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 test('matching job feed shows Greenhouse/Lever copy', async ({ page }) => {
   await page.goto('/#/jobs')
   await expect(page.getByRole('heading', { name: 'Jobs', exact: true })).toBeVisible()
-  await expect(page.getByText(/Greenhouse and Lever/i)).toBeVisible()
+  await expect(page.getByText(/Greenhouse, Lever, and LinkedIn/i)).toBeVisible()
 })
 
 test('review queue heading is visible', async ({ page }) => {

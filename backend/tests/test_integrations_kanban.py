@@ -126,7 +126,7 @@ def test_tested_connectors_default_on():
     flags = feature_flags()
     for name in TESTED_CONNECTOR_FLAGS:
         assert flags[name] is True
-    assert flags["linkedin_easy_apply"] is False
+    assert flags["linkedin_easy_apply"] is True
     assert flags["greenhouse_harvest"] is False
     assert flags["gmail_adapter"] is False
     assert flags["google_drive"] is False

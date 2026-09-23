@@ -38,12 +38,14 @@ export type ApplyContact = {
   email: string
   phone: string
   location: string
+  linkedin_url?: string
 }
 
 export type VendorPreviewField = { label: string; value: string }
 
 export function inferJobSource(jobId: string | null | undefined, postingUrl: string | null | undefined): JobSource {
   const hay = `${jobId || ''} ${postingUrl || ''}`.toLowerCase()
+  if (hay.includes('linkedin')) return 'linkedin'
   if (hay.includes('lever')) return 'lever'
   if (hay.includes('manual') || hay.includes('captcha') || hay.includes('sso')) return 'manual'
   return 'greenhouse'
@@ -51,6 +53,7 @@ export function inferJobSource(jobId: string | null | undefined, postingUrl: str
 
 export function defaultPostingUrl(jobId: string, source: JobSource): string {
   if (source === 'lever') return `https://jobs.lever.co/demo/${encodeURIComponent(jobId)}`
+  if (source === 'linkedin') return `https://www.linkedin.com/jobs/view/${encodeURIComponent(jobId)}`
   if (source === 'manual') return `https://jobs.example.com/${encodeURIComponent(jobId)}?unsupported=1`
   return `https://boards.greenhouse.io/demo/jobs/${encodeURIComponent(jobId)}`
 }
@@ -58,6 +61,7 @@ export function defaultPostingUrl(jobId: string, source: JobSource): string {
 export function sourceBadge(source: JobSource): { label: string; programmatic: boolean } {
   if (source === 'lever') return { label: 'Lever', programmatic: true }
   if (source === 'greenhouse') return { label: 'Greenhouse', programmatic: true }
+  if (source === 'linkedin') return { label: 'LinkedIn Easy Apply', programmatic: true }
   return { label: 'Manual', programmatic: false }
 }
 
@@ -142,6 +146,15 @@ export function vendorFieldPreview(source: JobSource, contact: ApplyContact): Ve
       { label: 'email', value: contact.email },
       { label: 'phone', value: contact.phone },
       { label: 'location', value: contact.location },
+    ]
+  }
+  if (source === 'linkedin') {
+    return [
+      { label: 'name', value: contact.full_name },
+      { label: 'email', value: contact.email },
+      { label: 'phone', value: contact.phone },
+      { label: 'location', value: contact.location },
+      { label: 'linkedinProfile', value: contact.linkedin_url || '' },
     ]
   }
   return [

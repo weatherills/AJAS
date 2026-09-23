@@ -5,7 +5,7 @@ describe('feature flags', () => {
   it('turns tested connectors on and merges operator overrides', () => {
     expect(FLAG_DEFAULTS.workday_adapter).toBe(true)
     expect(FLAG_DEFAULTS.imap_transport).toBe(true)
-    expect(FLAG_DEFAULTS.linkedin_easy_apply).toBe(false)
+    expect(FLAG_DEFAULTS.linkedin_easy_apply).toBe(true)
     expect(FLAG_DEFAULTS.ann_recall).toBe(false)
     expect(FLAG_DEFAULTS.gap_penalty).toBe(true)
     expect(FLAG_DEFAULTS.respect_robots).toBe(true)

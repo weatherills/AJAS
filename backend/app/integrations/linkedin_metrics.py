@@ -59,7 +59,7 @@ def evaluate(sample: dict[str, Any]) -> dict[str, Any]:
 
 def qa_acceptance(*, flags: dict[str, Any], captcha_bypass: bool, receipts: int, attempts: int, audit_safe: bool) -> dict[str, Any]:
     checks = {
-        "flag_default_off": flags.get("linkedin_easy_apply") is False,
+        "flag_easy_apply_on": flags.get("linkedin_easy_apply") is True,
         "source_types_unchanged": SOURCE_TYPES == frozenset({"greenhouse", "lever"}),
         "captcha_never_bypassed": captcha_bypass is False,
         "receipt_on_every_attempt": receipts >= attempts,

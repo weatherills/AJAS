@@ -146,7 +146,8 @@ describe('job feed helpers', () => {
   it('formats backoff countdown as mm:ss', () => {
     expect(formatCountdown(125_000)).toBe('02:05')
     expect(backoffRemainingMs(new Date(Date.now() + 4_000).toISOString(), Date.now())).toBeGreaterThan(0)
-    expect(defaultFilters().sources).toEqual(['greenhouse', 'lever'])
+    expect(defaultFilters().sources).toEqual(['greenhouse', 'lever', 'linkedin'])
+    expect(sourceTitle('linkedin')).toBe('LinkedIn')
   })
 
   it('maps Settings source flags onto Job Feed filters without treating a missing configured flag as off', () => {
@@ -163,6 +164,7 @@ describe('job feed helpers', () => {
   it('builds a Settings PATCH from a Job Feed chip and leaves session filters when clearing search', () => {
     expect(sourceChipPatch('greenhouse', false)).toEqual({ sources: { greenhouseEnabled: false } })
     expect(sourceChipPatch('lever', true)).toEqual({ sources: { leverEnabled: true } })
+    expect(sourceChipPatch('linkedin', true)).toBeNull()
     expect(nextFeedSources(['greenhouse', 'lever'], 'lever')).toEqual({ sources: ['greenhouse'], enabled: false })
     expect(nextFeedSources(['greenhouse'], 'lever')).toEqual({ sources: ['greenhouse', 'lever'], enabled: true })
     expect(nextFeedSources(['greenhouse'], 'greenhouse')).toEqual({ sources: [], enabled: false })
@@ -208,6 +210,7 @@ describe('job feed helpers', () => {
     const first = await mockSettingsApi.get()
     expect(feedSourcesFromSettings(first.sources)).toEqual(['greenhouse', 'lever'])
     expect(await persistFeedSourceChip(mockSettingsApi, 'greenhouse', false)).toEqual(['lever'])
+    expect(await persistFeedSourceChip(mockSettingsApi, 'linkedin', true)).toBeNull()
     expect(await persistFeedSourceChip(mockSettingsApi, 'lever', false)).toEqual([])
     const reloaded = await mockSettingsApi.get()
     expect(reloaded.sources.greenhouseEnabled).toBe(false)
@@ -535,6 +538,7 @@ describe('job feed PRD helpers', () => {
     expect(sourceDomain('not a url')).toBe('not a url')
     expect(sourceTitle('greenhouse')).toBe('Greenhouse')
     expect(sourceTitle('lever')).toBe('Lever')
+    expect(sourceTitle('linkedin')).toBe('LinkedIn')
     expect(INFINITE_SCROLL_ROOT_MARGIN).toBe('20% 0px')
   })
 

@@ -71,6 +71,7 @@ import {
   sourcesOffCopy,
   statusLabel,
   takeLastVisit,
+  withLinkedIn,
 } from '../lib/jobs'
 
 type Toast = { id: number; text: string; tone?: 'info' | 'error'; actionLabel?: string; onAction?: () => void }
@@ -334,7 +335,7 @@ export function JobFeedPage() {
           if (next === null) {
             setFilters((prev) => (prev.sources.length ? prev : { ...prev, sources: [...ALL_SOURCES] }))
           } else {
-            setFilters((prev) => ({ ...prev, sources: next }))
+            setFilters((prev) => ({ ...prev, sources: withLinkedIn(next, prev.sources) }))
           }
         }
       } catch {
@@ -644,7 +645,7 @@ export function JobFeedPage() {
     try {
       const fromSettings = await persistFeedSourceChip(settingsApi, name, next.enabled)
       if (fromSettings !== null) {
-        setFilters((prev) => ({ ...prev, sources: fromSettings }))
+        setFilters((prev) => ({ ...prev, sources: withLinkedIn(fromSettings, prev.sources) }))
       }
     } catch (err) {
       setFilters((prev) => ({ ...prev, sources: previous }))
@@ -748,7 +749,7 @@ export function JobFeedPage() {
       <header className="library-header">
         <div>
           <h1>{t('jobs')}</h1>
-          <p className="tagline">Public Greenhouse and Lever postings, merged when they are the same role.</p>
+          <p className="tagline">Public Greenhouse, Lever, and LinkedIn postings. LinkedIn search is extra-board (not a cosmos crawl).</p>
           <p className="muted" aria-label="Keyboard shortcuts">
             {TRIAGE_HELP}
           </p>
@@ -797,7 +798,7 @@ export function JobFeedPage() {
       )}
 
       <div className="feed-status" role="status">
-        {(['greenhouse', 'lever'] as JobSourceName[]).map((name) => {
+        {(['greenhouse', 'lever', 'linkedin'] as JobSourceName[]).map((name) => {
           const row = statuses.find((item) => item.source === name)
           const left = backoffRemainingMs(row?.backoffUntil ?? null, now)
           const blocked = sourceRefreshBlocked(row, { offline, now })
@@ -835,10 +836,11 @@ export function JobFeedPage() {
                     })}
                   </ul>
                 )}
+                {row?.progress && row.status !== 'syncing' && <p className="muted">{row.progress}</p>}
                 {row && !sourceIsConfiguredStatus(row) && (
                   <p className="muted" role="status">
                     {feedSourceUnconfiguredCopy(row)}{' '}
-                    <a href="#/settings">Add a board</a>
+                    <a href="#/settings">{name === 'linkedin' ? 'Connect LinkedIn' : 'Add a board'}</a>
                   </p>
                 )}
               </div>
@@ -1130,7 +1132,7 @@ export function JobFeedPage() {
               ) : (
                 <>
                   <p>No jobs found</p>
-                  <p className="muted">Adjust filters or refresh Greenhouse and Lever.</p>
+                  <p className="muted">Adjust filters or refresh Greenhouse, Lever, and LinkedIn.</p>
                 </>
               )}
               {sourcesOff || sourceUnconfigured.length > 0 || boardErrorLines.length > 0 ? (
@@ -1524,7 +1526,7 @@ export function JobFeedPage() {
               ? 'Refresh is disabled while offline'
               : refreshBlocked
                 ? waitingDueToRateLimit || 'Refresh is cooling down'
-                : 'Refresh Greenhouse and Lever'
+                : 'Refresh Greenhouse, Lever, and LinkedIn'
           }
         >
           Refresh
@@ -1539,6 +1541,8 @@ export function JobFeedPage() {
           jobId={applyJob.id}
           resumeId={resumeId}
           postingUrl={applyJob.applyUrl}
+          applyMethod={applyJob.applyMethod}
+          externalApplyUrl={applyJob.externalApplyUrl}
           queueIndex={bulkQueue.length ? bulkIndex + 1 : 1}
           queueTotal={Math.max(bulkQueue.length, 1)}
           onClose={clearBulk}

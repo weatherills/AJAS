@@ -18,13 +18,14 @@ TESTED_CONNECTOR_FLAGS: frozenset[str] = frozenset(
         "greenhouse_career_adapter",
         "lever_career_adapter",
         "imap_transport",
+        "linkedin_easy_apply",
     }
 )
 
 FLAG_DEFAULTS: dict[str, bool] = {
     "indeed_adapter": True,
     "linkedin_adapter": True,
-    "linkedin_easy_apply": False,
+    "linkedin_easy_apply": True,
     "greenhouse_harvest": False,
     "gmail_adapter": False,
     "google_drive": False,

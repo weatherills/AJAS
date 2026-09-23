@@ -4,10 +4,10 @@ Status: Gap pass complete
 PRD ID (AJAS): 7b3b3357-bfb8-406f-b3ed-4f7fbc9e152e
 Feature: Auto-Apply (`feature-auto-apply`)
 Type: Backend
-Flag: `linkedin_easy_apply` (default off; `linkedin_adapter` also permits submit in tests)
+Flag: `linkedin_easy_apply` (default on; tested connector). `linkedin_adapter` also permits submit in tests.
 
 ## Overview
-Submit Easy Apply packages from a mapped profile, resume/cover attachments, and approved Q&A. Throttle, retry transients, fail closed on captcha/challenges, and always write a receipt plus a PII-safe audit event. Live browser automation that solves captchas is **out of scope**.
+Submit Easy Apply packages from a mapped profile, resume/cover attachments, and approved Q&A. Throttle, retry transients, fail closed on captcha/challenges, and always write a receipt plus a PII-safe audit event. When `live=true`, deliver via the operator's sealed session (`li_at` / `JSESSIONID`) to voyager `jobPostings/{id}?action=apply`, or route LinkedIn-hosted Greenhouse/Lever URLs through existing ATS submitters. Live browser automation that solves captchas is **out of scope**.
 
 ## Required / optional field matrix
 Executable table: `EASY_APPLY_FIELDS` in `app.integrations.linkedin_spec`.
@@ -71,9 +71,9 @@ Optional `accountId`. Expired/revoked/anonymous sessions return `SESSION_EXPIRED
 Easy Apply completion ≥ 80% of attempts in the sample. Median runtime ≤ 8s. Receipt on every attempt. Captcha never bypassed.
 
 ## HTTP
-- `POST /api/v1/integrations/linkedin/easy-apply` (JWT)
+- `POST /api/v1/integrations/linkedin/easy-apply` (JWT) — set `live=true` and `accountId` for voyager apply
 - `POST /api/v1/integrations/linkedin/e2e` — ingest → match/review → Easy Apply
 - `GET /api/v1/integrations/linkedin/spec`
 
 ## Out of scope
-Solving captchas, live LinkedIn DOM automation, adding LinkedIn to Greenhouse/Lever `SOURCE_TYPES`.
+Solving captchas, live LinkedIn DOM automation, adding LinkedIn to Greenhouse/Lever `SOURCE_TYPES`. Live sockets stay behind `LINKEDIN_LIVE`.

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getUserId, jobsApi, learningApi, resumeApi, setUserId, settingsApi, USE_MOCK } from '../api'
 import { json, request, fetchAuthConfig, type AuthConfig } from '../api/live'
+import { liveLinkedInApi } from '../api/linkedinLive'
+import type { LinkedInSessionAccount } from '../api/linkedinLive'
+import { loadLinkedInAccountId, saveLinkedInAccountId } from '../lib/linkedin'
 import type { SettingsAuditItem, SettingsDoc } from '../api/settingsTypes'
 import type { JobSourceName, SourceStatus } from '../api/jobsTypes'
 import { AppNav } from '../components/AppNav'
@@ -281,6 +284,12 @@ export function SettingsPage() {
   const [devices, setDevices] = useState<{ id: string; label: string; createdAt: string; lastSeenAt: string }[]>([])
   const [sessionBusy, setSessionBusy] = useState(false)
   const [authConfig, setAuthConfig] = useState<AuthConfig | null>(null)
+  const [linkedinAccountId, setLinkedinAccountId] = useState(() => loadLinkedInAccountId())
+  const [linkedinToken, setLinkedinToken] = useState('')
+  const [linkedinAccounts, setLinkedinAccounts] = useState<LinkedInSessionAccount[]>([])
+  const [linkedinLive, setLinkedinLive] = useState(false)
+  const [linkedinBusy, setLinkedinBusy] = useState(false)
+  const [linkedinError, setLinkedinError] = useState<string | null>(null)
   const toastId = useRef(1)
   const saveGen = useRef(0)
   const oauthState = useRef<string | null>(null)
@@ -326,6 +335,15 @@ export function SettingsPage() {
         setAuthConfig(await fetchAuthConfig())
       } catch {
         setAuthConfig(null)
+      }
+      try {
+        const linkedin = await liveLinkedInApi.status()
+        setLinkedinLive(Boolean(linkedin.linkedinLive))
+        setLinkedinAccounts(linkedin.linkedinAccounts || [])
+        const listed = await liveLinkedInApi.listSessions()
+        setLinkedinAccounts(listed.accounts || linkedin.linkedinAccounts || [])
+      } catch {
+        setLinkedinAccounts([])
       }
       setLoadError(null)
     } catch (err) {
@@ -440,7 +458,7 @@ export function SettingsPage() {
     }
   }
 
-  async function addBoard(name: JobSourceName) {
+  async function addBoard(name: 'greenhouse' | 'lever') {
     if (!doc) return
     const value = (name === 'greenhouse' ? ghBoard : leverBoard).trim()
     const enabledKey = name === 'greenhouse' ? 'greenhouseEnabled' : 'leverEnabled'
@@ -1248,6 +1266,94 @@ export function SettingsPage() {
               </button>
             )}
           </div>
+        )}
+      </section>
+
+      <section className="editor-section" aria-labelledby="linkedin-heading">
+        <h2 id="linkedin-heading">LinkedIn</h2>
+        <p className="muted">
+          Guest job search and Easy Apply. Live sockets stay behind LINKEDIN_LIVE (currently {linkedinLive ? 'on' : 'off'}).
+          Paste the operator `li_at` cookie — AJAS seals it and never shows it again. Captcha is never bypassed.
+        </p>
+        <label>
+          Account id
+          <input
+            value={linkedinAccountId}
+            onChange={(event) => setLinkedinAccountId(saveLinkedInAccountId(event.target.value))}
+            aria-label="LinkedIn account id"
+            autoComplete="off"
+          />
+        </label>
+        <label>
+          Session cookie (li_at)
+          <input
+            type="password"
+            value={linkedinToken}
+            onChange={(event) => setLinkedinToken(event.target.value)}
+            aria-label="LinkedIn li_at cookie"
+            autoComplete="off"
+            placeholder="li_at=…; JSESSIONID=ajax:…"
+          />
+        </label>
+        <div className="modal-actions">
+          <button
+            type="button"
+            className="primary"
+            disabled={linkedinBusy || !linkedinToken.trim()}
+            onClick={() => {
+              setLinkedinBusy(true)
+              setLinkedinError(null)
+              void liveLinkedInApi
+                .putSession(linkedinAccountId, linkedinToken)
+                .then((row) => {
+                  setLinkedinAccounts((prev) => {
+                    const rest = prev.filter((item) => item.accountId !== row.accountId)
+                    return [row, ...rest]
+                  })
+                  setLinkedinToken('')
+                  toast('LinkedIn session sealed')
+                })
+                .catch((err) => setLinkedinError(err instanceof Error ? err.message : 'Could not save LinkedIn session'))
+                .finally(() => setLinkedinBusy(false))
+            }}
+          >
+            {linkedinBusy ? 'Saving…' : 'Save session'}
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            disabled={linkedinBusy}
+            onClick={() => {
+              setLinkedinBusy(true)
+              void liveLinkedInApi
+                .revokeSession(linkedinAccountId)
+                .then((row) => {
+                  setLinkedinAccounts((prev) => prev.map((item) => (item.accountId === row.accountId ? row : item)))
+                  toast('LinkedIn session revoked')
+                })
+                .catch((err) => setLinkedinError(err instanceof Error ? err.message : 'Could not revoke LinkedIn session'))
+                .finally(() => setLinkedinBusy(false))
+            }}
+          >
+            Revoke
+          </button>
+        </div>
+        {linkedinError && (
+          <p className="inline-error" role="alert">
+            {linkedinError}
+          </p>
+        )}
+        {linkedinAccounts.length ? (
+          <ul>
+            {linkedinAccounts.map((row) => (
+              <li key={row.accountId}>
+                <code>{row.accountId}</code> {row.status}
+                {row.remainingSeconds != null ? ` · ${row.remainingSeconds}s left` : ''}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">No LinkedIn sessions yet. Easy Apply needs an active session; guest search does not.</p>
         )}
       </section>
 

@@ -20,6 +20,7 @@ const liveSources = [
   readFileSync(join(root, 'frontend/src/api/autoApplyLive.ts'), 'utf8'),
   readFileSync(join(root, 'frontend/src/api/emailLive.ts'), 'utf8'),
   readFileSync(join(root, 'frontend/src/api/jobsLive.ts'), 'utf8'),
+  readFileSync(join(root, 'frontend/src/api/linkedinLive.ts'), 'utf8'),
   readFileSync(join(root, 'frontend/src/api/resumeLive.ts'), 'utf8'),
   readFileSync(join(root, 'frontend/src/api/settingsLive.ts'), 'utf8'),
   readFileSync(join(root, 'frontend/src/api/learningLive.ts'), 'utf8'),

@@ -120,7 +120,12 @@ def tick(
             skipped.append(source)
             continue
         payload = body.get(source) or {"jobs": []}
-        result = fetch(payload, search={"cadenceSeconds": cadence_seconds})
+        extra: dict[str, Any] = {"search": {"cadenceSeconds": cadence_seconds}}
+        if source == "linkedin":
+            from app.integrations.linkedin_client import live_search_allowed
+
+            extra["live"] = live_search_allowed()
+        result = fetch(payload, **extra)
         failed = result.get("reason") not in {"ok", "flag_off", "needs_auth"}
         results[source] = result
         record_run(source, result, failed=failed)

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { autoApplyApi, resumeApi } from '../api'
+import { autoApplyApi, resumeApi, USE_MOCK } from '../api'
 import type { CoverLetterMode, JobSource } from '../api/autoApplyTypes'
 import type { ResumeListItem } from '../api/resumeTypes'
+import { liveLinkedInApi } from '../api/linkedinLive'
 import {
   autoApplyDisabledReason,
   copyAnswersText,
@@ -14,6 +15,7 @@ import {
   vendorFieldPreview,
 } from '../lib/autoApply'
 import { chooseResume, loadApplyPrefs, saveApplyPrefs } from '../lib/applyPrefs'
+import { loadLinkedInAccountId } from '../lib/linkedin'
 import { preselectReady } from '../lib/status'
 
 const FALLBACK_CONTACT = {
@@ -21,6 +23,7 @@ const FALLBACK_CONTACT = {
   email: 'alex@example.com',
   phone: '+15555550100',
   location: 'Remote',
+  linkedin_url: 'https://www.linkedin.com/in/alex',
 }
 
 type CoverGen = 'idle' | 'generating' | 'ready' | 'error'
@@ -31,6 +34,8 @@ type Props = {
   jobId: string
   resumeId: string | null
   postingUrl: string | null
+  applyMethod?: string | null
+  externalApplyUrl?: string | null
   queueIndex?: number
   queueTotal?: number
   onClose: () => void
@@ -44,13 +49,15 @@ export function ApplyModal({
   jobId,
   resumeId,
   postingUrl,
+  applyMethod,
+  externalApplyUrl,
   queueIndex = 1,
   queueTotal = 1,
   onClose,
   onSubmitted,
   onSkip,
 }: Props) {
-  const inferred = inferJobSource(jobId, postingUrl)
+  const inferred = inferJobSource(jobId, postingUrl || externalApplyUrl)
   const prefs = loadApplyPrefs()
   const [jobSource, setJobSource] = useState<JobSource>(inferred)
   const [url, setUrl] = useState(postingUrl || defaultPostingUrl(jobId, inferred))
@@ -100,6 +107,7 @@ export function ApplyModal({
           email: detail.contact?.email?.trim() || FALLBACK_CONTACT.email,
           phone: detail.contact?.phone?.trim() || FALLBACK_CONTACT.phone,
           location: detail.contact?.location?.trim() || prefs.location || FALLBACK_CONTACT.location,
+          linkedin_url: detail.contact?.linkedinUrl?.trim() || FALLBACK_CONTACT.linkedin_url,
         })
       })
       .catch(() => setContact({ ...FALLBACK_CONTACT, location: prefs.location || FALLBACK_CONTACT.location }))
@@ -179,6 +187,53 @@ export function ApplyModal({
     setSaving(true)
     setError(null)
     try {
+      if (jobSource === 'linkedin' && !fallback && !USE_MOCK) {
+        const result = await liveLinkedInApi.easyApply({
+          job: {
+            id: jobId,
+            title: jobTitle,
+            company,
+            postingUrl: posting,
+            applyUrl: posting,
+            applyMethod: applyMethod || 'easy_apply',
+            externalApplyUrl: externalApplyUrl || '',
+          },
+          profile: {
+            full_name: contact.full_name,
+            email: contact.email,
+            phone: contact.phone,
+            location: contact.location,
+            linkedin_url: contact.linkedin_url || FALLBACK_CONTACT.linkedin_url,
+            cover_letter_mode: submitCoverMode,
+          },
+          attachments: [
+            {
+              kind: 'resume',
+              name: `${activeResumeId || resumeId || 'resume'}.pdf`,
+              contentType: 'application/pdf',
+              data: '%PDF-1.4 cv',
+            },
+            ...(submitCoverMode !== 'none' && coverText.trim()
+              ? [
+                  {
+                    kind: 'coverLetter',
+                    name: 'cover.txt',
+                    contentType: 'text/plain',
+                    data: coverText,
+                  },
+                ]
+              : []),
+          ],
+          accountId: loadLinkedInAccountId(),
+          live: true,
+        })
+        if (result.status !== 'submitted') {
+          setError(result.userPrompt || result.reason || result.code || 'LinkedIn Easy Apply did not submit.')
+          return
+        }
+        onSubmitted(result.receipt?.receiptId || result.receipt?.confirmation || 'linkedin-apply', result.status)
+        return
+      }
       const created = await autoApplyApi.create({
         job_source: fallback ? 'manual' : jobSource,
         job_posting_id: jobId,
@@ -252,6 +307,7 @@ export function ApplyModal({
           <select ref={firstRef} value={jobSource} onChange={(event) => setJobSource(event.target.value as JobSource)}>
             <option value="greenhouse">Greenhouse</option>
             <option value="lever">Lever</option>
+            <option value="linkedin">LinkedIn Easy Apply</option>
             <option value="manual">Manual package</option>
           </select>
         </label>

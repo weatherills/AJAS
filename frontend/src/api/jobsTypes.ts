@@ -1,4 +1,4 @@
-export type JobSourceName = 'greenhouse' | 'lever'
+export type JobSourceName = 'greenhouse' | 'lever' | 'linkedin'
 
 export type SourceSyncStatus = 'ok' | 'syncing' | 'rate_limited' | 'error' | 'unconfigured'
 
@@ -27,6 +27,8 @@ export type JobCard = {
   seniorityLevel?: number
   salaryMin?: number | null
   salaryMax?: number | null
+  applyMethod?: string
+  externalApplyUrl?: string
 }
 
 export type JobDetail = JobCard & {

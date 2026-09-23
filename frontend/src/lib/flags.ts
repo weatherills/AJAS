@@ -5,7 +5,7 @@ export const FLAG_DEFAULTS: Record<string, boolean> = {
   lever: true,
   indeed_adapter: true,
   linkedin_adapter: true,
-  linkedin_easy_apply: false,
+  linkedin_easy_apply: true,
   greenhouse_harvest: false,
   gmail_adapter: false,
   google_drive: false,

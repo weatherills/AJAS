@@ -4,10 +4,10 @@ Status: Gap pass complete
 Feature: Job Source Integration (`feature-job-source-integration`)
 Type: Backend
 Flag: `linkedin_adapter` (default on)
-Live scrape: **not implemented**. Fixture JSON only. `SOURCE_TYPES` stays `{greenhouse, lever}`.
+Live search: **opt-in**. Guest HTTPS `jobs-guest` when `LINKEDIN_LIVE=true` (or an injected HTTP client in tests). Logged-out HTML walls are not a captcha solver. `SOURCE_TYPES` stays `{greenhouse, lever}`.
 
 ## Overview
-Ingest LinkedIn job listings from operator-supplied fixture pages, normalize them onto the internal posting schema, paginate with cursors, dedupe, throttle, and emit PII-safe telemetry. Private and expired posts are skipped.
+Ingest LinkedIn job listings from operator-supplied fixture pages **or** an allowlisted guest search (`POST /api/v1/integrations/linkedin/search` with `{ "live": true }`). Normalize onto the internal posting schema, paginate with cursors, dedupe, throttle, and emit PII-safe telemetry. Private and expired posts are skipped. Captcha/checkpoint responses return `needs_manual` with `bypass=false`.
 
 ## Field mapping (source of truth)
 Executable table: `app.integrations.linkedin_spec.FIELD_MAP`.
@@ -77,12 +77,14 @@ Redact email, phone, tokens, cookies, resume bytes. See `linkedin_audit.sanitize
 - Fetch success ≥ 98%
 - Dedupe catch rate ≥ 5% when duplicates are present
 - Median runtime ≤ 8000ms
-- QA: tested ingest adapters default on, Easy Apply stays off, SOURCE_TYPES unchanged, captcha never bypassed, receipts on attempts, private/expired skipped, audit redacted.
+- QA: tested ingest adapters default on, Easy Apply tested on, SOURCE_TYPES unchanged, captcha never bypassed, receipts on attempts, private/expired skipped, audit redacted.
 
 ## HTTP
-- `POST /api/v1/integrations/ingest/linkedin` — fixture ingest (JWT)
+- `POST /api/v1/integrations/ingest/linkedin` — fixture ingest, or live guest search when `live=true` and the payload is empty (JWT)
+- `GET /api/v1/integrations/linkedin/search` — search-input contract (JWT)
+- `POST /api/v1/integrations/linkedin/search` — live guest search `{ live, keywords, locations, accountId }` (JWT)
 - `GET /api/v1/integrations/linkedin/spec` — executable contract bundle (JWT)
 - `GET/POST /api/v1/integrations/linkedin/session` — sealed session (JWT)
 
 ## Out of scope
-Live LinkedIn HTML scraping, adding `linkedin` to `SOURCE_TYPES`, Graph/Settings OAuth changes.
+Solving captchas, logged-in HTML scrape as a captcha bypass, adding `linkedin` to `SOURCE_TYPES`, Graph/Settings OAuth changes. Live sockets stay behind `LINKEDIN_LIVE`.

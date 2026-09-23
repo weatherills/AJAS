@@ -100,13 +100,37 @@ class IntegrationService:
             "gmailConfigured": bool((settings.google_client_id or "").strip() and (settings.google_client_secret or "").strip()),
             "imapConfigured": bool((settings.imap_host or "").strip() and (settings.imap_username or "").strip() and (settings.imap_password or "").strip()),
             "harvestConfigured": bool((settings.greenhouse_harvest_api_key or "").strip()),
+            "linkedinLive": bool(getattr(settings, "linkedin_live", False)),
+            "linkedinAccounts": SESSION_STORE.list_accounts(),
         }
 
-    def ingest(self, source: str, payload: Any, *, search: dict[str, Any] | None = None, listing_url: str | None = None, html: str | None = None) -> dict[str, Any]:
+    def ingest(self, source: str, payload: Any, *, search: dict[str, Any] | None = None, listing_url: str | None = None, html: str | None = None, live: bool = False, account_id: str | None = None) -> dict[str, Any]:
         fn = INGESTERS.get(source)
         if fn is None:
             return {"jobs": [], "metrics": {"source": source, "enabled": False}, "reason": "unknown_source"}
-        return fn(payload, listing_url=listing_url, search=search, seen=self.seen, store=self.jobs, html=html)
+        extra: dict[str, Any] = {}
+        if source == "linkedin":
+            extra["live"] = live
+            extra["account_id"] = account_id
+        return fn(payload, listing_url=listing_url, search=search, seen=self.seen, store=self.jobs, html=html, **extra)
+
+    def linkedin_search(self, body: dict[str, Any] | None = None, *, params: dict[str, str] | None = None) -> dict[str, Any]:
+        payload_in = body or {}
+        search = payload_in.get("search") if isinstance(payload_in.get("search"), dict) else payload_in
+        live = bool(payload_in.get("live"))
+        account_id = str(payload_in.get("accountId") or payload_in.get("account_id") or "") or None
+        jobs_payload = payload_in.get("payload") if "payload" in payload_in else payload_in.get("jobs")
+        if jobs_payload is not None and not isinstance(jobs_payload, dict):
+            jobs_payload = {"jobs": jobs_payload} if isinstance(jobs_payload, list) else None
+        if live or not jobs_payload:
+            return self.ingest(
+                "linkedin",
+                jobs_payload if isinstance(jobs_payload, dict) else {},
+                search=search if isinstance(search, dict) else dict(params or {}),
+                live=live,
+                account_id=account_id,
+            )
+        return self.ingest("linkedin", jobs_payload if isinstance(jobs_payload, dict) else payload_in, search=search if isinstance(search, dict) else None)
 
     def board_spec(self, source: str) -> dict[str, Any]:
         if source == "indeed":
@@ -159,6 +183,7 @@ class IntegrationService:
             statuses=body.get("statuses"),
             approved_answers=body.get("approvedAnswers"),
             account_id=body.get("accountId") or body.get("account_id"),
+            live=bool(body.get("live")),
         )
 
     def harvest(self, *, email: str | None = None, page: int = 1, pages: list[dict[str, Any]] | None = None) -> dict[str, Any]:
@@ -291,3 +316,6 @@ def reset_service() -> None:
     from app.integrations.linkedin_audit import reset as reset_audit
 
     reset_audit()
+    from app.integrations.linkedin_client import clear_linkedin_http
+
+    clear_linkedin_http()

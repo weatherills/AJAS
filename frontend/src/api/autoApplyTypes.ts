@@ -1,4 +1,4 @@
-export type JobSource = 'greenhouse' | 'lever' | 'manual'
+export type JobSource = 'greenhouse' | 'lever' | 'linkedin' | 'manual'
 export type CoverLetterMode = 'none' | 'upload' | 'generate'
 export type ApplyState =
   | 'created'

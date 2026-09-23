@@ -6,10 +6,14 @@ Operating notes for ingestion, matching, apply, and email workers.
 
 - **Greenhouse / Lever** — production adapters. Public board HTTP, allowlisted
   hosts, per-tenant rate limits, and a process-wide cap (`120/min`, daily 10k).
-- **Indeed / LinkedIn** — optional fixture adapters (`FLAG_INDEED_ADAPTER` /
-  `FLAG_LINKEDIN_ADAPTER`). Live HTML scraping is out of the Job Source PRD and
-  is not implemented. `FLAG_SITE_POLICY_CONSENT` plus robots.txt must pass
-  before any HTTP. When the flags are on, `POST /api/v1/integrations/ingest/{indeed|linkedin}`
+- **Indeed / LinkedIn** — extra-board adapters (`FLAG_INDEED_ADAPTER` /
+  `FLAG_LINKEDIN_ADAPTER`, default on). Indeed stays fixture ingest.
+  LinkedIn guest search and voyager Easy Apply are opt-in live sockets
+  (`LINKEDIN_LIVE`, same pattern as `IMAP_LIVE`). Captcha/checkpoint never
+  bypasses. `SOURCE_TYPES` stays `{greenhouse, lever}`.
+  `FLAG_SITE_POLICY_CONSENT` plus robots.txt must pass before any HTTP.
+  When the flags are on, `POST /api/v1/integrations/ingest/{indeed|linkedin}`
+  (LinkedIn also `POST /linkedin/search` and `POST /linkedin/easy-apply`)
   normalizes, dedupes, detects Easy Apply vs external, and records ingest
   metrics. Refresh: timer `integrations_refresh` (no-op while flags are off).
 - **Greenhouse Harvest** — optional application-status reader

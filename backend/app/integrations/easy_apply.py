@@ -154,6 +154,7 @@ def submit(
     rate_cap: int | None = None,
     approved_answers: dict[str, str] | None = None,
     account_id: str | None = None,
+    live: bool = False,
 ) -> dict[str, Any]:
     """Submit an Easy Apply package. Never solves CAPTCHA; receipts always logged."""
     cap = int(rate_cap if rate_cap is not None else RATE_PLAN["easy_apply"]["capPerWindow"])
@@ -295,12 +296,50 @@ def submit(
     if retry["attempts"] and retry["attempts"][-1].get("class") == "ok":
         status = "submitted"
 
+    if live and status == "submitted":
+        from app.integrations.linkedin_client import deliver_application
+
+        delivery = deliver_application(
+            job,
+            fields,
+            files_in,
+            answers,
+            account_id=account_id,
+            live=True,
+        )
+        if delivery.get("bypass") is True:
+            delivery = {**delivery, "bypass": False, "status": "needs_manual", "reason": "captcha"}
+        if delivery.get("status") != "submitted":
+            status = str(delivery.get("status") or "failed")
+            receipt = _store_receipt(job, fields, files, answers, status=status, reason=str(delivery.get("reason") or status))
+            _audit(status if status in {"needs_manual", "failed", "rate_limited"} else "failed", jobId=job.get("id"), receiptId=receipt["receiptId"], bypass=False)
+            return {
+                "status": status,
+                "reason": delivery.get("reason"),
+                "code": delivery.get("code"),
+                "userPrompt": delivery.get("userPrompt"),
+                "hitl": delivery.get("hitl"),
+                "abort": delivery.get("abort"),
+                "bypass": False,
+                "liveFetch": delivery.get("liveFetch"),
+                "receipt": receipt,
+                "retry": retry,
+                "throttle": gate,
+            }
+        if delivery.get("confirmation"):
+            # filled below via receipt
+            confirmation_override = str(delivery["confirmation"])
+        else:
+            confirmation_override = None
+    else:
+        confirmation_override = None
+
     if status == "submitted":
         bump("submitted")
     else:
         bump("failed")
 
-    receipt = _store_receipt(job, fields, files, answers, status=status, reason=final["class"])
+    receipt = _store_receipt(job, fields, files, answers, status=status, reason=final["class"], confirmation=confirmation_override)
     _audit("submitted" if status == "submitted" else status, jobId=job.get("id"), receiptId=receipt["receiptId"])
     return {
         "status": status,
@@ -320,10 +359,10 @@ def _store_receipt(
     *,
     status: str,
     reason: str,
+    confirmation: str | None = None,
 ) -> dict[str, Any]:
-    confirmation = None
     if status == "submitted":
-        confirmation = f"EA-{uuid4().hex[:10].upper()}"
+        confirmation = confirmation or f"EA-{uuid4().hex[:10].upper()}"
     row = {
         "receiptId": str(uuid4()),
         "jobId": job.get("id"),

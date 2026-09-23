@@ -79,13 +79,55 @@ function seedJobs(): RawJob[] {
       sources: [
         {
           source: 'lever',
-          sourceUrl: 'https://jobs.lever.co/acme/staff-engineer',
+          sourceUrl: 'https://jobs.lever.co/acme/job-lever-acme-staff',
           postedAt: hoursAgo(0.5),
           domain: 'jobs.lever.co',
         },
       ],
     })
   }
+  jobs.push({
+    id: 'job-linkedin-initech',
+    canonicalKey: canonicalKey('Staff Platform Engineer', 'Remote, United States', 'Initech'),
+    title: 'Staff Platform Engineer',
+    company: 'Initech',
+    location: 'Remote, United States',
+    employmentType: 'Full-time',
+    applyUrl: 'https://www.linkedin.com/jobs/view/4123456789',
+    updatedAt: hoursAgo(3),
+    createdAt: hoursAgo(30),
+    primarySource: 'linkedin',
+    sources: [
+      {
+        source: 'linkedin',
+        sourceUrl: 'https://www.linkedin.com/jobs/view/4123456789',
+        postedAt: hoursAgo(3),
+        domain: 'linkedin.com',
+      },
+    ],
+    description: 'LinkedIn Easy Apply posting for a staff platform engineer at Initech.',
+  })
+  jobs.push({
+    id: 'job-linkedin-globex',
+    canonicalKey: canonicalKey('Backend Engineer', 'Austin, TX', 'Globex'),
+    title: 'Backend Engineer',
+    company: 'Globex',
+    location: 'Austin, TX',
+    employmentType: 'Full-time',
+    applyUrl: 'https://www.linkedin.com/jobs/view/4987654321',
+    updatedAt: hoursAgo(8),
+    createdAt: hoursAgo(40),
+    primarySource: 'linkedin',
+    sources: [
+      {
+        source: 'linkedin',
+        sourceUrl: 'https://www.linkedin.com/jobs/view/4987654321',
+        postedAt: hoursAgo(8),
+        domain: 'linkedin.com',
+      },
+    ],
+    description: 'LinkedIn listing for a backend engineer at Globex.',
+  })
   return jobs
 }
 
@@ -112,6 +154,17 @@ let statuses: SourceStatus[] = [
     configured: true,
     tenantCount: 1,
     boards: [{ tenantKey: 'acme', enabled: true, status: 'ok', errorMessage: null }],
+  },
+  {
+    source: 'linkedin',
+    status: 'ok',
+    lastSyncAt: hoursAgo(1),
+    backoffUntil: null,
+    errorMessage: null,
+    progress: 'guest search',
+    configured: true,
+    tenantCount: 0,
+    boards: [],
   },
 ]
 let extraAdded = false
@@ -142,6 +195,17 @@ export function resetMockJobs() {
       tenantCount: 1,
       boards: [{ tenantKey: 'acme', enabled: true, status: 'ok', errorMessage: null }],
     },
+    {
+      source: 'linkedin',
+      status: 'ok',
+      lastSyncAt: hoursAgo(1),
+      backoffUntil: null,
+      errorMessage: null,
+      progress: 'guest search',
+      configured: true,
+      tenantCount: 0,
+      boards: [],
+    },
   ]
 }
 
@@ -153,7 +217,7 @@ export function simulateUnconfigured(source: JobSourceName) {
           status: 'unconfigured',
           lastSyncAt: null,
           backoffUntil: null,
-          errorMessage: `${source === 'greenhouse' ? 'Greenhouse' : 'Lever'} is not configured. Add a board token before turning this source on, or Job Feed stays empty.`,
+          errorMessage: `${source === 'linkedin' ? 'LinkedIn' : source === 'greenhouse' ? 'Greenhouse' : 'Lever'} is not configured. ${source === 'linkedin' ? 'Connect a session in Settings before searching or applying.' : 'Add a board token before turning this source on, or Job Feed stays empty.'}`,
           progress: null,
           configured: false,
           tenantCount: 0,
@@ -180,7 +244,7 @@ export function simulateSourceError(source: JobSourceName, message: string) {
 
 function mockListingError(source: JobSourceName, key: string): string | null {
   if (!/no-such|not-found|missing|404/i.test(key)) return null
-  const name = source === 'greenhouse' ? 'Greenhouse' : 'Lever'
+  const name = source === 'linkedin' ? 'LinkedIn' : source === 'greenhouse' ? 'Greenhouse' : 'Lever'
   return `${name} board "${key}" was not found. Check the board token or URL.`
 }
 
@@ -207,7 +271,7 @@ function syncSourceFromBoards(row: SourceStatus): SourceStatus {
       status: 'unconfigured',
       lastSyncAt: null,
       backoffUntil: null,
-      errorMessage: `${row.source === 'greenhouse' ? 'Greenhouse' : 'Lever'} is not configured. Add a board token before turning this source on, or Job Feed stays empty.`,
+      errorMessage: `${row.source === 'linkedin' ? 'LinkedIn' : row.source === 'greenhouse' ? 'Greenhouse' : 'Lever'} is not configured. ${row.source === 'linkedin' ? 'Connect a session in Settings before searching or applying.' : 'Add a board token before turning this source on, or Job Feed stays empty.'}`,
       progress: null,
       tenantCount: 0,
     }
@@ -280,7 +344,7 @@ export const mockJobsApi: JobsApi = {
   },
   async refresh(source) {
     statuses = currentStatuses()
-    const targets: JobSourceName[] = source === 'all' ? ['greenhouse', 'lever'] : [source]
+    const targets: JobSourceName[] = source === 'all' ? ['greenhouse', 'lever', 'linkedin'] : [source]
     for (const name of targets) {
       const row = statuses.find((item) => item.source === name)
       if (!row) continue
@@ -379,7 +443,7 @@ export const mockJobsApi: JobsApi = {
         row.progress = null
       }
     }
-    markMockSourceConfigured(source, true)
+    if (source === 'greenhouse' || source === 'lever') markMockSourceConfigured(source, true)
     const sources = structuredClone(statuses)
     const result: AddTenantResult = {
       id: `tenant-${source}-${key}`,
@@ -402,7 +466,7 @@ export const mockJobsApi: JobsApi = {
     }
     row.boards = boards
     Object.assign(row, syncSourceFromBoards(row))
-    if (boards.length === 0) {
+    if (boards.length === 0 && (source === 'greenhouse' || source === 'lever')) {
       markMockSourceConfigured(source, false)
     }
     const sources = structuredClone(statuses)

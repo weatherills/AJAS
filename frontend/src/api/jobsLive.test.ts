@@ -73,6 +73,16 @@ describe('live jobs client', () => {
         limit: 25,
       }),
     ).toBe('sources=greenhouse%2Clever&status=all&limit=25')
+    expect(
+      jobsListQueryString({
+        sources: ['greenhouse', 'lever', 'linkedin'],
+        q: '',
+        location: '',
+        status: 'all',
+        cursor: null,
+        limit: 25,
+      }),
+    ).toBe('sources=greenhouse%2Clever&status=all&limit=25')
   })
 
   it('hits contracted job-source paths', async () => {
@@ -83,6 +93,24 @@ describe('live jobs client', () => {
       if (url.includes('/api/v1/jobs?')) return jsonBody({ items: [], nextCursor: null, total: 0 })
       if (url.includes('/api/v1/jobs/job-1')) return jsonBody({ id: 'job-1', title: 'Staff Engineer', sources: [] })
       if (url.includes('/api/v1/sources/status')) return jsonBody(emptyStatus)
+      if (url.includes('/api/v1/integrations/status')) {
+        return jsonBody({ flags: { linkedin_adapter: true, linkedin_easy_apply: true }, linkedinLive: false, linkedinAccounts: [] })
+      }
+      if (url.includes('/api/v1/integrations/linkedin/search') && method === 'POST') {
+        return jsonBody({
+          jobs: [
+            {
+              id: '4123456789',
+              title: 'Staff Platform Engineer',
+              company: 'Initech',
+              location: 'Remote',
+              postingUrl: 'https://www.linkedin.com/jobs/view/4123456789',
+              applyMethod: 'easy_apply',
+            },
+          ],
+          reason: 'ok',
+        })
+      }
       if (url.includes('/api/v1/sources/greenhouse/crawl') && method === 'POST') {
         return jsonBody({ run_id: 'run-1' }, 202)
       }
@@ -113,8 +141,8 @@ describe('live jobs client', () => {
       }),
     ).resolves.toEqual({ items: [], nextCursor: null, total: 0 })
     await expect(liveJobsApi.get('job-1')).resolves.toMatchObject({ id: 'job-1' })
-    await expect(liveJobsApi.sourceStatus()).resolves.toHaveLength(2)
-    await expect(liveJobsApi.refresh('all')).resolves.toHaveLength(2)
+    await expect(liveJobsApi.sourceStatus()).resolves.toHaveLength(3)
+    await expect(liveJobsApi.refresh('all')).resolves.toHaveLength(3)
     await expect(liveJobsApi.refreshTenant('greenhouse', 'acme')).resolves.toHaveLength(2)
     await expect(liveJobsApi.addTenant('greenhouse', { boardToken: 'stripe' })).resolves.toMatchObject({
       tenantKey: 'stripe',
@@ -128,5 +156,16 @@ describe('live jobs client', () => {
     expect(called.some((row) => row.includes('POST /api/v1/sources/greenhouse/crawl'))).toBe(true)
     expect(called.some((row) => row.includes('POST /api/v1/sources/lever/crawl'))).toBe(true)
     expect(called.some((row) => row.includes('POST /api/v1/sources/greenhouse/tenants/acme/crawl'))).toBe(true)
+    expect(called.some((row) => row.includes('POST /api/v1/integrations/linkedin/search'))).toBe(true)
+    await expect(
+      liveJobsApi.list({
+        sources: ['linkedin'],
+        q: 'platform',
+        location: '',
+        status: 'all',
+        cursor: null,
+        limit: 25,
+      }),
+    ).resolves.toMatchObject({ items: [{ primarySource: 'linkedin', company: 'Initech' }] })
   })
 })

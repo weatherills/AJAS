@@ -21,6 +21,7 @@ from app.integrations.linkedin_spec import (
     map_linkedin_job,
     walk_pages,
 )
+from app.integrations.linkedin_client import unwrap_linkedin_live
 from app.integrations.wellfound_spec import RATE_PLAN as WELLFOUND_RATE, map_wellfound_job, unwrap_wellfound_payload
 from app.integrations.workday_spec import RATE_PLAN as WORKDAY_RATE, map_workday_job, unwrap_workday_payload
 from app.integrations.ziprecruiter_spec import RATE_PLAN as ZIP_RATE, map_ziprecruiter_job, unwrap_ziprecruiter_payload
@@ -182,6 +183,7 @@ MAPPERS = {
 }
 
 UNWRAPPERS = {
+    "linkedin": unwrap_linkedin_live,
     "indeed": unwrap_indeed_payload,
     "glassdoor": unwrap_glassdoor_payload,
     "workday": unwrap_workday_payload,
@@ -484,7 +486,34 @@ def indeed_ingest(payload: Any, **kwargs: Any) -> dict[str, Any]:
 
 
 def linkedin_ingest(payload: Any, **kwargs: Any) -> dict[str, Any]:
-    return ingest_jobs("linkedin", payload, **kwargs)
+    live = bool(kwargs.pop("live", False))
+    account_id = kwargs.pop("account_id", None)
+    empty = payload is None or payload == {} or (isinstance(payload, dict) and not payload.get("jobs") and not payload.get("pages"))
+    if live and empty:
+        from app.integrations.linkedin_client import search_jobs
+        from app.integrations.search import parse_search
+
+        spec = kwargs.get("search")
+        fetched = search_jobs(spec if spec is not None else parse_search(spec), live=True, account_id=account_id)
+        if fetched.get("reason") != "ok":
+            return {
+                "jobs": [],
+                "metrics": {"source": "linkedin", "ingested": 0, "enabled": True, "liveFetch": fetched.get("liveFetch")},
+                "search": parse_search(spec).as_dict() if not hasattr(spec, "as_dict") else spec.as_dict(),
+                "reason": fetched.get("reason"),
+                "liveFetch": fetched.get("liveFetch"),
+                "bypass": False,
+                "userPrompt": fetched.get("userPrompt"),
+                "pagination": {"stop": fetched.get("reason"), "cursors": [], "windowSize": 25, "mode": "cursor"},
+            }
+        payload = {"jobs": fetched.get("jobs") or [], "nextCursor": fetched.get("nextCursor")}
+        result = ingest_jobs("linkedin", payload, **kwargs)
+        result["liveFetch"] = True
+        result["reason"] = result.get("reason") or "ok"
+        return result
+    result = ingest_jobs("linkedin", payload, **kwargs)
+    result.setdefault("liveFetch", False)
+    return result
 
 
 def glassdoor_ingest(payload: Any, **kwargs: Any) -> dict[str, Any]:
