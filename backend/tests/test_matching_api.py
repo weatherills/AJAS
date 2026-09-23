@@ -398,6 +398,49 @@ def test_rank_sorts_desc_and_forces_async_over_ten(svc):
     assert result_scores == sorted(result_scores, reverse=True)
 
 
+def test_rank_filter_below_threshold_drops_low_scores(svc):
+    resp = routes.rank_matches(
+        _req(
+            "POST",
+            "http://localhost/api/v1/matches/rank",
+            json_body={
+                "resumeText": RESUME,
+                "jobTexts": [HIGH_JOB, LOW_JOB],
+                "filterBelowThreshold": True,
+                "threshold": 70,
+            },
+        )
+    )
+    assert resp.status_code == 200
+    rows = _body(resp)["results"]
+    assert rows
+    assert all(item["score"] >= 70 for item in rows)
+    unfiltered = _body(
+        routes.rank_matches(
+            _req(
+                "POST",
+                "http://localhost/api/v1/matches/rank",
+                json_body={"resumeText": RESUME, "jobTexts": [HIGH_JOB, LOW_JOB], "threshold": 70},
+            )
+        )
+    )
+    assert len(rows) < len(unfiltered["results"])
+
+
+def test_compute_records_lemma_keyword_version(svc):
+    body = _body(
+        routes.compute_match(
+            _req(
+                "POST",
+                "http://localhost/api/v1/matches/compute",
+                json_body={"resumeText": RESUME, "jobText": HIGH_JOB, "threshold": 0},
+            )
+        )
+    )
+    assert body["versions"]["keywordWeights"] == "kw-lemma-v1"
+    assert "normalization" in body["versions"]
+
+
 def test_rank_zips_job_ids_with_aligned_texts(svc):
     resp = routes.rank_matches(
         _req(

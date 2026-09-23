@@ -350,6 +350,18 @@ class MatchingService:
         job_text = pair["job_text"]
         if len(resume_text) < 30 or len(job_text) < 30:
             self.low_confidence_events += 1
+            log.info(
+                "ajas.match.low_confidence %s",
+                json.dumps(
+                    {
+                        "user_id": user_id,
+                        "resume_chars": len(resume_text),
+                        "job_chars": len(job_text),
+                        "resume_hash": sha256_text(resume_text),
+                        "job_hash": sha256_text(job_text),
+                    }
+                ),
+            )
         model = self._model_for_user(user_id)
         overlay = self._learning_params(user_id)
         learned = overlay is not None and overlay.source == "personalized"
