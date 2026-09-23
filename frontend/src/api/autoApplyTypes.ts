@@ -9,6 +9,10 @@ export type ApplyState =
   | 'failed'
   | 'cancelled'
   | 'rate_limited'
+  | 'received'
+  | 'interview_requested'
+  | 'rejected_auto'
+  | 'duplicate'
 
 export type ApplySummary = {
   request_id: string

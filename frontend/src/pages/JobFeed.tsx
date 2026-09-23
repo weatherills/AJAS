@@ -17,6 +17,7 @@ import { LAST_READY_KEY } from '../lib/runLock'
 import { canSelectForRun, preselectReady, uiStatus } from '../lib/status'
 import { jobHref, useHashSearch } from '../lib/routes'
 import { bulkDismiss, dismissSnackbar } from '../lib/dismiss'
+import { partitionBulkJobs } from '../lib/autoApply'
 import { unifiedDiff } from '../lib/jdDiff'
 import { diffLineClass, shouldRefreshSearch } from '../lib/sprint13'
 import { expandedAttr } from '../lib/a11y'
@@ -95,6 +96,9 @@ export function JobFeedPage() {
   const [dismissedIds, setDismissedIds] = useState<string[]>([])
   const lastDismiss = useRef<{ remaining: string[]; dismissed: { id: string }[] } | null>(null)
   const [applyJob, setApplyJob] = useState<JobCard | null>(null)
+  const [bulkQueue, setBulkQueue] = useState<JobCard[]>([])
+  const [bulkIndex, setBulkIndex] = useState(0)
+  const bulkRef = useRef({ jobs: [] as JobCard[], index: 0 })
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [saveOverride, setSaveOverride] = useState<Record<string, boolean>>({})
   const [listMinHeight, setListMinHeight] = useState(0)
@@ -125,6 +129,35 @@ export function JobFeedPage() {
     const id = toastId.current++
     setToasts((prev) => [...prev, { id, text, tone, ...extra }])
     window.setTimeout(() => setToasts((prev) => prev.filter((item) => item.id !== id)), extra?.onAction ? 8000 : 5000)
+  }
+
+  const clearBulk = () => {
+    bulkRef.current = { jobs: [], index: 0 }
+    setBulkQueue([])
+    setBulkIndex(0)
+    setApplyJob(null)
+  }
+
+  const startBulk = (jobs: JobCard[]) => {
+    bulkRef.current = { jobs, index: 0 }
+    setBulkQueue(jobs)
+    setBulkIndex(0)
+    setApplyJob(jobs[0] || null)
+  }
+
+  const advanceBulk = () => {
+    const nextIndex = bulkRef.current.index + 1
+    bulkRef.current.index = nextIndex
+    const next = bulkRef.current.jobs[nextIndex] || null
+    setBulkIndex(nextIndex)
+    setApplyJob(next)
+    if (!next) {
+      const total = bulkRef.current.jobs.length
+      bulkRef.current = { jobs: [], index: 0 }
+      setBulkQueue([])
+      setBulkIndex(0)
+      if (total > 1) toast('Bulk apply finished')
+    }
   }
 
   const query = useMemo(
@@ -655,6 +688,7 @@ export function JobFeedPage() {
         const prev = visibleItems[Math.max(0, index - 1)]
         if (prev) selectJob(prev)
       } else if (action === 'apply' && current) {
+        clearBulk()
         setApplyJob(current)
       } else if (action === 'dismiss' && current) {
         setDismissedIds((prev) => (prev.includes(current.id) ? prev : [...prev, current.id]))
@@ -1126,9 +1160,22 @@ export function JobFeedPage() {
                   type="button"
                   className="secondary"
                   disabled={!selectedIds.length || !resumeId}
+                  title={!resumeId ? 'Upload a resume before Auto-Apply.' : 'Review and submit each selected job in sequence'}
                   onClick={() => {
-                    const next = visibleItems.find((job) => selectedIds.includes(job.id))
-                    if (next) setApplyJob(next)
+                    const { eligible, skipped } = partitionBulkJobs(visibleItems, selectedIds, { resumeId })
+                    if (skipped.length) {
+                      toast(
+                        `${skipped.length} job${skipped.length === 1 ? '' : 's'} skipped (${skipped[0].reason})`,
+                        'error',
+                      )
+                    }
+                    if (!eligible.length) {
+                      toast('No eligible jobs in this selection.', 'error')
+                      return
+                    }
+                    setSelectedIds(eligible.map((job) => job.id))
+                    startBulk(eligible)
+                    setLiveMessage(`Starting bulk apply for ${eligible.length} job${eligible.length === 1 ? '' : 's'}`)
                   }}
                 >
                   Apply selected ({selectedIds.length})
@@ -1224,7 +1271,10 @@ export function JobFeedPage() {
                               className="link-btn"
                               onClick={(event) => {
                                 event.stopPropagation()
-                                if (action.id === 'apply') setApplyJob(job)
+                                if (action.id === 'apply') {
+                                  clearBulk()
+                                  setApplyJob(job)
+                                }
                                 if (action.id === 'dismiss') {
                                   setDismissedIds((prev) => (prev.includes(job.id) ? prev : [...prev, job.id]))
                                 }
@@ -1415,7 +1465,10 @@ export function JobFeedPage() {
                   className="primary"
                   disabled={!resumeId}
                   title={!resumeId ? 'Upload a resume before Auto-Apply.' : 'Auto-fill and submit via Greenhouse or Lever when supported'}
-                  onClick={() => setApplyJob(selected)}
+                  onClick={() => {
+                    clearBulk()
+                    setApplyJob(selected)
+                  }}
                 >
                   Auto-Apply
                 </button>
@@ -1439,12 +1492,17 @@ export function JobFeedPage() {
           jobId={applyJob.id}
           resumeId={resumeId}
           postingUrl={applyJob.applyUrl}
-          onClose={() => setApplyJob(null)}
+          queueIndex={bulkQueue.length ? bulkIndex + 1 : 1}
+          queueTotal={Math.max(bulkQueue.length, 1)}
+          onClose={clearBulk}
+          onSkip={() => {
+            setSelectedIds((prev) => prev.filter((id) => id !== applyJob.id))
+            advanceBulk()
+          }}
           onSubmitted={(requestId, state) => {
             toast(`Apply ${state} (${requestId.slice(0, 8)})`)
             setSelectedIds((prev) => prev.filter((id) => id !== applyJob.id))
-            const remaining = visibleItems.find((job) => selectedIds.includes(job.id) && job.id !== applyJob.id)
-            setApplyJob(remaining || null)
+            advanceBulk()
           }}
         />
       )}

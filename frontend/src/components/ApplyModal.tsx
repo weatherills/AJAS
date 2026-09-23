@@ -5,6 +5,8 @@ import type { ResumeListItem } from '../api/resumeTypes'
 import {
   autoApplyDisabledReason,
   copyAnswersText,
+  coverUsageSummary,
+  coverUsageWarning,
   defaultPostingUrl,
   inferJobSource,
   previewCoverLetter,
@@ -29,11 +31,25 @@ type Props = {
   jobId: string
   resumeId: string | null
   postingUrl: string | null
+  queueIndex?: number
+  queueTotal?: number
   onClose: () => void
   onSubmitted: (requestId: string, state: string) => void
+  onSkip?: () => void
 }
 
-export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onClose, onSubmitted }: Props) {
+export function ApplyModal({
+  jobTitle,
+  company,
+  jobId,
+  resumeId,
+  postingUrl,
+  queueIndex = 1,
+  queueTotal = 1,
+  onClose,
+  onSubmitted,
+  onSkip,
+}: Props) {
   const inferred = inferJobSource(jobId, postingUrl)
   const prefs = loadApplyPrefs()
   const [jobSource, setJobSource] = useState<JobSource>(inferred)
@@ -44,6 +60,7 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
   const [coverText, setCoverText] = useState('')
   const [coverGen, setCoverGen] = useState<CoverGen>('idle')
   const [coverFileError, setCoverFileError] = useState<string | null>(null)
+  const [coverWarning, setCoverWarning] = useState<string | null>(null)
   const [consent, setConsent] = useState(false)
   const [fallback, setFallback] = useState(inferred === 'manual')
   const [saving, setSaving] = useState(false)
@@ -101,12 +118,15 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
   const mapped = vendorFieldPreview(fallback ? 'manual' : jobSource, contact)
   const posting = fallback && !url.toLowerCase().includes('captcha') ? `${url}${url.includes('?') ? '&' : '?'}captcha=1` : url
   const blocked = autoApplyDisabledReason({ resumeId: activeResumeId || resumeId, jobId })
-  const generateBlocked = coverMode === 'generate' && coverGen !== 'ready'
+  const generateBlocked = coverMode === 'generate' && coverGen === 'generating'
   const uploadBlocked = coverMode === 'upload' && !coverText.trim()
+  const bulk = queueTotal > 1
+  const usageWarning = coverText ? coverUsageWarning(coverText) : null
 
   const generateLetter = async () => {
     setCoverGen('generating')
     setCoverFileError(null)
+    setCoverWarning(null)
     try {
       const preview = await autoApplyApi.previewCoverLetter({
         job_source: jobSource,
@@ -117,18 +137,21 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
         match_explanation: `${jobTitle} at ${company}`,
       })
       setCoverText(preview.text)
+      setCoverWarning(coverUsageWarning(preview.text))
       setCoverGen('ready')
     } catch {
-      setCoverText(
-        previewCoverLetter({
-          name: contact.full_name,
-          jobTitle,
-          company,
-          source: jobSource,
-          postingUrl: posting,
-        }),
+      const fallback = previewCoverLetter({
+        name: contact.full_name,
+        jobTitle,
+        company,
+        source: jobSource,
+        postingUrl: posting,
+      })
+      setCoverText(fallback)
+      setCoverWarning(
+        'Generation hit a limit or failed. This local draft is under the token budget. You can edit it, regenerate, or submit without a letter.',
       )
-      setCoverGen('ready')
+      setCoverGen('error')
     }
   }
 
@@ -145,9 +168,13 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
       setError('Upload a cover letter or switch to generate/none.')
       return
     }
-    if (coverMode === 'generate' && coverGen !== 'ready') {
-      setError('Generate a cover letter, or switch the cover letter mode to none.')
-      return
+    const submitCoverMode = coverMode === 'generate' && (coverGen === 'idle' || coverGen === 'error') && !coverText.trim()
+      ? 'none'
+      : coverMode === 'generate' && coverText.trim()
+        ? 'upload'
+        : coverMode
+    if (coverMode === 'generate' && coverGen === 'idle' && !coverText.trim()) {
+      setCoverWarning('No letter generated — submitting without a letter. You can still generate one first.')
     }
     setSaving(true)
     setError(null)
@@ -157,8 +184,8 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
         job_posting_id: jobId,
         posting_url: posting,
         resume_id: activeResumeId || resumeId || 'resume-active',
-        cover_letter_mode: coverMode === 'generate' && coverText.trim() ? 'upload' : coverMode,
-        cover_letter_text: coverMode === 'none' ? undefined : coverText,
+        cover_letter_mode: submitCoverMode,
+        cover_letter_text: submitCoverMode === 'none' ? undefined : coverText,
         consent_approved: true,
         answers: {
           full_name: contact.full_name,
@@ -185,6 +212,11 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id="apply-modal-title">Auto-Apply</h2>
+        {bulk && (
+          <p className="banner apply-bulk-progress" aria-live="polite">
+            Applying in sequence — job {queueIndex} of {queueTotal}: {jobTitle} at {company}
+          </p>
+        )}
         <p className="muted">
           {jobTitle} at {company}
         </p>
@@ -235,7 +267,10 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
               const next = event.target.value as CoverLetterMode
               setCoverMode(next)
               saveApplyPrefs({ ...prefs, defaultCoverMode: next })
-              if (next !== 'generate') setCoverGen('idle')
+              if (next !== 'generate') {
+                setCoverGen('idle')
+                setCoverWarning(null)
+              }
             }}
           >
             <option value="none">None</option>
@@ -246,17 +281,28 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
         {coverMode === 'generate' && (
           <section className="apply-cover-gen" aria-live="polite">
             {coverGen === 'generating' && <p className="muted">Generating cover letter…</p>}
-            {coverGen === 'error' && <p className="inline-error">Could not generate. You can still submit without a letter.</p>}
+            {coverGen === 'error' && (
+              <p className="warn-text">Could not generate from the model. A local draft is ready, or submit without a letter.</p>
+            )}
             {(coverGen === 'ready' || coverText) && coverGen !== 'generating' && (
               <label>
                 Cover letter (editable)
                 <textarea
                   rows={8}
                   value={coverText}
-                  onChange={(event) => setCoverText(event.target.value)}
+                  onChange={(event) => {
+                    setCoverText(event.target.value)
+                    setCoverWarning(coverUsageWarning(event.target.value))
+                  }}
                   aria-label="Generated cover letter"
                 />
               </label>
+            )}
+            {coverText && coverGen !== 'generating' && <p className="muted">{coverUsageSummary(coverText)}</p>}
+            {(usageWarning || coverWarning) && (
+              <p className="warn-text" role="status">
+                {usageWarning || coverWarning}
+              </p>
             )}
             <button type="button" className="secondary" disabled={coverGen === 'generating'} onClick={() => void generateLetter()}>
               {coverGen === 'ready' ? 'Regenerate' : coverGen === 'generating' ? 'Generating…' : 'Generate cover letter'}
@@ -307,13 +353,19 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
                 onChange={(event) => {
                   setCoverFileError(null)
                   setCoverText(event.target.value)
+                  setCoverWarning(coverUsageWarning(event.target.value))
                 }}
               />
             </label>
           </>
         )}
         {coverFileError && <p className="inline-error">{coverFileError}</p>}
-        {coverMode === 'upload' && coverText && <p className="muted">Uploaded {coverText.trim().split(/\s+/).length} words.</p>}
+        {coverMode === 'upload' && coverText && <p className="muted">{coverUsageSummary(coverText)}</p>}
+        {coverMode === 'upload' && usageWarning && (
+          <p className="warn-text" role="status">
+            {usageWarning}
+          </p>
+        )}
         <label className="apply-check">
           <input type="checkbox" checked={fallback} onChange={(event) => setFallback(event.target.checked)} />
           This posting has a CAPTCHA or SSO wall
@@ -350,8 +402,13 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
         {error && <p className="inline-error">{error}</p>}
         <div className="modal-actions">
           <button type="button" className="secondary" onClick={onClose} disabled={saving}>
-            Cancel
+            {bulk ? 'Stop bulk apply' : 'Cancel'}
           </button>
+          {bulk && onSkip && (
+            <button type="button" className="secondary" onClick={onSkip} disabled={saving}>
+              Skip this job
+            </button>
+          )}
           <button
             type="button"
             className="primary"
@@ -360,6 +417,7 @@ export function ApplyModal({ jobTitle, company, jobId, resumeId, postingUrl, onC
             disabled={saving || !consent || Boolean(blocked) || generateBlocked || uploadBlocked}
           >
             {saving ? 'Submitting…' : programmatic ? 'Submit application' : 'Build package'}
+            {bulk && !saving ? ` (${queueIndex}/${queueTotal})` : ''}
           </button>
         </div>
       </div>

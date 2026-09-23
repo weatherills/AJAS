@@ -18,7 +18,7 @@ export const FLAG_DEFAULTS: Record<string, boolean> = {
   greenhouse_career_adapter: false,
   lever_career_adapter: false,
   imap_transport: false,
-  bulk_auto_apply: false,
+  bulk_auto_apply: true,
   ltr_logging: true,
   respect_robots: true,
   site_policy_consent: false,

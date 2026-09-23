@@ -1,6 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { mockAutoApplyApi, resetAutoApplyMock } from '../api/autoApplyMock'
-import { autoApplyDisabledReason, appliedJobIds, canCancel, canMarkManualSubmitted, copyAnswersText, defaultPostingUrl, inferJobSource, previewCoverLetter, stateLabel, vendorFieldPreview } from './autoApply'
+import { mockAutoApplyApi, resetAutoApplyMock, seedMockApplyStatuses } from '../api/autoApplyMock'
+import {
+  autoApplyDisabledReason,
+  appliedJobIds,
+  bulkApplyProgress,
+  canCancel,
+  canMarkManualSubmitted,
+  copyAnswersText,
+  COVER_TOKEN_BUDGET,
+  coverUsageSummary,
+  coverUsageWarning,
+  defaultPostingUrl,
+  effectiveApplyState,
+  estimateCoverTokens,
+  inferJobSource,
+  laterOutcomeFromJob,
+  matchesStatusFilter,
+  nextBulkJob,
+  partitionBulkJobs,
+  previewCoverLetter,
+  stateLabel,
+  vendorFieldPreview,
+} from './autoApply'
 
 describe('auto-apply helpers', () => {
   it('infers vendor from job id or posting URL', () => {
@@ -14,6 +35,10 @@ describe('auto-apply helpers', () => {
     expect(stateLabel('rate_limited')).toBe('Rate limited')
     expect(stateLabel('submitted')).toBe('Submitted')
     expect(stateLabel('packaged')).toBe('Needs Action')
+    expect(stateLabel('received')).toBe('Received')
+    expect(stateLabel('interview_requested')).toBe('Interview Requested')
+    expect(stateLabel('rejected_auto')).toBe('Rejected (auto)')
+    expect(stateLabel('duplicate')).toBe('Duplicate Detected')
     expect(canCancel('queued')).toBe(true)
     expect(canCancel('submitted')).toBe(false)
     expect(canMarkManualSubmitted('packaged')).toBe(true)
@@ -44,6 +69,47 @@ describe('auto-apply helpers', () => {
   })
 })
 
+describe('later ATS statuses and bulk apply', () => {
+  it('maps webhook history onto Received / Interview Requested / Rejected (auto)', () => {
+    expect(effectiveApplyState('submitted', [{ event: 'vendor_ack', payload: { event_type: 'interview_requested' } }])).toBe(
+      'interview_requested',
+    )
+    expect(effectiveApplyState('submitted', [{ event: 'received' }])).toBe('received')
+    expect(effectiveApplyState('submitted', [{ event: 'vendor_rejected' }])).toBe('rejected_auto')
+    expect(effectiveApplyState('duplicate')).toBe('duplicate')
+    expect(matchesStatusFilter('received', 'submitted')).toBe(true)
+    expect(matchesStatusFilter('interview_requested', 'submitted')).toBe(true)
+    expect(matchesStatusFilter('rejected_auto', 'failed')).toBe(true)
+    expect(matchesStatusFilter('duplicate', 'needs_action')).toBe(true)
+    expect(laterOutcomeFromJob('job-interview', null)).toBe('interview_requested')
+    expect(laterOutcomeFromJob('job-1', 'https://example.com/reject')).toBe('rejected_auto')
+  })
+
+  it('queues selected eligible jobs in list order and advances to the next', () => {
+    const jobs = [
+      { id: 'a', applyUrl: 'https://boards.greenhouse.io/a' },
+      { id: 'b', applyUrl: 'https://jobs.lever.co/b' },
+      { id: 'c', applyUrl: null },
+    ]
+    const { eligible, skipped } = partitionBulkJobs(jobs, ['c', 'a', 'b'], { resumeId: 'r1' })
+    expect(eligible.map((job) => job.id)).toEqual(['a', 'b', 'c'])
+    expect(skipped).toHaveLength(0)
+    expect(nextBulkJob(eligible, 'a')?.id).toBe('b')
+    expect(nextBulkJob(eligible, 'c')).toBeNull()
+    expect(bulkApplyProgress(eligible, 'b')).toEqual({ index: 2, total: 3, label: 'Job 2 of 3' })
+    expect(partitionBulkJobs(jobs, ['a'], { resumeId: null }).skipped[0].reason).toMatch(/resume/)
+  })
+
+  it('surfaces a non-blocking cover-letter token warning near the generation budget', () => {
+    const short = 'Dear team, I am a fit.\n'
+    expect(coverUsageWarning(short)).toBeNull()
+    expect(coverUsageSummary(short)).toMatch(new RegExp(`${COVER_TOKEN_BUDGET}`))
+    const long = Array.from({ length: COVER_TOKEN_BUDGET + 20 }, (_, index) => `token${index}`).join(' ')
+    expect(estimateCoverTokens(long)).toBeGreaterThan(COVER_TOKEN_BUDGET)
+    expect(coverUsageWarning(long)).toMatch(/generation budget/)
+  })
+})
+
 describe('mock auto-apply api', () => {
   it('submits greenhouse postings and packages captcha URLs', async () => {
     resetAutoApplyMock()
@@ -71,6 +137,30 @@ describe('mock auto-apply api', () => {
     const detail = await mockAutoApplyApi.get(submitted.request_id)
     expect(detail.created_at).toBeTruthy()
     expect(detail.updated_at).toBeTruthy()
+  })
+
+  it('records later ATS outcomes from job metadata', async () => {
+    resetAutoApplyMock()
+    const interview = await mockAutoApplyApi.create({
+      job_source: 'lever',
+      job_posting_id: 'job-interview',
+      posting_url: 'https://jobs.lever.co/demo/job-interview',
+      cover_letter_mode: 'none',
+      consent_approved: true,
+    })
+    expect(interview.state).toBe('interview_requested')
+    const rejected = await mockAutoApplyApi.create({
+      job_source: 'greenhouse',
+      job_posting_id: 'job-reject',
+      posting_url: 'https://boards.greenhouse.io/demo/jobs/reject',
+      cover_letter_mode: 'none',
+      consent_approved: true,
+    })
+    expect(rejected.state).toBe('rejected_auto')
+    seedMockApplyStatuses()
+    const listed = await mockAutoApplyApi.list()
+    const states = listed.items.map((row) => row.state)
+    expect(states).toEqual(expect.arrayContaining(['received', 'interview_requested', 'rejected_auto', 'duplicate']))
   })
 
   it('stores a generated cover letter on the request', async () => {
