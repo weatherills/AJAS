@@ -2,7 +2,7 @@ import { json, request } from './live'
 import type { AddTenantBody, AddTenantResult, JobDetail, JobListPage, JobListQuery, JobSourceName, JobsApi, SourceStatus } from './jobsTypes'
 import { feedSourcesQueryParam } from '../lib/jobs'
 
-function queryString(query: JobListQuery): string {
+export function jobsListQueryString(query: JobListQuery): string {
   const params = new URLSearchParams()
   params.set('sources', feedSourcesQueryParam(query.sources))
   if (query.q) params.set('q', query.q)
@@ -16,7 +16,7 @@ function queryString(query: JobListQuery): string {
 
 export const liveJobsApi: JobsApi = {
   async list(query) {
-    return json<JobListPage>(await request(`/api/v1/jobs?${queryString(query)}`))
+    return json<JobListPage>(await request(`/api/v1/jobs?${jobsListQueryString(query)}`))
   },
   async get(id) {
     return json<JobDetail>(await request(`/api/v1/jobs/${encodeURIComponent(id)}`))
