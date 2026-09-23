@@ -6,7 +6,8 @@ import math
 import re
 from typing import Iterable, Mapping
 
-KEYWORD_WEIGHTS_VERSION = "kw-fields-v1"
+KEYWORD_WEIGHTS_VERSION = "kw-lemma-v1"
+NORMALIZATION_METHOD = "lemma-stem-v1"
 FIELD_WEIGHTS: dict[str, float] = {
     "title": 2.0,
     "skills": 1.5,
@@ -127,13 +128,88 @@ def stem(token: str) -> str:
     return token
 
 
+# Irregular inflections stem() cannot recover (Backend PRD: stemming/lemmatization).
+IRREGULAR_LEMMAS: dict[str, str] = {
+    "better": "good",
+    "best": "good",
+    "worse": "bad",
+    "worst": "bad",
+    "ran": "run",
+    "running": "run",
+    "wrote": "write",
+    "written": "write",
+    "mice": "mouse",
+    "analyses": "analysis",
+    "children": "child",
+    "people": "person",
+    "went": "go",
+    "gone": "go",
+    "made": "make",
+    "built": "build",
+    "led": "lead",
+    "held": "hold",
+    "kept": "keep",
+    "left": "leave",
+    "lost": "lose",
+    "paid": "pay",
+    "said": "say",
+    "sold": "sell",
+    "taught": "teach",
+    "thought": "think",
+    "understood": "understand",
+    "won": "win",
+    "driven": "drive",
+    "drove": "drive",
+    "grew": "grow",
+    "grown": "grow",
+    "known": "know",
+    "knew": "know",
+    "taken": "take",
+    "took": "take",
+    "seen": "see",
+    "saw": "see",
+    "done": "do",
+    "did": "do",
+    "had": "have",
+    "has": "have",
+    "managers": "manage",
+    "manager": "manage",
+    "management": "manage",
+    "managed": "manage",
+    "managing": "manage",
+    "engineers": "engineer",
+    "engineering": "engineer",
+    "engineered": "engineer",
+}
+
+
+def lemma(token: str) -> str:
+    """Map a token to a lemma, then fall back to suffix stemming."""
+    raw = (token or "").lower().strip()
+    if not raw:
+        return raw
+    mapped = IRREGULAR_LEMMAS.get(raw)
+    if mapped:
+        return mapped
+    if len(raw) > 6 and raw.endswith("ment"):
+        base = raw[:-4]
+        return IRREGULAR_LEMMAS.get(base, base)
+    if len(raw) > 6 and raw.endswith("ation"):
+        base = raw[:-5]
+        if not base.endswith("e"):
+            base = base + "e"
+        return IRREGULAR_LEMMAS.get(base, base)
+    stemmed = stem(raw)
+    return IRREGULAR_LEMMAS.get(stemmed, stemmed)
+
+
 def tokenize(text: str) -> list[str]:
     terms: list[str] = []
     seen: set[str] = set()
     for raw in _TOKEN.findall((text or "").lower()):
         if raw in STOPWORDS or raw.isdigit():
             continue
-        token = stem(raw)
+        token = lemma(raw)
         if token in STOPWORDS or len(token) < 2 or token in seen:
             continue
         seen.add(token)
