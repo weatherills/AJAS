@@ -127,7 +127,7 @@ SECURITY_CHECKLIST: tuple[dict[str, Any], ...] = (
     },
     {
         "id": "access_control",
-        "rule": "HTTP routes require JWT; workday_adapter is off by default; SOURCE_TYPES stays greenhouse|lever.",
+        "rule": "HTTP routes require JWT; workday_adapter defaults on (tested); SOURCE_TYPES stays greenhouse|lever.",
     },
     {
         "id": "fail_closed",

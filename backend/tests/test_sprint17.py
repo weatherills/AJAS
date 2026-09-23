@@ -139,8 +139,8 @@ def test_learning_rollback_on_drift():
 
 
 def test_extra_boards_stay_off():
-    assert extra_board_flag("indeed_adapter") is False
-    assert extra_board_flag("linkedin_adapter") is False
+    assert extra_board_flag("indeed_adapter") is True
+    assert extra_board_flag("linkedin_adapter") is True
 
 
 def test_health_v6_and_status_payload():

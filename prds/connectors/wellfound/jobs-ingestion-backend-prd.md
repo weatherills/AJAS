@@ -3,7 +3,7 @@
 Status: Connector added
 Feature: Job Source Integration (`feature-job-source-integration`)
 Type: Backend
-Flag: `wellfound_adapter` (default off)
+Flag: `wellfound_adapter` (default on)
 Live scrape: **not implemented**. `SOURCE_TYPES` stays `{greenhouse, lever}`.
 
 ## API availability

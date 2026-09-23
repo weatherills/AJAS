@@ -16,11 +16,11 @@ def test_ziprecruiter_adapter_v1_pagination_backoff():
     reset()
     assert VERSION == "sprint14"
     assert _status_payload()["version"] == "sprint20"
-    assert feature_enabled("ziprecruiter_adapter") is False
+    assert feature_enabled("ziprecruiter_adapter") is True
     payload = json.loads((FIXTURES / "ziprecruiter.json").read_text())
     out = ziprecruiter_v1(payload)
     assert out["live"] is False
-    assert out["flag"] is False
+    assert out["flag"] is True
     assert len(out["jobs"]) >= 2
 
 # === S14-02 ===
@@ -853,7 +853,8 @@ def test_maintenance_remove_dead_flags_code_paths():
     from app.sprint14.ops import dead_flags
 
     flags = dead_flags()
-    assert "ziprecruiter_adapter" in flags
+    assert "gmail_adapter" in flags
+    assert "ziprecruiter_adapter" not in flags
 
 # === S14-92 ===
 
@@ -920,7 +921,7 @@ def test_feature_flags_remote_toggles_with_audit_v2():
 
     reset()
     row = flags_audit(actor="ada", name="ziprecruiter_adapter", enabled=False)
-    assert row["live"] is False
+    assert row["live"] is True
     assert row["audit"]
     assert VERSION == "sprint14"
     assert COMPLETED == 99

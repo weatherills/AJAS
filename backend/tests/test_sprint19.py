@@ -33,8 +33,8 @@ def test_live_fetch_greenhouse_lever_only():
     assert stubs["greenhouse"] == "Staff"
     sched = run("[Sprint 19][BE] Source Ingestion: Scheduler trigger")
     assert "indeed" in sched["skipped"]
-    assert extra_board_flag("indeed_adapter") is False
-    assert extra_board_flag("linkedin_adapter") is False
+    assert extra_board_flag("indeed_adapter") is True
+    assert extra_board_flag("linkedin_adapter") is True
 
 
 def test_rate_limit_three_rps_and_extra_sources_blocked():

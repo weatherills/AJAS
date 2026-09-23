@@ -136,9 +136,10 @@ def retain_v4(tenant: str, days: int) -> dict[str, Any]:
 
 
 def unused_flags() -> list[str]:
+    from app.flags import TESTED_CONNECTOR_FLAGS
     from app.sprint15.ingest import NEW_FLAGS
 
-    return list(NEW_FLAGS)
+    return [name for name in NEW_FLAGS if name not in TESTED_CONNECTOR_FLAGS]
 
 
 def reindex_tenant(tenant: str) -> dict[str, Any]:

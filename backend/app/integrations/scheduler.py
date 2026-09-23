@@ -85,7 +85,7 @@ def record_run(source: str, result: dict[str, Any], *, failed: bool = False) -> 
     prev["lastReason"] = result.get("reason")
     for key in ("ingested", "updated", "skipped", "failed"):
         prev[key] = int(prev.get(key) or 0) + int(metrics.get(key) or 0)
-    if failed or result.get("reason") not in {"ok", "flag_off"}:
+    if failed or result.get("reason") not in {"ok", "flag_off", "needs_auth"}:
         prev["consecutiveFailures"] = int(prev.get("consecutiveFailures") or 0) + 1
     else:
         prev["consecutiveFailures"] = 0
@@ -121,7 +121,7 @@ def tick(
             continue
         payload = body.get(source) or {"jobs": []}
         result = fetch(payload, search={"cadenceSeconds": cadence_seconds})
-        failed = result.get("reason") not in {"ok", "flag_off"}
+        failed = result.get("reason") not in {"ok", "flag_off", "needs_auth"}
         results[source] = result
         record_run(source, result, failed=failed)
         ran.append(source)

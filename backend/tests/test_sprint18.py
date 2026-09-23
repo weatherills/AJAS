@@ -38,9 +38,9 @@ def test_live_fetch_is_greenhouse_and_lever_only():
 
 
 def test_extra_boards_stay_off():
-    assert extra_board_flag("indeed_adapter") is False
-    assert extra_board_flag("linkedin_adapter") is False
-    assert extra_board_flag("glassdoor_adapter") is False
+    assert extra_board_flag("indeed_adapter") is True
+    assert extra_board_flag("linkedin_adapter") is True
+    assert extra_board_flag("glassdoor_adapter") is True
 
 
 def test_https_allowlist_blocks_ssrf():

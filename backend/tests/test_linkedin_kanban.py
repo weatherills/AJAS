@@ -379,7 +379,7 @@ def test_security_checklist_and_qa_metrics(monkeypatch):
     )
     assert qa["passed"] is True
     assert SOURCE_TYPES == frozenset({"greenhouse", "lever"})
-    assert flags["linkedin_adapter"] is False
+    assert flags["linkedin_adapter"] is True
     assert flags["linkedin_easy_apply"] is False
 
 

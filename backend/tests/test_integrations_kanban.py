@@ -116,17 +116,12 @@ def _clean(monkeypatch):
     get_settings.cache_clear()
 
 
-def test_flags_default_off():
-    from app.flags import feature_flags
+def test_tested_connectors_default_on():
+    from app.flags import TESTED_CONNECTOR_FLAGS, feature_flags
 
     flags = feature_flags()
-    assert flags["indeed_adapter"] is False
-    assert flags["linkedin_adapter"] is False
-    assert flags["glassdoor_adapter"] is False
-    assert flags["workday_adapter"] is False
-    assert flags["ziprecruiter_adapter"] is False
-    assert flags["hired_adapter"] is False
-    assert flags["wellfound_adapter"] is False
+    for name in TESTED_CONNECTOR_FLAGS:
+        assert flags[name] is True
     assert flags["linkedin_easy_apply"] is False
     assert flags["greenhouse_harvest"] is False
     assert flags["gmail_adapter"] is False
@@ -153,7 +148,8 @@ def test_indeed_ingest_normalizes_dedupes_and_stores(monkeypatch):
     assert empty["jobs"] == []
 
 
-def test_indeed_flag_off_returns_nothing():
+def test_indeed_flag_off_returns_nothing(monkeypatch):
+    _enable(monkeypatch)
     payload = json.loads((FIXTURES / "indeed.json").read_text())
     out = indeed_ingest(payload)
     assert out["jobs"] == []

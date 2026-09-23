@@ -11,9 +11,9 @@ def test_indeed_adapter_v1_pagination_backoff():
     reset()
     assert VERSION == "sprint15"
     assert _status_payload()["version"] == "sprint20"
-    assert feature_enabled("indeed_adapter") is False
+    assert feature_enabled("indeed_adapter") is True
     out = indeed_v1({"jobs": [{"id": "1", "title": "Backend"}, {"id": "2", "title": "Data"}]})
-    assert out["live"] is False and out["flag"] is False
+    assert out["live"] is False and out["flag"] is True
     assert len(out["jobs"]) >= 2
     assert out["pages"] is True
 
@@ -32,7 +32,7 @@ def test_wellfound_adapter_v1():
     reset()
     out = wellfound_v1({"jobs": [{"id": "w1", "title": "Founding Eng"}]})
     assert out["jobs"][0]["title"] == "Founding Eng"
-    assert out["flag"] is False
+    assert out["flag"] is True
 
 # === S15-04 ===
 

@@ -26,7 +26,7 @@ def test_indeed_paginated_fetch_v2():
     assert out["pages"] is True
     assert out["antiBot"] is True
     assert out["backoffSec"] >= 2
-    assert feature_enabled("indeed_adapter") is False
+    assert feature_enabled("indeed_adapter") is True
 
 
 def test_dice_listings_v1():
@@ -586,7 +586,7 @@ def test_feature_flags_remote_audit_v2():
 
     row = flags_remote(actor="ada", name="indeed_adapter", enabled=True)
     assert row["rbac"] is True
-    assert row["live"] is False
+    assert row["live"] is True
     assert row["row"]["actor"] == "ada"
 
 

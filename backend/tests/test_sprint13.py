@@ -450,7 +450,7 @@ def test_ingestion_adapters_v3_wellfound_session_refresh_guard():
     from app.sprint13.ingest import reset, wellfound_guard
 
     reset()
-    assert feature_flags()["wellfound_adapter"] is False
+    assert feature_flags()["wellfound_adapter"] is True
     assert wellfound_guard(session_age_min=10)["refresh"] is False
     assert wellfound_guard(session_age_min=50)["stale"] is True
 
@@ -462,7 +462,7 @@ def test_ingestion_adapters_v3_glassdoor_block_detection_and_cool_down():
     from app.sprint13.ingest import glassdoor_cooldown, reset
 
     reset()
-    assert feature_flags()["glassdoor_adapter"] is False
+    assert feature_flags()["glassdoor_adapter"] is True
     cool = glassdoor_cooldown(blocked=True, failures=1)
     assert cool["cooldownMin"] == 15
     assert cool["allow"] is False
@@ -486,7 +486,7 @@ def test_ingestion_adapters_v3_linkedin_resilience_captcha_fallback():
     from app.sprint13.ingest import linkedin_resilience, reset
 
     reset()
-    assert feature_flags()["linkedin_adapter"] is False
+    assert feature_flags()["linkedin_adapter"] is True
     blocked = linkedin_resilience(captcha=True)
     assert blocked["bypass"] is False
     assert blocked["fallback"] == "fixture"

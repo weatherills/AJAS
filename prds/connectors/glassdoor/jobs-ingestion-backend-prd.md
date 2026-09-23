@@ -3,7 +3,7 @@
 Status: Connector added
 Feature: Job Source Integration (`feature-job-source-integration`)
 Type: Backend
-Flag: `glassdoor_adapter` (default off)
+Flag: `glassdoor_adapter` (default on)
 Live scrape: **not implemented**. `SOURCE_TYPES` stays `{greenhouse, lever}`.
 
 ## API availability

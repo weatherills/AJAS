@@ -623,7 +623,7 @@ def test_rate_policy_ui_wraps_source_quotas():
 def test_feature_flags_ui_includes_adapters():
     flags = ops_mod.feature_flags_ui()
     assert "indeed_adapter" in flags
-    assert flags["indeed_adapter"] is False
+    assert flags["indeed_adapter"] is True
 
 def test_adapter_success_error_latency_charts():
     from app.source_quotas import record

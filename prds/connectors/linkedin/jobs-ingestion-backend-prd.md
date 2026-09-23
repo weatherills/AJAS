@@ -3,7 +3,7 @@
 Status: Gap pass complete
 Feature: Job Source Integration (`feature-job-source-integration`)
 Type: Backend
-Flag: `linkedin_adapter` (default off)
+Flag: `linkedin_adapter` (default on)
 Live scrape: **not implemented**. Fixture JSON only. `SOURCE_TYPES` stays `{greenhouse, lever}`.
 
 ## Overview
@@ -77,7 +77,7 @@ Redact email, phone, tokens, cookies, resume bytes. See `linkedin_audit.sanitize
 - Fetch success ≥ 98%
 - Dedupe catch rate ≥ 5% when duplicates are present
 - Median runtime ≤ 8000ms
-- QA: flags default off, SOURCE_TYPES unchanged, captcha never bypassed, receipts on attempts, private/expired skipped, audit redacted.
+- QA: tested ingest adapters default on, Easy Apply stays off, SOURCE_TYPES unchanged, captcha never bypassed, receipts on attempts, private/expired skipped, audit redacted.
 
 ## HTTP
 - `POST /api/v1/integrations/ingest/linkedin` — fixture ingest (JWT)

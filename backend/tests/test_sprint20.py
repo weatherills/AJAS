@@ -30,9 +30,9 @@ def test_each_sprint20_card(title: str):
 def test_live_fetch_greenhouse_lever_only():
     fixtures = run("[Sprint 20] Adapter unit tests (fixtures)")
     assert fixtures["liveFetch"] == ["greenhouse", "lever"]
-    assert fixtures["extraFlagsOff"] is True
-    assert extra_board_flag("indeed_adapter") is False
-    assert extra_board_flag("linkedin_adapter") is False
+    assert fixtures["extraFlagsOff"] is False
+    assert extra_board_flag("indeed_adapter") is True
+    assert extra_board_flag("linkedin_adapter") is True
     scheduled = run("[Sprint 20] Scheduler: cron + event triggers")
     assert "indeed" in scheduled["skipped"]
 

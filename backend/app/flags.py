@@ -4,21 +4,37 @@ from __future__ import annotations
 
 from app.config import get_settings
 
+# Job-board connectors with automated ingest tests. Live scrape is still off;
+# SOURCE_TYPES stays {greenhouse, lever}. Untested adapters stay False.
+TESTED_CONNECTOR_FLAGS: frozenset[str] = frozenset(
+    {
+        "indeed_adapter",
+        "linkedin_adapter",
+        "glassdoor_adapter",
+        "workday_adapter",
+        "ziprecruiter_adapter",
+        "hired_adapter",
+        "wellfound_adapter",
+        "greenhouse_career_adapter",
+        "lever_career_adapter",
+    }
+)
+
 FLAG_DEFAULTS: dict[str, bool] = {
-    "indeed_adapter": False,
-    "linkedin_adapter": False,
+    "indeed_adapter": True,
+    "linkedin_adapter": True,
     "linkedin_easy_apply": False,
     "greenhouse_harvest": False,
     "gmail_adapter": False,
     "google_drive": False,
     "slack_notify": False,
-    "glassdoor_adapter": False,
-    "wellfound_adapter": False,
-    "workday_adapter": False,
-    "ziprecruiter_adapter": False,
-    "hired_adapter": False,
-    "greenhouse_career_adapter": False,
-    "lever_career_adapter": False,
+    "glassdoor_adapter": True,
+    "wellfound_adapter": True,
+    "workday_adapter": True,
+    "ziprecruiter_adapter": True,
+    "hired_adapter": True,
+    "greenhouse_career_adapter": True,
+    "lever_career_adapter": True,
     "imap_transport": False,
     "bulk_auto_apply": False,
     "ltr_logging": True,
