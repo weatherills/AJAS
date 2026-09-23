@@ -21,6 +21,9 @@ ENQUEUE_ON_WRITE: dict[str, str] = {
     "match_runs": "match-compute",
     "source_fetch_runs": "crawl-runs",
     "resume_parse_events": "resume-parse",
+    "resume_parse_queue": "resume-parse",
+    "scrape_jobs_queue": "crawl-runs",
+    "integration_outbox": "auto-apply-webhooks",
 }
 
 
@@ -45,6 +48,24 @@ def stored_logic_catalog() -> list[dict[str, Any]]:
             "version": SCRIPT_VERSION,
             "body": _script("udf_avgScore.js"),
             "purpose": "Average match scores for in-container aggregation.",
+        },
+        {
+            "kind": "udf",
+            "id": "udf_contains",
+            "file": "udf_contains.js",
+            "version": SCRIPT_VERSION,
+            "body": _script("udf_contains.js"),
+            "purpose": "Case-insensitive CONTAINS for job descriptions and parsed resume text.",
+        },
+        {
+            "kind": "trigger",
+            "id": "trg_computedFields",
+            "file": "trg_computedFields.js",
+            "version": SCRIPT_VERSION,
+            "body": _script("trg_computedFields.js"),
+            "triggerType": "Pre",
+            "triggerOperation": "All",
+            "purpose": "Stamp updated_at, status_rollup, and denormalized counters.",
         },
         {
             "kind": "trigger",

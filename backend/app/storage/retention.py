@@ -21,6 +21,8 @@ RETENTION_DAYS: dict[str, int] = {
     "applications": 547,  # 18 months — Auto-Apply / Matching PRDs
     "webhooks": 90,
     "match_runs": 547,
+    "candidates": 730,
+    "outbox": 30,
 }
 
 AUDIT_RETAIN_CONTAINERS = frozenset({"settings_audit_log"})

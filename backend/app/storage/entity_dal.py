@@ -14,7 +14,19 @@ from app.storage.sprocs import apply_timestamps, enqueue_hint_for, safe_upsert_d
 
 T = TypeVar("T", bound=BaseModel)
 
-SOFT_DELETE_CONTAINERS = frozenset({"users", "resumes", "resume_versions", "email_accounts", "user_settings"})
+SOFT_DELETE_CONTAINERS = frozenset(
+    {
+        "users",
+        "resumes",
+        "resume_versions",
+        "email_accounts",
+        "user_settings",
+        "candidates",
+        "recruiters",
+        "companies",
+        "attachments",
+    }
+)
 
 
 class StoredDocument(BaseModel):

@@ -21,6 +21,12 @@ MIGRATIONS: tuple[dict[str, Any], ...] = (
         "description": "Named domain DAOs, unique keys on apply_runs and canonical jobs, housekeeping prune.",
         "backfill": "scripts/cosmos_backfill.py",
     },
+    {
+        "id": "ajas.cosmos.v3-schema-plane",
+        "version": 3,
+        "description": "Schema-plane containers (candidates, companies, outbox) plus aliases, FTS CONTAINS, PII encrypt.",
+        "backfill": "scripts/cosmos_backfill.py",
+    },
 )
 
 

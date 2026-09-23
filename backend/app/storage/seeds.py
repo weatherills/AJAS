@@ -24,6 +24,9 @@ SEED_VERSION_OLD_ID = "seed-resume-v0"
 SEED_MESSAGE_ID = "seed-message-001"
 SEED_LEARNING_EVENT_ID = "seed-learning-001"
 SEED_METRICS_ID = "seed-metrics-001"
+SEED_CANDIDATE_ID = "seed-candidate-001"
+SEED_COMPANY_ID = "seed-company-001"
+SEED_RECRUITER_ID = "seed-recruiter-001"
 SEED_JOB_LEVER_ID = "seed-job-lever-001"
 SEED_CRAWL_ID = "seed-crawl-001"
 STAMP = "2026-01-15T12:00:00+00:00"
@@ -87,6 +90,7 @@ def _resume() -> dict[str, Any]:
         blob_uri=f"{SEED_USER_ID}/{SEED_RESUME_ID}/ada-lovelace.pdf",
         checksum_sha256="b" * 64,
         processing_status="parsed",
+        candidate_id=SEED_CANDIDATE_ID,
         is_deleted=False,
         created_at=STAMP,
         updated_at=STAMP,
@@ -418,6 +422,175 @@ def _privacy_request() -> dict[str, Any]:
     }
 
 
+def _candidate() -> dict[str, Any]:
+    return {
+        "id": SEED_CANDIDATE_ID,
+        "email": "ada@ajas.dev",
+        "name": "Ada Lovelace",
+        "phone": "+15555550100",
+        "links": {"github": "https://github.com/ada"},
+        "preferences": {"locations": ["Seattle, WA"]},
+        "is_deleted": False,
+        "deleted_at": None,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
+def _company() -> dict[str, Any]:
+    return {
+        "id": SEED_COMPANY_ID,
+        "name": "Acme",
+        "domain": "acme.test",
+        "is_deleted": False,
+        "deleted_at": None,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
+def _recruiter() -> dict[str, Any]:
+    return {
+        "id": SEED_RECRUITER_ID,
+        "companyId": SEED_COMPANY_ID,
+        "name": "Riley Recruiter",
+        "email": "recruiter@acme.test",
+        "phone": "+15555550999",
+        "channel": "email",
+        "is_deleted": False,
+        "deleted_at": None,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
+def _inbox() -> dict[str, Any]:
+    return {
+        "id": "seed-inbox-001",
+        "recruiterId": SEED_RECRUITER_ID,
+        "provider": "microsoft_365",
+        "address": "recruiter@acme.test",
+        "oauthRef": f"{SEED_USER_ID}:microsoft_365",
+        "syncCursor": None,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
+def _parse_queue() -> dict[str, Any]:
+    return {
+        "id": "seed-parse-001",
+        "userId": SEED_USER_ID,
+        "resumeId": SEED_RESUME_ID,
+        "status": "done",
+        "retries": 0,
+        "error": None,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+        "createdAt": STAMP,
+        "updatedAt": STAMP,
+    }
+
+
+def _rule() -> dict[str, Any]:
+    return {
+        "id": "seed-rule-001",
+        "userId": SEED_USER_ID,
+        "conditions": {"minScore": 70, "locations": ["Seattle, WA"]},
+        "priority": 10,
+        "enabled": True,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
+def _outbox() -> dict[str, Any]:
+    return {
+        "id": "seed-outbox-001",
+        "dedupe_key": "seed-outbox-001",
+        "eventType": "application.submitted",
+        "payload": {"applicationId": SEED_APPLICATION_ID},
+        "status": "pending",
+        "retries": 0,
+        "nextRetryAt": STAMP,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
+def _user_attachment() -> dict[str, Any]:
+    return {
+        "id": "seed-file-001",
+        "userId": SEED_USER_ID,
+        "kind": "resume",
+        "filename": "ada-lovelace.pdf",
+        "mimeType": "application/pdf",
+        "size": 2048,
+        "blobUri": f"{SEED_USER_ID}/{SEED_RESUME_ID}/ada-lovelace.pdf",
+        "checksum": "b" * 64,
+        "parentId": SEED_RESUME_ID,
+        "is_deleted": False,
+        "deleted_at": None,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
+def _oauth() -> dict[str, Any]:
+    return {
+        "id": f"{SEED_USER_ID}:microsoft_365",
+        "userId": SEED_USER_ID,
+        "provider": "microsoft_365",
+        "account": "ada@ajas.dev",
+        "access_token": "enc.seed",
+        "refresh_token": "enc.seed-refresh",
+        "scopes": ["Mail.Read"],
+        "expires_at": STAMP,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
+def _webhook() -> dict[str, Any]:
+    return {
+        "id": "seed-hook-001",
+        "event": "application.submitted",
+        "target_url": "https://hooks.ajas.dev/apply",
+        "secret": "enc.seed-secret",
+        "active": True,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
+def _delivery() -> dict[str, Any]:
+    return {
+        "id": "seed-delivery-001",
+        "webhookId": "seed-hook-001",
+        "payloadRef": "seed-outbox-001",
+        "status": "pending",
+        "responseCode": None,
+        "retries": 0,
+        "nextRetryAt": STAMP,
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
+def _scrape_job() -> dict[str, Any]:
+    return {
+        "id": "e" * 64,
+        "source": "greenhouse",
+        "url": "https://boards.greenhouse.io/acme/jobs/1",
+        "fingerprint": "e" * 64,
+        "scheduledAt": STAMP,
+        "attempts": 0,
+        "status": "queued",
+        "created_at": STAMP,
+        "updated_at": STAMP,
+    }
+
+
 def seed_documents() -> dict[str, list[dict[str, Any]]]:
     """Map of container id → documents. Safe to upsert repeatedly."""
     application = _application()
@@ -449,6 +622,18 @@ def seed_documents() -> dict[str, list[dict[str, Any]]]:
         "apply_runs": [_apply_run()],
         "weight_config": [_weight_config()],
         "privacy_requests": [_privacy_request()],
+        "candidates": [_candidate()],
+        "companies": [_company()],
+        "recruiters": [_recruiter()],
+        "recruiter_inboxes": [_inbox()],
+        "resume_parse_queue": [_parse_queue()],
+        "auto_apply_rules": [_rule()],
+        "integration_outbox": [_outbox()],
+        "attachments": [_user_attachment()],
+        "oauth_credentials": [_oauth()],
+        "webhooks_outbound": [_webhook()],
+        "webhook_deliveries": [_delivery()],
+        "scrape_jobs_queue": [_scrape_job()],
     }
 
 

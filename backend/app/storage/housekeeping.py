@@ -10,7 +10,17 @@ from app.storage.dal import CosmosDAL
 from app.storage.entity_dal import CatalogRepository, repository_for
 from app.storage.retention import RETENTION_DAYS, is_stale
 
-PURGE_CONTAINERS: tuple[str, ...] = ("resumes", "resume_versions", "users", "user_settings", "email_accounts")
+PURGE_CONTAINERS: tuple[str, ...] = (
+    "resumes",
+    "resume_versions",
+    "users",
+    "user_settings",
+    "email_accounts",
+    "candidates",
+    "recruiters",
+    "companies",
+    "attachments",
+)
 
 
 def _now() -> datetime:

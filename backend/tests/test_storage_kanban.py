@@ -110,7 +110,14 @@ def test_catalog_dal_crud_etag_and_soft_delete():
 
 def test_stored_logic_versioned_and_deployed_in_bootstrap():
     catalog = stored_logic_catalog()
-    assert {item["id"] for item in catalog} == {"sp_safeUpsert", "udf_avgScore", "trg_setTimestamps", "trg_enqueueHint"}
+    assert {item["id"] for item in catalog} == {
+        "sp_safeUpsert",
+        "udf_avgScore",
+        "udf_contains",
+        "trg_setTimestamps",
+        "trg_enqueueHint",
+        "trg_computedFields",
+    }
     assert all(item["body"].strip() for item in catalog)
     assert avg_score([70, 90]) == 80
     merged = safe_upsert_document(None, {"id": "m1", "schemaVersion": 0})
@@ -125,8 +132,10 @@ def test_stored_logic_versioned_and_deployed_in_bootstrap():
     scripts = db.get_container_client("matches").scripts
     assert "sp_safeUpsert" in scripts.sprocs
     assert "udf_avgScore" in scripts.udfs
+    assert "udf_contains" in scripts.udfs
     assert "trg_setTimestamps" in scripts.triggers
     assert "trg_enqueueHint" in scripts.triggers
+    assert "trg_computedFields" in scripts.triggers
 
 
 def test_indexing_and_ttl_policies_are_explicit():

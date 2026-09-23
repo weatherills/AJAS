@@ -244,15 +244,16 @@ _OVERLAYS: dict[str, _Overlay] = {
     "resumes": _Overlay(
         feature="resumes",
         entity="Resume",
-        logical_unique=("user_id", "id"),
+        logical_unique=("user_id", "id", "checksum_sha256"),
         query_patterns=(
             "user_id + is_deleted + updated_at desc",
             "userId + updatedAt desc",
             "createdAt range",
             "processing_status",
             "checksum_sha256",
+            "candidate_id",
         ),
-        relationships=("1—N children embedded; 1—N resume_parse_events; primaryFileId + parsedVersion FKs",),
+        relationships=("1—N children embedded; 1—N resume_parse_events; primaryFileId + parsedVersion FKs; candidate_id FK",),
         ru_note="Library list of ~20 resumes is a single partitioned query (~5 RU). Dual-write userId/updatedAt for PRD lists.",
     ),
     "run_resume_selections": _Overlay(
@@ -329,9 +330,20 @@ _OVERLAYS: dict[str, _Overlay] = {
         entity="JobPosting",
         unique_keys=(("/canonical_key",), ("/dedupe_hash",)),
         logical_unique=("canonical_key", "dedupe_hash", "company+apply_url"),
-        query_patterns=("canonical_key", "dedupe_hash", "is_active", "company + posted_at desc", "location", "source"),
-        relationships=("1—N raw via links; 1—N Application/matches",),
-        ru_note="PK /id so dedup lookups use indexed fields (~3 RU) not partition scans. Unique canonical_key + dedupe_hash per account.",
+        query_patterns=(
+            "canonical_key",
+            "dedupe_hash",
+            "is_active",
+            "company + posted_at desc",
+            "location",
+            "source",
+            "apply_url",
+            "scraped_at",
+            "status",
+            "title",
+        ),
+        relationships=("1—N raw via links; 1—N Application/matches; Kanban alias job_postings",),
+        ru_note="PK /id so dedup lookups use indexed fields (~3 RU) not partition scans. Unique canonical_key + dedupe_hash per account. apply_url uniqueness is DAL-enforced.",
     ),
     "job_posting_links": _Overlay(
         feature="job_sources",
@@ -378,8 +390,9 @@ _OVERLAYS: dict[str, _Overlay] = {
     "email_recipients": _Overlay(
         feature="mail",
         entity="EmailRecipient",
-        query_patterns=("message_id list",),
-        ru_note="Child rows; queried with parent message.",
+        logical_unique=("email_thread_id", "address"),
+        query_patterns=("message_id list", "email_thread_id + address"),
+        ru_note="Kanban alias thread_participants. Dedupe (thread_id, email) is logical unique.",
     ),
     "email_attachments": _Overlay(
         feature="mail",
@@ -667,6 +680,154 @@ _OVERLAYS: dict[str, _Overlay] = {
             ]
         ),
     ),
+    "candidates": _Overlay(
+        feature="schema_plane",
+        entity="Candidate",
+        logical_unique=("email", "email_hash"),
+        query_patterns=("point read by id", "email uniqueness scan"),
+        relationships=("1—N resumes via candidate_id; 1—N applications"),
+        ru_note="PK /id. Email uniqueness is DAL-enforced (Cosmos unique keys are per partition).",
+    ),
+    "companies": _Overlay(
+        feature="schema_plane",
+        entity="Company",
+        logical_unique=("domain",),
+        query_patterns=("point read by id", "domain uniqueness scan"),
+        relationships=("1—N job_postings; 1—N recruiters"),
+        ru_note="PK /id. Domain uniqueness is DAL-enforced.",
+    ),
+    "recruiters": _Overlay(
+        feature="schema_plane",
+        entity="Recruiter",
+        logical_unique=("companyId", "email", "email_hash"),
+        query_patterns=("companyId + email",),
+        relationships=("N—1 companies; 1—N recruiter_inboxes"),
+        ru_note="PK /companyId colocates a company's recruiters. Email unique per company.",
+        indexing_policy=_policy(
+            [
+                {"path": "/companyId", "order": "ascending"},
+                {"path": "/email", "order": "ascending"},
+            ]
+        ),
+    ),
+    "recruiter_inboxes": _Overlay(
+        feature="schema_plane",
+        entity="RecruiterInbox",
+        logical_unique=("recruiterId", "provider", "address"),
+        query_patterns=("recruiterId + provider",),
+        relationships=("N—1 recruiters; oauth_ref → oauth_credentials"),
+        ru_note="PK /recruiterId. One inbox row per provider+address.",
+    ),
+    "resume_parse_queue": _Overlay(
+        feature="schema_plane",
+        entity="ResumeParseQueue",
+        default_ttl=7 * DAY,
+        query_patterns=("userId + status + createdAt desc",),
+        relationships=("N—1 resumes; states queued|processing|done|failed"),
+        ru_note="TTL 7d. PK /userId keeps a user's parse jobs in one partition.",
+        indexing_policy=_policy(
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/status", "order": "ascending"},
+                {"path": "/createdAt", "order": "descending"},
+            ]
+        ),
+    ),
+    "auto_apply_rules": _Overlay(
+        feature="schema_plane",
+        entity="AutoApplyRule",
+        query_patterns=("userId + priority + enabled",),
+        relationships=("N—1 users; JSON conditions"),
+        ru_note="PK /userId. Small per-user rule set.",
+        indexing_policy=_policy(
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/priority", "order": "ascending"},
+            ]
+        ),
+    ),
+    "integration_outbox": _Overlay(
+        feature="schema_plane",
+        entity="IntegrationOutbox",
+        logical_unique=("id", "dedupe_key"),
+        default_ttl=14 * DAY,
+        query_patterns=("status + nextRetryAt", "dedupe_key point read"),
+        relationships=("1—N webhook_deliveries; Kanban alias webhooks_outbox"),
+        ru_note="Document id equals dedupe_key so uniqueness is free. TTL 14d after delivery.",
+        indexing_policy=_policy(
+            [
+                {"path": "/status", "order": "ascending"},
+                {"path": "/nextRetryAt", "order": "ascending"},
+            ]
+        ),
+    ),
+    "attachments": _Overlay(
+        feature="schema_plane",
+        entity="Attachment",
+        logical_unique=("userId", "checksum"),
+        query_patterns=("userId + kind", "checksum"),
+        relationships=("bytes in Blob; MIME + size metadata only"),
+        ru_note="PK /userId. Checksum uniqueness is DAL-enforced per user.",
+        indexing_policy=_policy(
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/kind", "order": "ascending"},
+            ]
+        ),
+    ),
+    "oauth_credentials": _Overlay(
+        feature="schema_plane",
+        entity="OAuthCredential",
+        logical_unique=("userId", "provider"),
+        query_patterns=("userId + provider point read",),
+        relationships=("tokens encrypted at rest; excluded from index"),
+        ru_note="PK /userId. Token paths excluded from the index.",
+        indexing_policy=_policy(
+            [
+                {"path": "/userId", "order": "ascending"},
+                {"path": "/provider", "order": "ascending"},
+            ],
+            extra_excluded=("/access_token/?", "/refresh_token/?", "/secret/?"),
+        ),
+    ),
+    "webhooks_outbound": _Overlay(
+        feature="schema_plane",
+        entity="WebhookOutbound",
+        logical_unique=("target_url",),
+        query_patterns=("event + active", "target_url"),
+        relationships=("1—N webhook_deliveries"),
+        ru_note="PK /id. target_url uniqueness is DAL-enforced.",
+    ),
+    "webhook_deliveries": _Overlay(
+        feature="schema_plane",
+        entity="WebhookDelivery",
+        default_ttl=90 * DAY,
+        query_patterns=("webhookId + nextRetryAt",),
+        relationships=("N—1 webhooks_outbound"),
+        ru_note="TTL 90d. PK /webhookId colocates delivery attempts.",
+        indexing_policy=_policy(
+            [
+                {"path": "/webhookId", "order": "ascending"},
+                {"path": "/nextRetryAt", "order": "ascending"},
+            ]
+        ),
+    ),
+    "scrape_jobs_queue": _Overlay(
+        feature="schema_plane",
+        entity="ScrapeJob",
+        unique_keys=(("/fingerprint",),),
+        logical_unique=("source", "fingerprint"),
+        default_ttl=7 * DAY,
+        query_patterns=("source + scheduledAt", "fingerprint"),
+        relationships=("feeds source_fetch_runs"),
+        ru_note="PK /source. Unique fingerprint per source partition. TTL 7d.",
+        indexing_policy=_policy(
+            [
+                {"path": "/source", "order": "ascending"},
+                {"path": "/scheduledAt", "order": "ascending"},
+            ]
+        ),
+    ),
 }
 
 
@@ -680,6 +841,7 @@ _FEATURE_LOADERS: tuple[tuple[str, Callable[[], list[dict[str, Any]]]], ...] = (
     ("learning", lambda: _load("app.learning.containers", "container_specs")),
     ("auto_apply", lambda: _load("app.auto_apply.containers", "container_specs")),
     ("privacy", lambda: _load("app.privacy", "container_specs")),
+    ("schema_plane", lambda: _load("app.storage.schema_plane", "container_specs")),
 )
 
 
