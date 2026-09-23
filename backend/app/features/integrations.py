@@ -6,6 +6,7 @@ import azure.functions as func
 
 from app.auth import AuthError, get_principal
 from app.http import error_response, json_response
+from app.integrations.ingest import HTTP_INGEST_SOURCES
 from app.integrations.service import get_service
 from app.request_context import bind_request
 from app.resumes.runtime import try_get_service as try_resume_service
@@ -51,10 +52,10 @@ def integrations_ingest(req: func.HttpRequest) -> func.HttpResponse:
     try:
         _auth(req)
         source = (req.route_params.get("source") or "").strip().lower()
-        if source not in {"indeed", "linkedin", "glassdoor", "workday", "ziprecruiter"}:
+        if source not in HTTP_INGEST_SOURCES:
             return error_response(
                 "VALIDATION_ERROR",
-                "source must be indeed, linkedin, glassdoor, workday, or ziprecruiter",
+                "source must be indeed, linkedin, glassdoor, workday, ziprecruiter, hired, or wellfound",
                 400,
             )
         body = _json_body(req)
@@ -68,6 +69,7 @@ def integrations_ingest(req: func.HttpRequest) -> func.HttpResponse:
             payload,
             search=body.get("search"),
             listing_url=body.get("listingUrl"),
+            html=body.get("html"),
         )
         return json_response(result, status_code=202 if result.get("reason") == "ok" else 200)
     except Exception as exc:
@@ -261,6 +263,26 @@ def integrations_ziprecruiter_spec(req: func.HttpRequest) -> func.HttpResponse:
     try:
         _auth(req)
         return json_response(get_service().board_spec("ziprecruiter"))
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/integrations/hired/spec", methods=["GET"])
+def integrations_hired_spec(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    try:
+        _auth(req)
+        return json_response(get_service().board_spec("hired"))
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/integrations/wellfound/spec", methods=["GET"])
+def integrations_wellfound_spec(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    try:
+        _auth(req)
+        return json_response(get_service().board_spec("wellfound"))
     except Exception as exc:
         return _handle(exc)
 

@@ -1,4 +1,4 @@
-"""Indeed / LinkedIn / Glassdoor / Workday / ZipRecruiter fixture ingestion."""
+"""Indeed / LinkedIn / Glassdoor / Workday / ZipRecruiter / Hired / Wellfound fixture ingestion."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from app.auto_apply.captcha import detect as detect_captcha
 from app.flags import feature_enabled
 from app.integrations import linkedin_audit
 from app.integrations.glassdoor_spec import RATE_PLAN as GLASSDOOR_RATE, map_glassdoor_job, unwrap_glassdoor_payload
+from app.integrations.hired_spec import RATE_PLAN as HIRED_RATE, map_hired_job, unwrap_hired_payload
 from app.integrations.indeed_spec import RATE_PLAN as INDEED_RATE, map_indeed_job, unwrap_indeed_payload
 from app.integrations.linkedin_spec import (
     RATE_PLAN,
@@ -20,6 +21,7 @@ from app.integrations.linkedin_spec import (
     map_linkedin_job,
     walk_pages,
 )
+from app.integrations.wellfound_spec import RATE_PLAN as WELLFOUND_RATE, map_wellfound_job, unwrap_wellfound_payload
 from app.integrations.workday_spec import RATE_PLAN as WORKDAY_RATE, map_workday_job, unwrap_workday_payload
 from app.integrations.ziprecruiter_spec import RATE_PLAN as ZIP_RATE, map_ziprecruiter_job, unwrap_ziprecruiter_payload
 from app.integrations.search import SearchSpec, matches_search, parse_search
@@ -175,6 +177,8 @@ MAPPERS = {
     "glassdoor": map_glassdoor_job,
     "workday": map_workday_job,
     "ziprecruiter": map_ziprecruiter_job,
+    "hired": map_hired_job,
+    "wellfound": map_wellfound_job,
 }
 
 UNWRAPPERS = {
@@ -182,6 +186,8 @@ UNWRAPPERS = {
     "glassdoor": unwrap_glassdoor_payload,
     "workday": unwrap_workday_payload,
     "ziprecruiter": unwrap_ziprecruiter_payload,
+    "hired": unwrap_hired_payload,
+    "wellfound": unwrap_wellfound_payload,
 }
 
 INGEST_CAPS = {
@@ -190,7 +196,11 @@ INGEST_CAPS = {
     "glassdoor": int(GLASSDOOR_RATE["ingest"]["capPerWindow"]),
     "workday": int(WORKDAY_RATE["ingest"]["capPerWindow"]),
     "ziprecruiter": int(ZIP_RATE["ingest"]["capPerWindow"]),
+    "hired": int(HIRED_RATE["ingest"]["capPerWindow"]),
+    "wellfound": int(WELLFOUND_RATE["ingest"]["capPerWindow"]),
 }
+
+HTTP_INGEST_SOURCES = frozenset(MAPPERS)
 
 
 def _first(*values: Any) -> str:
@@ -302,6 +312,24 @@ def _flag_for(source: str) -> str | None:
     return SOURCE_FLAGS.get(source)
 
 
+def _auth_blocked(source: str, payload: Any, html: str | None = None) -> str | None:
+    """Hired/Wellfound require a token. Hired CAPTCHA never bypasses."""
+    if source == "hired":
+        from app.job_sources.hired import auth_gate
+
+        gate = auth_gate(html if html is not None else payload)
+        if gate.action != "continue":
+            if gate.action == "needs_manual":
+                bump("captcha")
+            return gate.action
+    elif source == "wellfound":
+        from app.job_sources.wellfound_auth import require_auth
+
+        if not require_auth():
+            return "needs_auth"
+    return None
+
+
 def ingest_jobs(
     source: str,
     payload: Any,
@@ -311,6 +339,7 @@ def ingest_jobs(
     seen: dict[str, dict[str, Any]] | None = None,
     store: dict[str, dict[str, Any]] | None = None,
     rate_cap: int | None = None,
+    html: str | None = None,
 ) -> dict[str, Any]:
     """Normalize fixture pages into canonical postings with idempotent upserts.
 
@@ -344,6 +373,10 @@ def ingest_jobs(
     if listing_url and not can_fetch(listing_url):
         metrics["failed"] += 1
         return {"jobs": [], "metrics": metrics, "search": spec.as_dict(), "reason": "robots_or_consent", "pagination": pagination}
+    blocked = _auth_blocked(source, payload, html)
+    if blocked:
+        metrics["failed"] += 1
+        return {"jobs": [], "metrics": metrics, "search": spec.as_dict(), "reason": blocked, "pagination": pagination}
 
     bucket = store if store is not None else {}
     known = seen if seen is not None else {}
@@ -464,6 +497,14 @@ def workday_ingest(payload: Any, **kwargs: Any) -> dict[str, Any]:
 
 def ziprecruiter_ingest(payload: Any, **kwargs: Any) -> dict[str, Any]:
     return ingest_jobs("ziprecruiter", payload, **kwargs)
+
+
+def hired_ingest(payload: Any, **kwargs: Any) -> dict[str, Any]:
+    return ingest_jobs("hired", payload, **kwargs)
+
+
+def wellfound_ingest(payload: Any, **kwargs: Any) -> dict[str, Any]:
+    return ingest_jobs("wellfound", payload, **kwargs)
 
 
 def listing_fetcher(source: str, payload: Any, **kwargs: Any) -> dict[str, Any]:

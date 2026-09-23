@@ -1,0 +1,24 @@
+{
+  "positions": [
+    {
+      "id": "hi-pos-1",
+      "title": "Staff Backend Engineer",
+      "company": {"name": "Hired Labs"},
+      "location": {"city": "Remote"},
+      "employment_type": "Full-time",
+      "description": "Python, distributed systems.",
+      "public_url": "https://fixtures.ajas.local/hired/hi-pos-1",
+      "posted_at": "2026-03-01T00:00:00Z",
+      "compensation": {"min": 180000, "max": 210000}
+    },
+    {
+      "id": "hi-pos-2",
+      "title": "Platform SRE",
+      "company_name": "Northwind",
+      "location": "Austin, TX",
+      "jobType": "Full-time",
+      "description": "Required: kubernetes terraform.",
+      "url": "https://fixtures.ajas.local/hired/hi-pos-2"
+    }
+  ]
+}

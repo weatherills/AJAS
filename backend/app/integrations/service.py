@@ -11,12 +11,15 @@ from app.integrations.easy_apply import audit_log, receipts, reset as reset_easy
 from app.integrations.gmail import LocalGmailClient, send_mail, sync_inbox
 from app.integrations.harvest import list_applications
 from app.integrations.glassdoor_spec import spec_bundle as glassdoor_spec_bundle
+from app.integrations.hired_spec import spec_bundle as hired_spec_bundle
 from app.integrations.indeed_spec import spec_bundle as indeed_spec_bundle
 from app.integrations.ingest import (
     glassdoor_ingest,
+    hired_ingest,
     indeed_ingest,
     linkedin_ingest,
     reset_limiter,
+    wellfound_ingest,
     workday_ingest,
     ziprecruiter_ingest,
 )
@@ -29,6 +32,7 @@ from app.integrations.search import SUPPORTED_INPUTS, parse_search
 from app.integrations.slack import MemorySlackHttp, notify_event
 from app.integrations.workday_spec import spec_bundle as workday_spec_bundle
 from app.integrations.ziprecruiter_spec import spec_bundle as ziprecruiter_spec_bundle
+from app.integrations.wellfound_spec import spec_bundle as wellfound_spec_bundle
 from app.mail.graph import GraphClient, default_graph_client
 from app.mail.outlook import outlook_status
 
@@ -40,6 +44,8 @@ INGESTERS = {
     "glassdoor": glassdoor_ingest,
     "workday": workday_ingest,
     "ziprecruiter": ziprecruiter_ingest,
+    "hired": hired_ingest,
+    "wellfound": wellfound_ingest,
 }
 
 
@@ -71,6 +77,8 @@ class IntegrationService:
                 "glassdoor_adapter": flags.get("glassdoor_adapter"),
                 "workday_adapter": flags.get("workday_adapter"),
                 "ziprecruiter_adapter": flags.get("ziprecruiter_adapter"),
+                "hired_adapter": flags.get("hired_adapter"),
+                "wellfound_adapter": flags.get("wellfound_adapter"),
                 "greenhouse_harvest": flags.get("greenhouse_harvest"),
                 "gmail_adapter": flags.get("gmail_adapter"),
                 "google_drive": flags.get("google_drive"),
@@ -86,11 +94,11 @@ class IntegrationService:
             "harvestConfigured": bool((settings.greenhouse_harvest_api_key or "").strip()),
         }
 
-    def ingest(self, source: str, payload: Any, *, search: dict[str, Any] | None = None, listing_url: str | None = None) -> dict[str, Any]:
+    def ingest(self, source: str, payload: Any, *, search: dict[str, Any] | None = None, listing_url: str | None = None, html: str | None = None) -> dict[str, Any]:
         fn = INGESTERS.get(source)
         if fn is None:
             return {"jobs": [], "metrics": {"source": source, "enabled": False}, "reason": "unknown_source"}
-        return fn(payload, listing_url=listing_url, search=search, seen=self.seen, store=self.jobs)
+        return fn(payload, listing_url=listing_url, search=search, seen=self.seen, store=self.jobs, html=html)
 
     def board_spec(self, source: str) -> dict[str, Any]:
         if source == "indeed":
@@ -101,6 +109,10 @@ class IntegrationService:
             return workday_spec_bundle()
         if source == "ziprecruiter":
             return ziprecruiter_spec_bundle()
+        if source == "hired":
+            return hired_spec_bundle()
+        if source == "wellfound":
+            return wellfound_spec_bundle()
         return spec_bundle()
 
     def search_spec(self, payload: dict[str, Any] | None) -> dict[str, Any]:

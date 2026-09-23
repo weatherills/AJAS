@@ -1,4 +1,4 @@
-"""Flag-gated product integrations (Indeed, LinkedIn, Glassdoor, Workday, ZipRecruiter, Gmail, Drive, Slack, Harvest).
+"""Flag-gated product integrations (Indeed, LinkedIn, Glassdoor, Workday, ZipRecruiter, Hired, Wellfound, Gmail, Drive, Slack, Harvest).
 
 Live Greenhouse/Lever boards and Microsoft Graph stay the production paths.
 These adapters never add extra sources to ``SOURCE_TYPES``.

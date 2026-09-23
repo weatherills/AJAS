@@ -20,11 +20,13 @@ from app.integrations.ingest import (
     classify_error,
     detect_apply_method,
     glassdoor_ingest,
+    hired_ingest,
     indeed_ingest,
     linkedin_ingest,
     reset_limiter,
     retry_with_backoff,
     throttle,
+    wellfound_ingest,
     workday_ingest,
     ziprecruiter_ingest,
 )
@@ -34,6 +36,8 @@ from app.integrations.search import parse_search
 from app.integrations.service import reset_service
 from app.integrations.slack import MemorySlackHttp, format_event, notify_event, post_webhook
 from app.job_sources.circuit import reset as reset_circuit
+from app.job_sources.hired import clear_token as clear_hired_token
+from app.job_sources.wellfound_auth import clear_token as clear_wellfound_token
 from app.mail.graph import HttpGraphClient
 from app.notify import reset as reset_notify
 from app.resumes.blobs import InMemoryBlobStore
@@ -77,6 +81,8 @@ def _enable(monkeypatch, **flags: bool) -> None:
         "glassdoor": "FLAG_GLASSDOOR_ADAPTER",
         "workday": "FLAG_WORKDAY_ADAPTER",
         "ziprecruiter": "FLAG_ZIPRECRUITER_ADAPTER",
+        "hired": "FLAG_HIRED_ADAPTER",
+        "wellfound": "FLAG_WELLFOUND_ADAPTER",
         "easy": "FLAG_LINKEDIN_EASY_APPLY",
         "harvest": "FLAG_GREENHOUSE_HARVEST",
         "gmail": "FLAG_GMAIL_ADAPTER",
@@ -96,6 +102,8 @@ def _clean(monkeypatch):
     reset_scheduler()
     reset_circuit()
     reset_notify()
+    clear_hired_token()
+    clear_wellfound_token()
     get_settings.cache_clear()
     yield
     reset_service()
@@ -103,6 +111,8 @@ def _clean(monkeypatch):
     reset_scheduler()
     reset_circuit()
     reset_notify()
+    clear_hired_token()
+    clear_wellfound_token()
     get_settings.cache_clear()
 
 
@@ -115,6 +125,8 @@ def test_flags_default_off():
     assert flags["glassdoor_adapter"] is False
     assert flags["workday_adapter"] is False
     assert flags["ziprecruiter_adapter"] is False
+    assert flags["hired_adapter"] is False
+    assert flags["wellfound_adapter"] is False
     assert flags["linkedin_easy_apply"] is False
     assert flags["greenhouse_harvest"] is False
     assert flags["gmail_adapter"] is False
@@ -314,6 +326,141 @@ def test_ziprecruiter_jobs_v1_partner_and_pages(monkeypatch):
     bundle = spec_bundle()
     assert bundle["api"]["publicSearchApi"] is False
     assert API_CONTRACT["partnerJobsApi"] == "ats-partner-only"
+
+
+def test_hired_positions_matches_and_auth_gates(monkeypatch):
+    from app.integrations.hired_spec import API_CONTRACT, RATE_PLAN, spec_bundle
+    from app.job_sources.constants import SOURCE_TYPES
+    from app.job_sources.hired import remember_token
+
+    payload = json.loads((FIXTURES / "hired_positions.json").read_text())
+    _enable(monkeypatch, hired=True)
+    blocked = hired_ingest(payload)
+    assert blocked["jobs"] == []
+    assert blocked["reason"] == "needs_auth"
+    remember_token("hired-dev-token")
+    out = hired_ingest(payload)
+    assert out["reason"] == "ok"
+    assert out["metrics"]["ingested"] == 2
+    backend = next(job for job in out["jobs"] if job["sourcePostingId"] == "hi-pos-1")
+    assert backend["title"] == "Staff Backend Engineer"
+    assert backend["company"] == "Hired Labs"
+    assert backend["location"] == "Remote"
+    assert backend["postingUrl"].endswith("/hi-pos-1")
+    matches = hired_ingest(json.loads((FIXTURES / "hired_matches.json").read_text()))
+    assert matches["metrics"]["ingested"] == 1
+    assert matches["jobs"][0]["sourcePostingId"] == "hi-match-1"
+    assert matches["jobs"][0]["company"] == "Hired Labs"
+    assert "should-not-be-ingested" not in str(matches)
+    fixture = hired_ingest(json.loads((FIXTURES / "hired.json").read_text()))
+    assert fixture["jobs"][0]["title"] == "Staff Backend Engineer"
+    captcha = hired_ingest(payload, html="<div class='g-recaptcha'></div>")
+    assert captcha["jobs"] == []
+    assert captcha["reason"] == "needs_manual"
+    expired = hired_ingest(
+        {
+            "jobs": [
+                {
+                    "id": "hi-x",
+                    "title": "Closed Role",
+                    "company": "Hired Labs",
+                    "apply_url": "https://fixtures.ajas.local/hired/x",
+                    "expired": True,
+                }
+            ]
+        }
+    )
+    assert expired["jobs"] == []
+    assert expired["metrics"]["expiredSkipped"] == 1
+    _enable(monkeypatch)
+    remember_token("hired-dev-token")
+    assert hired_ingest(payload)["reason"] == "flag_off"
+    bundle = spec_bundle()
+    assert bundle["api"]["publicSearchApi"] is False
+    assert bundle["api"]["tokenRequired"] is True
+    assert API_CONTRACT["atsPartnerApi"] == "employer-outbound-only"
+    assert RATE_PLAN["ingest"]["capPerWindow"] == 20
+    assert SOURCE_TYPES == frozenset({"greenhouse", "lever"})
+
+
+def test_wellfound_graphql_startup_and_auth_gate(monkeypatch):
+    from app.integrations.wellfound_spec import API_CONTRACT, RATE_PLAN, spec_bundle
+    from app.job_sources.constants import SOURCE_TYPES
+    from app.job_sources.wellfound_auth import remember_token
+
+    payload = json.loads((FIXTURES / "wellfound_graphql.json").read_text())
+    _enable(monkeypatch, wellfound=True)
+    blocked = wellfound_ingest(payload)
+    assert blocked["jobs"] == []
+    assert blocked["reason"] == "needs_auth"
+    remember_token("wellfound-dev-token")
+    out = wellfound_ingest(payload)
+    assert out["reason"] == "ok"
+    assert out["metrics"]["ingested"] == 2
+    founding = next(job for job in out["jobs"] if job["sourcePostingId"] == "wf-gql-1")
+    assert founding["title"] == "Founding Engineer"
+    assert founding["company"] == "Initech"
+    assert founding["location"] == "San Francisco, CA"
+    assert founding["postingUrl"] == "https://wellfound.com/company/initech/jobs/founding-engineer"
+    remote = next(job for job in out["jobs"] if job["sourcePostingId"] == "wf-gql-2")
+    assert remote["company"] == "Northwind"
+    assert remote["location"] == "Remote"
+    assert "should-not-be-ingested" not in str(out)
+    startup = wellfound_ingest(json.loads((FIXTURES / "wellfound_startup.json").read_text()))
+    assert startup["metrics"]["ingested"] == 2
+    start_job = next(job for job in startup["jobs"] if job["sourcePostingId"] == "wf-start-1")
+    assert start_job["company"] == "Initech"
+    assert start_job["postingUrl"] == "https://wellfound.com/company/initech/jobs/founding-engineer"
+    edges = wellfound_ingest(
+        {
+            "data": {
+                "jobSearchResults": {
+                    "__typename": "JobSearchResultsX",
+                    "edges": [
+                        {
+                            "node": {
+                                "id": "wf-edge-1",
+                                "title": "Data Engineer",
+                                "slug": "data-engineer",
+                                "startup": {"name": "Contoso", "slug": "contoso"},
+                                "locationNames": ["Seattle, WA"],
+                                "descriptionSnippet": "python spark",
+                            }
+                        }
+                    ],
+                    "pageInfo": {"hasNextPage": False},
+                }
+            }
+        }
+    )
+    assert edges["jobs"][0]["company"] == "Contoso"
+    assert edges["jobs"][0]["postingUrl"] == "https://wellfound.com/company/contoso/jobs/data-engineer"
+    fixture = wellfound_ingest(json.loads((FIXTURES / "wellfound.json").read_text()))
+    assert fixture["jobs"][0]["title"] == "Founding Engineer"
+    expired = wellfound_ingest(
+        {
+            "jobs": [
+                {
+                    "id": "wf-x",
+                    "title": "Closed Role",
+                    "company": "Initech",
+                    "apply_url": "https://fixtures.ajas.local/wellfound/x",
+                    "expired": True,
+                }
+            ]
+        }
+    )
+    assert expired["jobs"] == []
+    assert expired["metrics"]["expiredSkipped"] == 1
+    _enable(monkeypatch)
+    remember_token("wellfound-dev-token")
+    assert wellfound_ingest(payload)["reason"] == "flag_off"
+    bundle = spec_bundle()
+    assert bundle["api"]["publicSearchApi"] is False
+    assert bundle["api"]["tokenRequired"] is True
+    assert API_CONTRACT["angelListRest"] == "retired"
+    assert RATE_PLAN["ingest"]["capPerWindow"] == 20
+    assert SOURCE_TYPES == frozenset({"greenhouse", "lever"})
 
 
 def test_linkedin_search_inputs_and_listing_fetcher(monkeypatch):
@@ -623,6 +770,8 @@ def test_http_routes_flag_gated(monkeypatch):
         glassdoor=True,
         workday=True,
         ziprecruiter=True,
+        hired=True,
+        wellfound=True,
         easy=True,
         harvest=True,
         gmail=True,
@@ -635,6 +784,8 @@ def test_http_routes_flag_gated(monkeypatch):
     assert status["flags"]["glassdoor_adapter"] is True
     assert status["flags"]["workday_adapter"] is True
     assert status["flags"]["ziprecruiter_adapter"] is True
+    assert status["flags"]["hired_adapter"] is True
+    assert status["flags"]["wellfound_adapter"] is True
     payload = json.loads((FIXTURES / "indeed.json").read_text())
     ingest = routes.integrations_ingest(
         _req("POST", "http://localhost/api/v1/integrations/ingest/indeed", body={"payload": payload}, route_params={"source": "indeed"})
@@ -695,6 +846,38 @@ def test_http_routes_flag_gated(monkeypatch):
     assert wd_spec["api"]["publicSearchApi"] is False
     zr_spec = json.loads(routes.integrations_ziprecruiter_spec(_req("GET", "http://localhost/api/v1/integrations/ziprecruiter/spec")).get_body())
     assert zr_spec["flag"] == "ziprecruiter_adapter"
+    from app.job_sources.hired import remember_token as remember_hired
+    from app.job_sources.wellfound_auth import remember_token as remember_wellfound
+
+    remember_hired("hired-http-token")
+    remember_wellfound("wellfound-http-token")
+    hi = json.loads(
+        routes.integrations_ingest(
+            _req(
+                "POST",
+                "http://localhost/api/v1/integrations/ingest/hired",
+                body={"payload": json.loads((FIXTURES / "hired_positions.json").read_text())},
+                route_params={"source": "hired"},
+            )
+        ).get_body()
+    )
+    assert hi["jobs"]
+    wf = json.loads(
+        routes.integrations_ingest(
+            _req(
+                "POST",
+                "http://localhost/api/v1/integrations/ingest/wellfound",
+                body={"payload": json.loads((FIXTURES / "wellfound_graphql.json").read_text())},
+                route_params={"source": "wellfound"},
+            )
+        ).get_body()
+    )
+    assert wf["jobs"]
+    hi_spec = json.loads(routes.integrations_hired_spec(_req("GET", "http://localhost/api/v1/integrations/hired/spec")).get_body())
+    assert hi_spec["api"]["publicSearchApi"] is False
+    assert hi_spec["flag"] == "hired_adapter"
+    wf_spec = json.loads(routes.integrations_wellfound_spec(_req("GET", "http://localhost/api/v1/integrations/wellfound/spec")).get_body())
+    assert wf_spec["flag"] == "wellfound_adapter"
     search = json.loads(routes.integrations_search_inputs(_req("GET", "http://localhost/api/v1/integrations/linkedin/search", params={"keywords": "python"})).get_body())
     assert search["search"]["keywords"] == "python"
     apply_resp = routes.integrations_easy_apply(

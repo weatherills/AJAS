@@ -1,0 +1,43 @@
+{
+  "data": {
+    "talent": {
+      "jobSearchResults": {
+        "__typename": "JobSearchResultsX",
+        "jobs": [
+          {
+            "id": "wf-gql-1",
+            "title": "Founding Engineer",
+            "slug": "founding-engineer",
+            "commitment": "Full-time",
+            "locationNames": ["San Francisco, CA"],
+            "remote": false,
+            "descriptionSnippet": "Required: typescript react. Compensation $170,000-$200,000.",
+            "liveStartAt": "2026-03-01T00:00:00Z",
+            "company": {
+              "id": "c-initech",
+              "name": "Initech",
+              "slug": "initech",
+              "recruiterEmail": "should-not-be-ingested@example.com"
+            }
+          },
+          {
+            "id": "wf-gql-2",
+            "title": "Staff Platform Engineer",
+            "slug": "staff-platform-engineer",
+            "commitment": "Full-time",
+            "remote": true,
+            "descriptionSnippet": "Required: python azure kubernetes.",
+            "startup": {
+              "name": "Northwind",
+              "slug": "northwind"
+            }
+          }
+        ],
+        "pageInfo": {
+          "hasNextPage": false,
+          "endCursor": null
+        }
+      }
+    }
+  }
+}

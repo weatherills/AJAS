@@ -1,0 +1,24 @@
+{
+  "startup": {
+    "id": "su-1",
+    "name": "Initech",
+    "slug": "initech",
+    "jobListings": [
+      {
+        "id": "wf-start-1",
+        "title": "Founding Engineer",
+        "slug": "founding-engineer",
+        "commitment": "Full-time",
+        "locationNames": ["San Francisco, CA"],
+        "descriptionSnippet": "Required: typescript react."
+      },
+      {
+        "id": "wf-start-2",
+        "title": "Product Engineer",
+        "slug": "product-engineer",
+        "remote": true,
+        "description": "Required: react graphql."
+      }
+    ]
+  }
+}

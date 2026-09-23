@@ -8,9 +8,11 @@ from typing import Any, Callable
 from app.flags import feature_enabled
 from app.integrations.ingest import (
     glassdoor_ingest,
+    hired_ingest,
     indeed_ingest,
     linkedin_ingest,
     reset_limiter,
+    wellfound_ingest,
     workday_ingest,
     ziprecruiter_ingest,
 )
@@ -28,6 +30,8 @@ _FETCHERS: dict[str, FetchFn] = {
     "glassdoor": glassdoor_ingest,
     "workday": workday_ingest,
     "ziprecruiter": ziprecruiter_ingest,
+    "hired": hired_ingest,
+    "wellfound": wellfound_ingest,
 }
 
 

@@ -1,0 +1,19 @@
+{
+  "matches": [
+    {
+      "score": 0.91,
+      "candidate": {
+        "email": "should-not-be-ingested@example.com",
+        "name": "Secret Candidate"
+      },
+      "position": {
+        "id": "hi-match-1",
+        "title": "Staff Backend Engineer",
+        "company_name": "Hired Labs",
+        "location": "Remote",
+        "apply_url": "https://fixtures.ajas.local/hired/hi-match-1",
+        "description": "Python, distributed systems."
+      }
+    }
+  ]
+}

@@ -8,6 +8,22 @@ from xml.etree import ElementTree as ET
 from app.integrations.linkedin_spec import listing_dedupe_key, listing_visibility
 from app.job_sources.keys import canonical_id_for
 
+_PII_KEYS = frozenset(
+    {
+        "email",
+        "candidate_email",
+        "candidateemail",
+        "contact_email",
+        "contactemail",
+        "user_email",
+        "useremail",
+        "applicant_email",
+        "applicantemail",
+        "recruiter_email",
+        "recruiteremail",
+    }
+)
+
 
 def nested_text(value: Any) -> str:
     if isinstance(value, bool):
@@ -39,6 +55,28 @@ def xml_child_text(node: ET.Element, tag: str) -> str:
 
 def join_location(*parts: str) -> str:
     return ", ".join(part for part in parts if part and str(part).strip())
+
+
+def is_pii_key(key: str) -> bool:
+    compact = str(key).lower().replace("-", "_")
+    return compact in _PII_KEYS or compact.endswith("_email") or compact.endswith("email")
+
+
+def strip_pii(row: dict[str, Any]) -> dict[str, Any]:
+    """Drop email/contact keys. Candidate objects are not copied through."""
+    out: dict[str, Any] = {}
+    for key, value in row.items():
+        if is_pii_key(str(key)):
+            continue
+        if str(key).lower() in {"candidate", "contact", "applicant"}:
+            continue
+        if isinstance(value, dict):
+            nested = strip_pii(value)
+            if nested:
+                out[key] = nested
+        else:
+            out[key] = value
+    return out
 
 
 def extract_mapped_field(job: dict[str, Any], spec: dict[str, Any], *, source_key: str) -> str:
