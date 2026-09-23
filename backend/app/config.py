@@ -150,7 +150,16 @@ class Settings(BaseSettings):
     flag_lever_career_adapter: bool = True
     wellfound_api_token: str = ""
     hired_api_token: str = ""
-    flag_imap_transport: bool = False
+    flag_imap_transport: bool = True
+    imap_host: str = ""
+    imap_port: int = 993
+    imap_username: str = ""
+    imap_password: str = ""
+    imap_use_ssl: bool = True
+    imap_live: bool = False
+    imap_allowed_hosts: str = ""
+    smtp_host: str = ""
+    smtp_port: int = 465
     flag_bulk_auto_apply: bool = False
     flag_ltr_logging: bool = True
     flag_respect_robots: bool = True

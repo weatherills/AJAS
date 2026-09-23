@@ -156,6 +156,51 @@ def integrations_gmail_send(req: func.HttpRequest) -> func.HttpResponse:
         return _handle(exc)
 
 
+@bp.route(route="v1/integrations/imap/sync", methods=["POST"])
+def integrations_imap_sync(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    try:
+        principal = _auth(req)
+        body = _json_body(req)
+        payload = body.get("payload") if "payload" in body else None
+        if not payload:
+            raw = req.get_body() or b""
+            if raw and (raw.lstrip().startswith(b"From:") or b"Message-ID:" in raw):
+                payload = raw
+        return json_response(
+            get_service().imap_sync(
+                principal.user_id,
+                folder=body.get("folder"),
+                since_uid=str(body.get("sinceUid") or body.get("cursor") or "") or None,
+                fixtures=body.get("messages") or body.get("fixtures"),
+                payload=payload,
+                live=bool(body.get("live")),
+            )
+        )
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/integrations/imap/send", methods=["POST"])
+def integrations_imap_send(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    try:
+        principal = _auth(req)
+        return json_response(get_service().imap_send(principal.user_id, _json_body(req)))
+    except Exception as exc:
+        return _handle(exc)
+
+
+@bp.route(route="v1/integrations/imap/spec", methods=["GET"])
+def integrations_imap_spec(req: func.HttpRequest) -> func.HttpResponse:
+    bind_request(req)
+    try:
+        _auth(req)
+        return json_response(get_service().board_spec("imap"))
+    except Exception as exc:
+        return _handle(exc)
+
+
 @bp.route(route="v1/integrations/outlook/delta", methods=["GET"])
 def integrations_outlook_delta(req: func.HttpRequest) -> func.HttpResponse:
     bind_request(req)

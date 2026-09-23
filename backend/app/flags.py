@@ -17,6 +17,7 @@ TESTED_CONNECTOR_FLAGS: frozenset[str] = frozenset(
         "wellfound_adapter",
         "greenhouse_career_adapter",
         "lever_career_adapter",
+        "imap_transport",
     }
 )
 
@@ -35,7 +36,7 @@ FLAG_DEFAULTS: dict[str, bool] = {
     "hired_adapter": True,
     "greenhouse_career_adapter": True,
     "lever_career_adapter": True,
-    "imap_transport": False,
+    "imap_transport": True,
     "bulk_auto_apply": False,
     "ltr_logging": True,
     "respect_robots": True,

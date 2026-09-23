@@ -15,6 +15,7 @@ from app.features import integrations as routes
 from app.integrations.drive import LocalDriveClient, seed_pdf
 from app.integrations.easy_apply import reset as reset_easy_apply
 from app.integrations.gmail import LocalGmailClient, send_mail, sync_inbox
+from app.integrations.imap import clear_credentials as clear_imap_credentials
 from app.integrations.harvest import list_applications, map_application
 from app.integrations.ingest import (
     classify_error,
@@ -86,6 +87,7 @@ def _enable(monkeypatch, **flags: bool) -> None:
         "easy": "FLAG_LINKEDIN_EASY_APPLY",
         "harvest": "FLAG_GREENHOUSE_HARVEST",
         "gmail": "FLAG_GMAIL_ADAPTER",
+        "imap": "FLAG_IMAP_TRANSPORT",
         "drive": "FLAG_GOOGLE_DRIVE",
         "slack": "FLAG_SLACK_NOTIFY",
         "consent": "FLAG_SITE_POLICY_CONSENT",
@@ -104,6 +106,7 @@ def _clean(monkeypatch):
     reset_notify()
     clear_hired_token()
     clear_wellfound_token()
+    clear_imap_credentials()
     get_settings.cache_clear()
     yield
     reset_service()
@@ -113,6 +116,7 @@ def _clean(monkeypatch):
     reset_notify()
     clear_hired_token()
     clear_wellfound_token()
+    clear_imap_credentials()
     get_settings.cache_clear()
 
 
@@ -771,6 +775,7 @@ def test_http_routes_flag_gated(monkeypatch):
         easy=True,
         harvest=True,
         gmail=True,
+        imap=True,
         drive=True,
         slack=True,
     )
@@ -782,6 +787,7 @@ def test_http_routes_flag_gated(monkeypatch):
     assert status["flags"]["ziprecruiter_adapter"] is True
     assert status["flags"]["hired_adapter"] is True
     assert status["flags"]["wellfound_adapter"] is True
+    assert status["flags"]["imap_transport"] is True
     payload = json.loads((FIXTURES / "indeed.json").read_text())
     ingest = routes.integrations_ingest(
         _req("POST", "http://localhost/api/v1/integrations/ingest/indeed", body={"payload": payload}, route_params={"source": "indeed"})
@@ -902,6 +908,18 @@ def test_http_routes_flag_gated(monkeypatch):
         ).get_body()
     )
     assert gmail["threads"][0]["intent"] == "follow_up"
+    imap_sync = json.loads(
+        routes.integrations_imap_sync(
+            _req(
+                "POST",
+                "http://localhost/api/v1/integrations/imap/sync",
+                body={"payload": json.loads((Path(__file__).parent / "fixtures" / "mail" / "imap_inbox.json").read_text())},
+            )
+        ).get_body()
+    )
+    assert imap_sync["items"]
+    imap_spec = json.loads(routes.integrations_imap_spec(_req("GET", "http://localhost/api/v1/integrations/imap/spec")).get_body())
+    assert imap_spec["flag"] == "imap_transport"
     slack = json.loads(
         routes.integrations_slack(_req("POST", "http://localhost/api/v1/integrations/slack/notify", body={"kind": "match", "title": "Hit", "body": "88"})).get_body()
     )
@@ -924,6 +942,9 @@ def test_function_app_registers_integration_routes(function_names):
     assert "integrations_refresh" in function_names
     assert "integrations_status" in function_names
     assert "integrations_ingest" in function_names
+    assert "integrations_imap_sync" in function_names
+    assert "integrations_imap_send" in function_names
+    assert "integrations_imap_spec" in function_names
     assert "cosmos_auto_bootstrap" in function_names
     from app.job_sources.constants import SOURCE_TYPES
 

@@ -480,7 +480,7 @@ def test_unsubscribe_list_unsubscribe_honor():
     row = list_unsubscribe(["a@b.c", "c@d.e"], {"c@d.e"}, header="a@b.c")
     assert "a@b.c" in row["dropped"]
     assert row["honored"] is True
-    assert feature_enabled("imap_transport") is False
+    assert feature_enabled("imap_transport") is True
 
 # === S16-61 ===
 

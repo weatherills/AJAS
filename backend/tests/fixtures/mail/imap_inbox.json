@@ -1,0 +1,24 @@
+{
+  "messages": [
+    {
+      "uid": "11",
+      "message_id": "<imap-1@acme.test>",
+      "thread_id": "<imap-1@acme.test>",
+      "subject": "Interview availability",
+      "from": {"name": "Maya Recruiter", "address": "maya@acme.test"},
+      "to": ["alex@ajas.dev"],
+      "folder": "INBOX",
+      "date": "Sun, 01 Mar 2026 12:00:00 +0000",
+      "body": "Could we schedule a phone screen this week?"
+    },
+    {
+      "uid": "12",
+      "message_id": "<imap-2@initech.test>",
+      "subject": "Following up on Staff Platform",
+      "from": "jordan@initech.test",
+      "to": "alex@ajas.dev",
+      "folder": "INBOX",
+      "body": "Checking in on the Staff Platform Engineer role."
+    }
+  ]
+}

@@ -444,7 +444,7 @@ def test_email_imap_labels_mapping_to_internal_states():
     reset()
     row = imap_label("Interview")
     assert row["state"] == "interview"
-    assert row["imap"] is False
+    assert row["imap"] is True
 
 # === S14-47 ===
 

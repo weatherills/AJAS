@@ -1,4 +1,7 @@
-"""Outlook / Microsoft Graph as the mail transport (IMAP/SMTP stay stubs)."""
+"""Outlook / Microsoft Graph as the Email PRD mail transport.
+
+IMAP/SMTP is a flag-gated extra connector (see ``app.integrations.imap``).
+"""
 
 from __future__ import annotations
 
@@ -12,8 +15,9 @@ def outlook_status() -> dict[str, object]:
         "imap": False,
         "smtp": False,
         "graph": True,
-        "transport": imap.get("transport") or "graph",
-        "configured": bool(imap.get("transport") == "graph"),
+        "transport": "graph",
+        "configured": True,
         "imapConfigured": bool(imap.get("imapConfigured")),
-        "note": "Email PRD uses Graph only; IMAP/SMTP are not implemented.",
+        "imapEnabled": bool(imap.get("enabled")),
+        "note": "Email PRD uses Graph. IMAP/SMTP is a separate flag-gated connector.",
     }

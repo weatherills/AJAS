@@ -10,6 +10,10 @@ from app.integrations.drive import LocalDriveClient, import_resume, list_library
 from app.integrations.easy_apply import audit_log, receipts, reset as reset_easy_apply, submit as easy_apply_submit
 from app.integrations.gmail import LocalGmailClient, send_mail, sync_inbox
 from app.integrations.harvest import list_applications
+from app.integrations.imap import LocalImapClient
+from app.integrations.imap import send_mail as imap_send_mail
+from app.integrations.imap import sync_inbox as imap_sync_inbox
+from app.integrations.imap_spec import spec_bundle as imap_spec_bundle
 from app.integrations.glassdoor_spec import spec_bundle as glassdoor_spec_bundle
 from app.integrations.hired_spec import spec_bundle as hired_spec_bundle
 from app.integrations.indeed_spec import spec_bundle as indeed_spec_bundle
@@ -54,12 +58,14 @@ class IntegrationService:
         self,
         *,
         gmail: LocalGmailClient | None = None,
+        imap: LocalImapClient | None = None,
         drive: LocalDriveClient | None = None,
         slack_http: MemorySlackHttp | None = None,
         graph: GraphClient | None = None,
         jobs: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         self.gmail = gmail or LocalGmailClient()
+        self.imap = imap or LocalImapClient()
         self.drive = drive or LocalDriveClient()
         self.slack_http = slack_http or MemorySlackHttp()
         self.graph = graph
@@ -81,6 +87,7 @@ class IntegrationService:
                 "wellfound_adapter": flags.get("wellfound_adapter"),
                 "greenhouse_harvest": flags.get("greenhouse_harvest"),
                 "gmail_adapter": flags.get("gmail_adapter"),
+                "imap_transport": flags.get("imap_transport"),
                 "google_drive": flags.get("google_drive"),
                 "slack_notify": flags.get("slack_notify"),
             },
@@ -91,6 +98,7 @@ class IntegrationService:
             "jobs": len(self.jobs),
             "slackConfigured": bool((settings.slack_webhook_url or "").strip()),
             "gmailConfigured": bool((settings.google_client_id or "").strip() and (settings.google_client_secret or "").strip()),
+            "imapConfigured": bool((settings.imap_host or "").strip() and (settings.imap_username or "").strip() and (settings.imap_password or "").strip()),
             "harvestConfigured": bool((settings.greenhouse_harvest_api_key or "").strip()),
         }
 
@@ -113,6 +121,8 @@ class IntegrationService:
             return hired_spec_bundle()
         if source == "wellfound":
             return wellfound_spec_bundle()
+        if source == "imap":
+            return imap_spec_bundle()
         return spec_bundle()
 
     def search_spec(self, payload: dict[str, Any] | None) -> dict[str, Any]:
@@ -171,6 +181,37 @@ class IntegrationService:
             body_text=str(body.get("body") or body.get("bodyText") or ""),
             thread_id=body.get("threadId"),
             client=self.gmail,
+        )
+
+    def imap_sync(
+        self,
+        account_id: str,
+        *,
+        folder: str | None = None,
+        since_uid: str | None = None,
+        fixtures: list[dict[str, Any]] | None = None,
+        payload: Any = None,
+        live: bool = False,
+    ) -> dict[str, Any]:
+        return imap_sync_inbox(
+            account_id,
+            folder=folder,
+            since_uid=since_uid,
+            client=self.imap,
+            fixtures=fixtures,
+            payload=payload,
+            live=live,
+        )
+
+    def imap_send(self, account_id: str, body: dict[str, Any]) -> dict[str, Any]:
+        return imap_send_mail(
+            account_id,
+            to_addresses=list(body.get("to") or body.get("toAddresses") or []),
+            subject=str(body.get("subject") or ""),
+            body_text=str(body.get("body") or body.get("bodyText") or ""),
+            thread_id=body.get("threadId"),
+            client=self.imap,
+            live=bool(body.get("live")),
         )
 
     def outlook_delta(self, account_id: str, token: str | None = None) -> dict[str, Any]:

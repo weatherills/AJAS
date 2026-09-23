@@ -476,8 +476,8 @@ def test_unsubscribe_suppression_sync_v2():
     from app.sprint15.mail import suppression_sync
     row = suppression_sync(["a@b.c", "c@d.e"], {"c@d.e"})
     assert row["dropped"] == ["c@d.e"]
-    assert feature_enabled("imap_transport") is False
-    assert row["imap"] is False
+    assert feature_enabled("imap_transport") is True
+    assert row["imap"] is True
 
 # === S15-61 ===
 
