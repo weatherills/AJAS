@@ -26,6 +26,8 @@ MASK_PATHS: dict[str, tuple[str, ...]] = {
     "resumes": ("original_filename", "rawJson", "text", "text_preview"),
     "resume_parse_events": ("snapshot", "rawJson", "text"),
     "resume_versions": ("rawJson", "text"),
+    "resume_contacts": ("email", "phone", "full_name"),
+    "resume_skills": ("name",),
     "job_postings_raw": ("payload", "text", "body"),
     "match_evidence": ("sentences", "snippet", "text"),
     "cover_letters": ("body",),

@@ -160,6 +160,7 @@ CORE_ENTITIES: dict[str, dict[str, Any]] = {
         "relationships": (
             "StoredResume N—1 User",
             "StoredResume 1—N Application (resume_id)",
+            "StoredResume 1—N resume_contacts / resume_skills / resume_experiences / resume_educations",
             "StoredResume 1—N resume_parse_events",
         ),
         "query_patterns": (

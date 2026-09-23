@@ -259,7 +259,7 @@ class AutoApplyDAO(DomainDAO):
 
 
 class ResumesDAO(DomainDAO):
-    containers = ("resumes", "resume_versions", "resume_parse_events")
+    containers = ("resumes", "resume_versions", "resume_parse_events", "resume_contacts", "resume_skills", "resume_experiences", "resume_educations")
 
     def ensure_resumes_containers(self, database: Any) -> list[str]:
         from app.resumes.containers import ensure_resumes_containers as ensure_feature

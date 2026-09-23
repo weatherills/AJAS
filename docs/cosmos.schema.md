@@ -57,8 +57,12 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 | `recommendations` | learning | Recommendation | `/user_id` | — | — | 3 | Session | learning | — | — |
 | `recruiter_inboxes` | schema_plane | RecruiterInbox | `/recruiterId` | — | — | 1 | Session | platform | — | — |
 | `recruiters` | schema_plane | Recruiter | `/companyId` | — | — | 1 | Session | platform | — | email,phone |
+| `resume_contacts` | resumes | ResumeContact | `/resume_id` | — | — | 0 | Session | resumes | 730 | email,phone,full_name |
+| `resume_educations` | resumes | ResumeEducation | `/resume_id` | — | — | 1 | Session | resumes | 730 | — |
+| `resume_experiences` | resumes | ResumeExperience | `/resume_id` | — | — | 1 | Session | resumes | 730 | — |
 | `resume_parse_events` | resumes | ResumeParseEvent | `/resume_id` | 90 | — | 1 | Session | resumes | 90 | snapshot,rawJson,text |
 | `resume_parse_queue` | schema_plane | ResumeParseQueue | `/userId` | 7 | — | 1 | Session | platform | 730 | — |
+| `resume_skills` | resumes | ResumeSkill | `/resume_id` | — | — | 1 | Session | resumes | 730 | name |
 | `resume_variants` | auto_apply | ResumeVariant | `/user_id` | — | — | 1 | Session | apply | — | — |
 | `resume_versions` | resumes | ResumeVersion | `/resume_id` | — | — | 2 | Session | resumes | 730 | rawJson,text |
 | `resumes` | resumes | Resume | `/user_id` | — | — | 3 | Session | resumes | 730 | original_filename,rawJson,text,text_preview |
@@ -1017,6 +1021,192 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - DAL: `CatalogRepository(recruiters)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
+### `resume_contacts`
+
+- Query: point read by resume_id
+- Rel: 1
+- Rel: —
+- Rel: 1
+- Rel:  
+- Rel: r
+- Rel: e
+- Rel: s
+- Rel: u
+- Rel: m
+- Rel: e
+- Rel: s
+- Rel: ;
+- Rel:  
+- Rel: d
+- Rel: o
+- Rel: c
+- Rel: u
+- Rel: m
+- Rel: e
+- Rel: n
+- Rel: t
+- Rel:  
+- Rel: i
+- Rel: d
+- Rel:  
+- Rel: e
+- Rel: q
+- Rel: u
+- Rel: a
+- Rel: l
+- Rel: s
+- Rel:  
+- Rel: r
+- Rel: e
+- Rel: s
+- Rel: u
+- Rel: m
+- Rel: e
+- Rel: _
+- Rel: i
+- Rel: d
+- Logical unique: `resume_id`
+- RU: PK /resume_id plus id=resume_id makes the 1:1 unique without a unique-key policy.
+- API: GET /api/resumes
+- DAL: `CatalogRepository(resume_contacts)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `resume_educations`
+
+- Query: resume_id + order_index
+- Rel: N
+- Rel: —
+- Rel: 1
+- Rel:  
+- Rel: r
+- Rel: e
+- Rel: s
+- Rel: u
+- Rel: m
+- Rel: e
+- Rel: s
+- Rel: ;
+- Rel:  
+- Rel: o
+- Rel: r
+- Rel: d
+- Rel: e
+- Rel: r
+- Rel: _
+- Rel: i
+- Rel: n
+- Rel: d
+- Rel: e
+- Rel: x
+- Rel:  
+- Rel: f
+- Rel: o
+- Rel: r
+- Rel:  
+- Rel: d
+- Rel: e
+- Rel: t
+- Rel: e
+- Rel: r
+- Rel: m
+- Rel: i
+- Rel: n
+- Rel: i
+- Rel: s
+- Rel: t
+- Rel: i
+- Rel: c
+- Rel:  
+- Rel: U
+- Rel: I
+- Rel:  
+- Rel: o
+- Rel: r
+- Rel: d
+- Rel: e
+- Rel: r
+- RU: In-partition list ordered by order_index is a single composite (~3 RU).
+- API: GET /api/resumes
+- DAL: `CatalogRepository(resume_educations)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `resume_experiences`
+
+- Query: resume_id + order_index
+- Rel: N
+- Rel: —
+- Rel: 1
+- Rel:  
+- Rel: r
+- Rel: e
+- Rel: s
+- Rel: u
+- Rel: m
+- Rel: e
+- Rel: s
+- Rel: ;
+- Rel:  
+- Rel: e
+- Rel: n
+- Rel: d
+- Rel: _
+- Rel: d
+- Rel: a
+- Rel: t
+- Rel: e
+- Rel:  
+- Rel: >
+- Rel: =
+- Rel:  
+- Rel: s
+- Rel: t
+- Rel: a
+- Rel: r
+- Rel: t
+- Rel: _
+- Rel: d
+- Rel: a
+- Rel: t
+- Rel: e
+- Rel: ;
+- Rel:  
+- Rel: i
+- Rel: s
+- Rel: _
+- Rel: c
+- Rel: u
+- Rel: r
+- Rel: r
+- Rel: e
+- Rel: n
+- Rel: t
+- Rel:  
+- Rel: i
+- Rel: m
+- Rel: p
+- Rel: l
+- Rel: i
+- Rel: e
+- Rel: s
+- Rel:  
+- Rel: e
+- Rel: n
+- Rel: d
+- Rel: _
+- Rel: d
+- Rel: a
+- Rel: t
+- Rel: e
+- Rel:  
+- Rel: n
+- Rel: u
+- Rel: l
+- Rel: l
+- RU: In-partition list ordered by order_index is a single composite (~3 RU).
+- API: GET /api/resumes
+- DAL: `CatalogRepository(resume_experiences)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
 ### `resume_parse_events`
 
 - Query: resume_id + created_at desc
@@ -1082,6 +1272,47 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - RU: TTL 7d. PK /userId keeps a user's parse jobs in one partition.
 - API: GET /api/v1/ops/storage
 - DAL: `CatalogRepository(resume_parse_queue)`
+- SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
+
+### `resume_skills`
+
+- Query: resume_id + order_index
+- Rel: N
+- Rel: —
+- Rel: 1
+- Rel:  
+- Rel: r
+- Rel: e
+- Rel: s
+- Rel: u
+- Rel: m
+- Rel: e
+- Rel: s
+- Rel: ;
+- Rel:  
+- Rel: s
+- Rel: o
+- Rel: u
+- Rel: r
+- Rel: c
+- Rel: e
+- Rel:  
+- Rel: p
+- Rel: a
+- Rel: r
+- Rel: s
+- Rel: e
+- Rel: d
+- Rel: |
+- Rel: m
+- Rel: a
+- Rel: n
+- Rel: u
+- Rel: a
+- Rel: l
+- RU: In-partition list ordered by order_index is a single composite (~3 RU).
+- API: GET /api/resumes
+- DAL: `CatalogRepository(resume_skills)`
 - SLA: p95 in-partition < 250ms; queue page of 25 ≤ 5 RU
 
 ### `resume_variants`
@@ -1172,7 +1403,7 @@ TTL is reserved for transient scrape/ingest/webhook rows; durable history is pur
 - Query: processing_status
 - Query: checksum_sha256
 - Query: candidate_id
-- Rel: 1—N children embedded; 1—N resume_parse_events; primaryFileId + parsedVersion FKs; candidate_id FK
+- Rel: 1—N resume_contacts/skills/experiences/educations; 1—N resume_parse_events; primaryFileId + parsedVersion FKs; candidate_id FK
 - Logical unique: `user_id, id, checksum_sha256`
 - RU: Library list of ~20 resumes is a single partitioned query (~5 RU). Dual-write userId/updatedAt for PRD lists.
 - API: GET /api/resumes

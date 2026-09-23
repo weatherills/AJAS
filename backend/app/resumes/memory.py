@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+from app.resumes.children import (
+    attach_children,
+    empty_children,
+    stamp_children,
+    structured_from_rows,
+)
 from app.resumes.constants import CANONICAL_SCHEMA_VERSION, ChildSource, ProcessingStatus
 from app.resumes.errors import (
     ResumeNotFoundError,
@@ -12,7 +18,11 @@ from app.resumes.errors import (
 )
 from app.resumes.models import (
     Resume,
+    ResumeContact,
+    ResumeEducation,
+    ResumeExperience,
     ResumeParseEvent,
+    ResumeSkill,
     RunResumeSelection,
     StructuredResume,
     new_id,
@@ -33,6 +43,10 @@ class InMemoryResumeStore:
         self._resumes: dict[tuple[str, str], Resume] = {}
         self._events: dict[str, list[ResumeParseEvent]] = {}
         self._selections: dict[str, RunResumeSelection] = {}
+        self._contacts: dict[str, ResumeContact] = {}
+        self._skills: dict[str, list[ResumeSkill]] = {}
+        self._experiences: dict[str, list[ResumeExperience]] = {}
+        self._educations: dict[str, list[ResumeEducation]] = {}
 
     def create_resume(
         self,
@@ -68,7 +82,7 @@ class InMemoryResumeStore:
             created_at=now,
             updated_at=now,
         )
-        self._resumes[(user_id, resume.id)] = resume
+        self._store_parent(resume)
         self._append_event(resume, "uploaded", {"filename": original_filename})
         duplicate = self._find_duplicate(user_id, checksum_sha256, resume.id)
         if duplicate is not None:
@@ -77,20 +91,20 @@ class InMemoryResumeStore:
                 "duplicate_detected",
                 {"existing_resume_id": duplicate.id, "checksum_sha256": checksum_sha256},
             )
-        return deepcopy(resume)
+        return self._hydrate(resume)
 
     def get_resume(self, user_id: str, resume_id: str) -> Resume:
         resume = self._resumes.get((user_id, resume_id))
         if resume is None:
             raise ResumeNotFoundError(resume_id)
-        return deepcopy(resume)
+        return self._hydrate(resume)
 
     def list_resumes(self, user_id: str, *, include_deleted: bool = False) -> list[Resume]:
         rows = [r for (uid, _), r in self._resumes.items() if uid == user_id]
         if not include_deleted:
             rows = [r for r in rows if not r.is_deleted]
         rows.sort(key=lambda r: r.updated_at, reverse=True)
-        return [deepcopy(r) for r in rows]
+        return [self._hydrate(r) for r in rows]
 
     def record_status(
         self,
@@ -121,8 +135,9 @@ class InMemoryResumeStore:
         detail: dict = {}
         if parsing_error:
             detail["parsing_error"] = parsing_error
+        self._store_parent(resume)
         self._append_event(resume, event, detail)  # type: ignore[arg-type]
-        return deepcopy(resume)
+        return self._hydrate(resume)
 
     def record_parse_success(
         self,
@@ -134,18 +149,16 @@ class InMemoryResumeStore:
         source_version: str | None = None,
     ) -> Resume:
         resume = self._require(user_id, resume_id)
-        stamped = _stamp_children(
+        stamped = stamp_children(
             snapshot,
             resume_id=resume.id,
             source="parsed",
             parsing_confidence=parsing_confidence,
+            user_id=user_id,
         )
         validate_structured(stamped)
         now = utc_now()
-        resume.contact = stamped.contact
-        resume.skills = stamped.skills
-        resume.experiences = stamped.experiences
-        resume.educations = stamped.educations
+        self._save_children(resume.id, stamped)
         resume.processing_status = "parsed"
         resume.parsed_at = now
         resume.parsing_error = None
@@ -155,6 +168,7 @@ class InMemoryResumeStore:
         if source_version:
             resume.source_version = source_version
         _apply_validated(resume, stamped, now)
+        self._store_parent(resume)
         self._append_event(
             resume,
             "succeeded",
@@ -166,7 +180,7 @@ class InMemoryResumeStore:
                 "sourceVersion": resume.source_version,
             },
         )
-        return deepcopy(resume)
+        return self._hydrate(resume)
 
     def replace_structured_data(
         self,
@@ -178,20 +192,18 @@ class InMemoryResumeStore:
         source: ChildSource = "manual",
     ) -> Resume:
         resume = self._require(user_id, resume_id)
-        old_values = _field_snapshot(resume)
-        stamped = _stamp_children(snapshot, resume_id=resume.id, source=source)
+        old_values = _field_snapshot(self._hydrate(resume))
+        stamped = stamp_children(snapshot, resume_id=resume.id, source=source, user_id=user_id)
         validate_structured(stamped)
         now = utc_now()
-        resume.contact = stamped.contact
-        resume.skills = stamped.skills
-        resume.experiences = stamped.experiences
-        resume.educations = stamped.educations
+        self._save_children(resume.id, stamped)
         resume.last_edited_by = last_edited_by
         resume.updated_at = now
         resume.schema_version = CANONICAL_SCHEMA_VERSION
         resume.parsed_version = int(resume.parsed_version or 0) + 1
         _apply_validated(resume, stamped, now)
-        new_values = _field_snapshot(resume)
+        self._store_parent(resume)
+        new_values = _field_snapshot(self._hydrate(resume))
         self._append_event(
             resume,
             "edited",
@@ -203,19 +215,20 @@ class InMemoryResumeStore:
                 "parsedVersion": resume.parsed_version,
             },
         )
-        return deepcopy(resume)
+        return self._hydrate(resume)
 
     def soft_delete(self, user_id: str, resume_id: str) -> Resume:
         resume = self._require(user_id, resume_id)
         if resume.is_deleted:
-            return deepcopy(resume)
+            return self._hydrate(resume)
         now = utc_now()
         resume.is_deleted = True
         resume.is_active = False
         resume.deleted_at = now
         resume.updated_at = now
+        self._store_parent(resume)
         self._append_event(resume, "deleted", {})
-        return deepcopy(resume)
+        return self._hydrate(resume)
 
     def set_user_active(self, user_id: str, resume_id: str) -> Resume:
         target = self._require(user_id, resume_id)
@@ -227,10 +240,12 @@ class InMemoryResumeStore:
                 continue
             resume.is_active = resume.id == resume_id
             resume.updated_at = now
+            self._store_parent(resume)
         target.is_active = True
         target.updated_at = now
+        self._store_parent(target)
         self._append_event(target, "activated", {"editor": user_id, "active": True})
-        return deepcopy(target)
+        return self._hydrate(target)
 
     def get_user_active(self, user_id: str) -> Resume | None:
         for resume in self.list_resumes(user_id):
@@ -250,6 +265,8 @@ class InMemoryResumeStore:
             raise ResumeSelectionRejectedError("run user_id must match resume user_id")
         if resume.is_deleted:
             raise ResumeSelectionRejectedError("cannot select a deleted resume")
+        if resume.processing_status != "parsed":
+            raise ResumeSelectionRejectedError("cannot select a resume that is not parsed")
         selection = RunResumeSelection(
             id=run_id,
             run_id=run_id,
@@ -281,6 +298,10 @@ class InMemoryResumeStore:
         indexed.sort(key=lambda pair: (pair[1].created_at, pair[0]), reverse=True)
         return [deepcopy(event) for _, event in indexed]
 
+    def child_documents(self, resume_id: str) -> StructuredResume:
+        """Return child rows stored off the parent document."""
+        return self._children(resume_id)
+
     def _require(self, user_id: str, resume_id: str) -> Resume:
         resume = self._resumes.get((user_id, resume_id))
         if resume is None:
@@ -308,86 +329,29 @@ class InMemoryResumeStore:
         )
         self._events.setdefault(resume.id, []).append(event)
 
+    def _children(self, resume_id: str) -> StructuredResume:
+        contact = self._contacts.get(resume_id)
+        return structured_from_rows(
+            contacts=[contact] if contact is not None else [],
+            skills=self._skills.get(resume_id, []),
+            experiences=self._experiences.get(resume_id, []),
+            educations=self._educations.get(resume_id, []),
+        )
 
-def _stamp_children(
-    snapshot: StructuredResume,
-    *,
-    resume_id: str,
-    source: ChildSource,
-    parsing_confidence: int | None = None,
-) -> StructuredResume:
-    now = utc_now()
-    contact = snapshot.contact
-    if contact is not None:
-        contact = contact.model_copy(
-            update={
-                "resume_id": resume_id,
-                "source": source,
-                "updated_at": now,
-                **(
-                    {"parsing_confidence": parsing_confidence}
-                    if parsing_confidence is not None and source == "parsed"
-                    else {}
-                ),
-            }
-        )
-    skills = []
-    for i, skill in enumerate(snapshot.skills):
-        skills.append(
-            skill.model_copy(
-                update={
-                    "resume_id": resume_id,
-                    "source": source,
-                    "order_index": i,
-                    "updated_at": now,
-                    **(
-                        {"parsing_confidence": parsing_confidence}
-                        if parsing_confidence is not None and source == "parsed"
-                        else {}
-                    ),
-                }
-            )
-        )
-    experiences = []
-    for i, item in enumerate(snapshot.experiences):
-        experiences.append(
-            item.model_copy(
-                update={
-                    "resume_id": resume_id,
-                    "source": source,
-                    "order_index": i,
-                    "updated_at": now,
-                    **(
-                        {"parsing_confidence": parsing_confidence}
-                        if parsing_confidence is not None and source == "parsed"
-                        else {}
-                    ),
-                }
-            )
-        )
-    educations = []
-    for i, item in enumerate(snapshot.educations):
-        educations.append(
-            item.model_copy(
-                update={
-                    "resume_id": resume_id,
-                    "source": source,
-                    "order_index": i,
-                    "updated_at": now,
-                    **(
-                        {"parsing_confidence": parsing_confidence}
-                        if parsing_confidence is not None and source == "parsed"
-                        else {}
-                    ),
-                }
-            )
-        )
-    return StructuredResume(
-        contact=contact,
-        skills=skills,
-        experiences=experiences,
-        educations=educations,
-    )
+    def _save_children(self, resume_id: str, snapshot: StructuredResume) -> None:
+        if snapshot.contact is None:
+            self._contacts.pop(resume_id, None)
+        else:
+            self._contacts[resume_id] = snapshot.contact
+        self._skills[resume_id] = list(snapshot.skills)
+        self._experiences[resume_id] = list(snapshot.experiences)
+        self._educations[resume_id] = list(snapshot.educations)
+
+    def _store_parent(self, resume: Resume) -> None:
+        self._resumes[(resume.user_id, resume.id)] = attach_children(resume, empty_children())
+
+    def _hydrate(self, resume: Resume) -> Resume:
+        return deepcopy(attach_children(resume, self._children(resume.id)))
 
 
 def _field_snapshot(resume: Resume) -> dict:
